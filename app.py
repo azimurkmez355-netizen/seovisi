@@ -42,6 +42,7 @@ import abonelik as AB  # noqa: E402
 import sablon as TPL  # noqa: E402
 import uyari as UY  # noqa: E402
 import kopya as KP  # noqa: E402
+import baglanti as BG  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -81,6 +82,7 @@ SERVER_DEFAULT = {
     "kw_loc": {},                 # hedef kelime yerinin varsayılanı (Ustapazar'da bulunan); mağaza keşif yaparsa onunki geçerli
     "hiz_magaza_dk": 300,        # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
     "otopilot_dk": 60,            # otopilotun her mağazada yeni ürünlere bakma aralığı (dakika)
+    "link_sinir": 10000,          # kırık bağlantı taramasında bir mağazada gezilen en çok sayfa
     "hiz_toplam_dk": 1200,        # bütün mağazalar toplamı (uygulama başına sınır varsa)
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
@@ -1819,12 +1821,13 @@ def overview():
     jobs = SEOJOBS.state()
     uy = Counter(u["grup"] for u in uyarilar()[0])
     uy["kopya"] = len(kopyalar())
+    uy["kirik"] = DBI.q("SELECT COUNT(*) n FROM kirik", one=True)["n"]
     return {
         "pids": pids, "maps": maps,
         "counts": {"seo_eksik": maps["seo"].count("y"), "seo_hazir": jobs["hazir"],
                    "seo_taranan": len(seo), "img_yok": maps["img"].count("y"), "img_taranan": len(img),
                    "tasi": maps["cat"].count("t"), "supheli": maps["cat"].count("s"), "ekle": maps["cat"].count("e"),
-                   "kategorisiz": maps["cat"].count("k"), "uyari_fiyat": uy["fiyat"], "uyari_satilamaz": uy["satilamaz"], "kopya": uy["kopya"],
+                   "kategorisiz": maps["cat"].count("k"), "uyari_fiyat": uy["fiyat"], "uyari_satilamaz": uy["satilamaz"], "kopya": uy["kopya"], "kirik": uy["kirik"],
                    "yeni_kategori": sum(1 for g in rep.get("newcats") or [] if g["kind"] == "alt" and newcat_key(g) not in made)},
         "scans": {"seo": SEOSCAN.running, "cat": CATSCAN.running, "img": IMG.running,
                   "phase": SEOSCAN.phase or CATSCAN.phase or IMG.phase or "",
@@ -2326,6 +2329,99 @@ class SeoJobs:
 SEOJOBS = _Ref("seojobs")
 
 
+# ============================================================ kırık bağlantı taraması
+
+SITE_SINIR = 2_000_000                # bir sayfadan en çok okunan bayt
+
+
+def site_getirici():
+    """Mağazanın herkese açık sitesinden adres getiren işlev (baglanti.py için). Yalnızca internetteki adreslere ve
+    yönlendirmelere gider: sitedeki bir bağlantı sunucunun iç ağını gösterse de istek gönderilmez. Alan adı denetimi
+    tarama boyunca bellekte tutulur. Dönüş: (durum, içerik türü, metin, son adres); ulaşılamazsa durum 0."""
+    genel = {}
+    opener = urllib.request.build_opener(_PublicRedirects, urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+
+    def getir(url, govde=True):
+        host = urllib.parse.urlsplit(url).hostname or ""
+        if host not in genel:
+            genel[host] = public_host(host)
+        if not genel[host]:
+            return 0, "", "", url
+        for m in (["GET"] if govde else ["HEAD", "GET"]):
+            req = urllib.request.Request(url, method=m, headers={"User-Agent": "Mozilla/5.0 (compatible; seovisi-baglanti/1.0)"})
+            try:
+                with opener.open(req, timeout=15) as r:
+                    metin = r.read(SITE_SINIR).decode(r.headers.get_content_charset() or "utf-8", "replace") if govde else ""
+                    return r.status, r.headers.get("Content-Type", ""), metin, r.geturl()
+            except urllib.error.HTTPError as e:
+                if m == "HEAD" and e.code in (403, 405, 501):
+                    continue                    # HEAD'i kabul etmeyen sunucu: GET ile denenir
+                return e.code, "", "", url
+            except (urllib.error.URLError, socket.timeout, ConnectionError, ValueError, OSError):
+                return 0, "", "", url
+        return 0, "", "", url
+    return getir
+
+
+class LinkScanner:
+    """Mağazanın herkese açık sitesindeki kırık bağlantıları bulur (baglanti.py). Mağazaya hiçbir şey yazmaz.
+    Durdurulan taramada önceki sonuçlar korunur."""
+
+    def __init__(self):
+        self.running = self.stop_flag = False
+        self.phase = self.note = ""
+        DBI.x("CREATE TABLE IF NOT EXISTS kirik(url TEXT PRIMARY KEY, durum INTEGER, tur TEXT, kaynaklar TEXT, harita INTEGER)")
+        DBI.x("CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT)")
+
+    def start(self):
+        if self.running:
+            return "Bağlantı taraması zaten sürüyor."
+        host = store_host(CFG.get("store"))
+        if not host:
+            return "Önce mağaza adresini girin (Ayarlar)."
+        self.running, self.stop_flag, self.note, self.phase = True, False, "", "başlıyor"
+        spawn(self._run, host)
+        return "Bağlantı taraması başladı; sitenizin büyüklüğüne göre birkaç dakika ile bir saat sürebilir."
+
+    def stop(self):
+        self.stop_flag = True
+
+    def _run(self, host):
+        try:
+            def ilerleme(n, toplam):
+                self.phase = f"{n:,} / {toplam:,} sayfa".replace(",", ".")
+            sinir = int(_num(SRV.get("link_sinir")) or 10000) if SRV else 10000
+            r = BG.tara(f"https://{host}", site_getirici(), sinir=sinir, bekle=LINK_BEKLE, dur=lambda: self.stop_flag,
+                        ilerleme=ilerleme)
+            if r["durduruldu"]:
+                self.note = "Durduruldu; önceki sonuçlar korunuyor."
+                return
+            with DBI.lock:
+                DBI.c.execute("DELETE FROM kirik")
+                DBI.c.executemany("INSERT INTO kirik(url, durum, tur, kaynaklar, harita) VALUES(?,?,?,?,?)",
+                                  [(k["url"], k["durum"], k["tur"], json.dumps(k["kaynaklar"], ensure_ascii=False),
+                                    1 if k["site_haritasi"] else 0) for k in r["kirik"]])
+                DBI.c.commit()
+            DBI.x("INSERT OR REPLACE INTO kv(k, v) VALUES('link_tarama', ?)", (json.dumps({
+                "zaman": datetime.now().strftime("%Y-%m-%d %H:%M"), "sayfa": r["sayfa"], "sinir": r["sinira_ulasti"]}),))
+            log(f"Bağlantı taraması bitti: {r['sayfa']} sayfa gezildi, {len(r['kirik'])} kırık bağlantı"
+                + (" (sayfa sınırına ulaşıldı)." if r["sinira_ulasti"] else "."), "ok")
+        except Exception as e:  # noqa: BLE001
+            self.note = f"Bağlantı taraması hata ile durdu: {e}"
+            log(self.note, "err")
+            traceback.print_exc()
+        finally:
+            self.running, self.phase = False, ""
+
+    def state(self):
+        r = DBI.q("SELECT v FROM kv WHERE k='link_tarama'", one=True)
+        return {"running": self.running, "phase": self.phase, "note": self.note, "son": json.loads(r["v"]) if r else None}
+
+
+LINK_BEKLE = 0.25                     # istekler arası bekleme (sn): mağazanın sitesini yormamak için
+LINKS = _Ref("links")
+
+
 # ============================================================ yeni ürün otopilotu
 #
 # Otopilot açıldıktan SONRA mağazaya eklenen ürünleri bulur; SEO açıklamasını ve kategori önerisini hazırlar. Onaylı kipte
@@ -2664,6 +2760,7 @@ class Tenant:
             self.catscan = CatScanner()
             self.catjobs = CatJobs()
             self.oto = Otopilot()
+            self.links = LinkScanner()
         finally:
             _cur.t = prev
 
@@ -3224,6 +3321,14 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/otopilot":
             return self._send(200, OTO.state())
+        if p == "/api/linkler":
+            tur = q.get("tur") or ""
+            rows = [dict(r, kaynaklar=json.loads(r["kaynaklar"] or "[]"), harita=bool(r["harita"]))
+                    for r in DBI.q("SELECT * FROM kirik ORDER BY CASE tur WHEN 'sayfa' THEN 0 WHEN 'gorsel' THEN 1 ELSE 2 END, url")]
+            sec = [r for r in rows if not tur or r["tur"] == tur]
+            page = max(0, int(q.get("page") or 0))
+            return self._send(200, {"tarama": LINKS.state(), "sayilar": Counter(r["tur"] for r in rows), "toplam": len(sec),
+                                    "items": sec[page * 50:(page + 1) * 50], "turler": BG.TURLER})
         if p == "/api/kopyalar":
             gruplar = kopyalar()
             page = max(0, int(q.get("page") or 0))
@@ -3469,6 +3574,11 @@ class H(BaseHTTPRequestHandler):
             renk = tema_rengi_oner()
             return self._send(200, {"renk": renk} if renk else
                               {"error": "Sitenizde tema rengi bulunamadı; rengi kendiniz seçin."})
+        if p == "/api/linkler/start":
+            return self._send(200, {"msg": LINKS.start()})
+        if p == "/api/linkler/stop":
+            LINKS.stop()
+            return self._send(200, {"msg": "Durduruluyor; önceki sonuçlar korunacak."})
         if p == "/api/otopilot/ayar":
             msg = OTO.ayarla(self._json())
             return self._send(200, {"error": msg} if msg else {"ok": True, "ayar": oto_ayar()})

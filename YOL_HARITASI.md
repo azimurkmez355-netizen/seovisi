@@ -68,7 +68,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
   - [ ] eski açıklamaları yeni şablona toplu geçirme (yedekli)
 - [x] Kopya ürün tespiti
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
-- [ ] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
+- [x] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
 - [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)
 - [ ] Paketler, kota ve abonelik durumu
 
@@ -180,7 +180,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
   - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
 - [x] (K) Kopya ürün tespiti (aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama; neredeyse aynılar v2 varyant önerisinde)
 - [ ] (K) Özellik doldurma
-- [ ] (K) Kırık bağlantı taraması
+- [x] (K) Kırık bağlantı taraması (ana sayfa + site haritası; sayfa, görsel ve dış bağlantılar; robots.txt'ye uyar)
+  - [ ] (K) Haftalık otomatik tarama (aboneliği taşıyan "haftalık taramalar" değeri; aylık raporla birlikte)
 - [x] (K) Fiyat ve satılamaz ürün uyarıları (fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat; yayında ama stokta yok)
 - [ ] (K) Aylık e-posta raporu
 

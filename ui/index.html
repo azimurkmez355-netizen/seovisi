@@ -516,6 +516,8 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <div class="ph-act"><button class="btn" id="u-scan">Mağazayı yeniden tara</button></div>
   </header>
   <div class="tools"><input type="search" id="uq" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><div class="seg" id="useg"></div></div>
+  <div class="sheethead" id="u-link" hidden><p id="u-link-info"></p>
+    <span style="margin-left:auto;display:flex;gap:8px"><button class="btn ghost sm" id="u-link-stop">Durdur</button><button class="btn sm" id="u-link-start">Bağlantıları tara</button></span></div>
   <div class="tablewrap"><table>
     <thead><tr id="uthead"><th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th></tr></thead>
     <tbody id="urows"></tbody>
@@ -1642,6 +1644,8 @@ function oTodo(){
   add(c.supheli, 'var(--sari)', 'ürünün kategorisi şüpheli', 'Bulunduğu kategoriye uymuyor; bir göz atmanızı öneririz.', 'İncele', () => oGo('cat', 's'));
   add(c.uyari_satilamaz, 'var(--sari)', 'ürün yayında ama stokta yok', 'Sitede görünüyorlar ama satın alınamıyorlar.',
     'Uyarılara git', () => { ufilt = 'satilamaz'; show('uyari'); });
+  add(c.kirik, 'var(--kirmizi)', 'kırık bağlantı ya da görsel', 'Sitenizde hata sayfasına giden bağlantılar; ziyaretçi ve Google bunları görür.',
+    'Kırık bağlantıları gör', () => { ufilt = 'kirik'; show('uyari'); });
   add(c.kopya, 'var(--sari)', 'kopya ürün grubu', 'Aynı stok kodu, barkod, ad, sayfa başlığı ya da meta açıklama; Google aynı içerikten yalnızca birini gösterebilir.',
     'Kopyaları gör', () => { ufilt = 'kopya'; show('uyari'); });
   add(c.ekle, 'var(--isle)', 'ürün başka bir kategoriye de eklenebilir', 'Mevcut kategorisi doğru; ikinci bir uygun kategori bulundu.', 'İncele', () => oGo('cat', 'e'));
@@ -1666,12 +1670,13 @@ window.addEventListener('resize', () => { if(O && document.querySelector('#v-gen
 setInterval(() => { if(document.querySelector('#v-genel.on')) oTick(); }, 3000);
 
 /* ---------------- uyarılar (yalnızca okur) */
-let ufilt = '', upage = 0, U = null, UK = null;
+let ufilt = '', upage = 0, U = null, UK = null, UL = null;
 function uSeg(){
   const say = (U && U.sayilar) || {}, tur = (U && U.turler) || {};
   const grup = g => Object.entries(say).filter(([k]) => (tur[k] || [])[0] === g).reduce((a, [, n]) => a + n, 0);
   const opts = [['', 'Tümü'], ['fiyat', `Fiyat hataları (${grup('fiyat')})`], ['satilamaz', `Stokta yok (${grup('satilamaz')})`],
-                ['kopya', `Kopyalar (${(UK && UK.toplam) || 0})`]];
+                ['kopya', `Kopyalar (${(UK && UK.toplam) || 0})`],
+                ['kirik', `Kırık bağlantılar (${UL ? Object.values(UL.sayilar).reduce((a, n) => a + n, 0) : 0})`]];
   $('#useg').innerHTML = opts.map(([k, t]) => `<button data-k="${k}" class="${k === ufilt ? 'on' : ''}">${t}</button>`).join('');
   document.querySelectorAll('#useg button').forEach(b => b.onclick = () => { ufilt = b.dataset.k; upage = 0; uSeg(); uRows(); });
 }
@@ -1680,12 +1685,16 @@ $('#uprev').onclick = () => { if(upage > 0){ upage--; uRows(); } };
 $('#unext').onclick = () => { upage++; uRows(); };
 $('#u-scan').onclick = async () => { const r = await post('/api/overview/scan'); if(r.msg) toast(r.msg); };
 async function uRows(){
-  const kopya = ufilt === 'kopya', ilk = !U || !UK;
+  const kopya = ufilt === 'kopya', kirik = ufilt === 'kirik', ilk = !U || !UK || !UL;
+  const onceki = UL && UL.tarama.running;
   UK = await api(`/api/kopyalar?page=${kopya ? upage : 0}`);
-  const r = await api(kopya ? '/api/uyarilar' : `/api/uyarilar?tur=${ufilt}&q=${encodeURIComponent($('#uq').value)}&page=${upage}`);
+  UL = await api(`/api/linkler?page=${kirik ? upage : 0}`);
+  const r = await api(kopya || kirik ? '/api/uyarilar' : `/api/uyarilar?tur=${ufilt}&q=${encodeURIComponent($('#uq').value)}&page=${upage}`);
   if(!r.items) return;
-  U = r; if(ilk) uSeg();                       // süzgeç düğmelerindeki sayılar
+  U = r; if(ilk || (onceki && !UL.tarama.running)) uSeg();     // süzgeç düğmelerindeki sayılar
+  $('#u-link').hidden = !kirik;
   if(kopya) return kRows();
+  if(kirik) return lRows();
   $('#uthead').innerHTML = '<th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th>'; $('#uq').hidden = false;
   $('#u-info').textContent = r.taranan
     ? `Taranan ${nf(r.taranan)} üründe fiyatı hatalı görünen ve yayında olup satılamayan ürünler. Mağazada hiçbir şey değiştirilmez; düzeltmeyi Ideasoft panelinde yaparsınız.`
@@ -1716,7 +1725,29 @@ function kRows(){
   $('#upinfo').textContent = r.toplam ? `${nf(upage * 30 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 30))} / ${nf(r.toplam)} grup` : '';
   $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 30 >= r.toplam;
 }
-setInterval(() => { if(document.querySelector('#v-uyari.on')) uRows(); }, 5000);
+/* kırık bağlantılar: sitenin herkese açık sayfaları gezilir (Ideasoft API'si değil) */
+function lRows(){
+  const r = UL, t = r.tarama;
+  $('#uthead').innerHTML = '<th>Kırık adres</th><th>Sorun</th><th>Bulunduğu sayfalar</th>'; $('#uq').hidden = true;
+  $('#u-info').textContent = 'Sitenizin herkese açık sayfalarındaki çalışmayan bağlantılar, görseller ve dış bağlantılar. Ziyaretçi ve Google bu bağlantılarda hata sayfası görür. Mağazada hiçbir şey değiştirilmez.';
+  $('#u-link-info').innerHTML = t.running ? `<b>Taranıyor:</b> ${esc(t.phase || 'başlıyor')}`
+    : t.note ? `<span class="bad-t">${esc(t.note)}</span>`
+    : t.son ? `Son tarama: <b>${esc(t.son.zaman)}</b> · ${nf(t.son.sayfa)} sayfa gezildi${t.son.sinir ? ' (sayfa sınırına ulaşıldı)' : ''}`
+    : 'Site henüz taranmadı. Tarama sitenizin büyüklüğüne göre birkaç dakika ile bir saat sürer; siteniz yorulmasın diye yavaş gezilir.';
+  $('#u-link-start').disabled = t.running; $('#u-link-stop').hidden = !t.running;
+  const sorun = x => `<span class="pill"><i style="background:${x.tur === 'sayfa' ? 'var(--kirmizi)' : 'var(--sari)'}"></i>${esc(r.turler[x.tur])}</span><br>
+    <small>${x.durum ? `Hata ${x.durum}${x.durum === 404 ? ' (bulunamadı)' : ''}` : 'Ulaşılamadı'}${x.harita ? ' · site haritasında da var' : ''}</small>`;
+  $('#urows').innerHTML = r.items.length ? r.items.map(x => `<tr>
+      <td style="max-width:320px;overflow-wrap:anywhere"><a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.url)}</a></td>
+      <td>${sorun(x)}</td>
+      <td>${x.kaynaklar.map(k => `<div style="overflow-wrap:anywhere"><a href="${esc(k.sayfa)}" target="_blank" rel="noopener noreferrer">${esc(k.sayfa)}</a>${k.metin ? ` <small class="muted">“${esc(k.metin)}”</small>` : ''}</div>`).join('') || '<small class="muted">Site haritasında</small>'}</td></tr>`).join('')
+    : `<tr><td colspan="3" class="muted">${t.son ? 'Kırık bağlantı bulunmadı.' : 'Henüz taranmadı.'}</td></tr>`;
+  $('#upinfo').textContent = r.toplam ? `${nf(upage * 50 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 50))} / ${nf(r.toplam)}` : '';
+  $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 50 >= r.toplam;
+}
+$('#u-link-start').onclick = async () => { const r = await post('/api/linkler/start'); if(r.msg) toast(r.msg); uRows(); };
+$('#u-link-stop').onclick = async () => { const r = await post('/api/linkler/stop'); if(r.msg) toast(r.msg); uRows(); };
+setInterval(() => { if(document.querySelector('#v-uyari.on')) uRows(); }, 3000);
 
 /* ---------------- yeni ürün otopilotu */
 let A = null;

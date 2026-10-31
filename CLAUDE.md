@@ -30,7 +30,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
   - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
   - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
-  - `test_uyari.py`, `test_kopya.py`: uyarı ve kopya kuralları.
+  - `test_uyari.py`, `test_kopya.py`, `test_baglanti.py`: uyarı, kopya ve kırık bağlantı kuralları.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -52,6 +52,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `abonelik.py` | Abonelik kaydı (mağaza klasöründe `abonelik.json`), geçerli paket ve yazma izni. Paketler `paketler.json` içinde. |
 | `uyari.py` | Ürün uyarıları (yalnızca okur): fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat, yayında ama stokta yok. |
 | `kopya.py` | Kopya ürün grupları (yalnızca okur): aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama. |
+| `baglanti.py` | Kırık bağlantı taraması: herkese açık siteyi gezer (ana sayfa, site haritası, robots.txt); ağ erişimi dışarıdan verilir. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). |
 | `ui/marka/` | Logo, simge ve renkler. |
@@ -149,6 +150,14 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   bütün ürünlerde, ad / başlık / meta yalnızca yayındakilerde; aynı ürün kümesi daha önemli türde bildirildiyse tekrar edilmez.
   Yalnızca renk / beden farkıyla ayrılan ürünler bilerek işaretlenmez (v2: varyant önerisi).
 
+### Kırık bağlantı taraması (`baglanti.py`, `LinkScanner`)
+
+- Mağazanın herkese açık sitesi gezilir (Ideasoft API'si değil): ana sayfa ve site haritasından başlar, yalnızca aynı alan adındaki
+  sorgusuz sayfaları gezer, görselleri ve dış bağlantıları yalnızca durum için ister. robots.txt'ye uyar; istekler arası `LINK_BEKLE`,
+  en çok `link_sinir` (sunucu.json, 10.000) sayfa. Sonuç `kirik` tablosunda; durdurulan taramada önceki sonuç korunur.
+- Ağ erişimi `site_getirici()` ile: her alan adı `public_host` ile denetlenir (taramada bir kez), yönlendirmeler `_PublicRedirects`
+  ile; sitedeki bir bağlantı iç ağı gösterse de istek gönderilmez. Testler `site_getirici`'yi sahte siteyle değiştirir.
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -167,5 +176,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar ve kopya ürün tespiti bitti. Kalan: eski açıklamaları
-  yeni şablona yedekli toplu geçirme, özellik doldurma, kırık bağlantı taraması, aylık e-posta raporu. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti ve kırık bağlantı taraması bitti. Kalan:
+  eski açıklamaları yeni şablona yedekli toplu geçirme, özellik doldurma, aylık e-posta raporu (haftalık otomatik taramalarla). Ayrıntılar `YOL_HARITASI.md` içinde.

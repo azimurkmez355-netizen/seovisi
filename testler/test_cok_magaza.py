@@ -142,6 +142,7 @@ def sunucu_kipi():
         check("erişim anahtarları ve client secret diskte şifreli",
               not any(s in disk for s in ("tok-a-magaza.com", "r-b-moda.com", '"sec"')) and "sifreli:v1:" in disk)
         uyarilar(8770, ca, cb)
+        linkler(8770, ca)
 
         st, h, j = req(8770, "POST", "/api/disconnect", {}, cookie=cb)
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
@@ -264,6 +265,25 @@ def uyarilar(port, ca, cb):
     check("kopya: diğer mağazada stok kodu / barkod kopyası yok, mağazalar ayrı",
           not kb["sayilar"].get("ayni_sku") and not kb["sayilar"].get("ayni_barkod"), kb.get("sayilar"))
     check("genel bakış kopya grubu sayısını gösterir", c["kopya"] == ka["toplam"] > 0, (c["kopya"], ka["toplam"]))
+
+
+def linkler(port, ca):
+    """Kırık bağlantı taraması: mağazanın (sahte) sitesini gezer, kırık sayfa ve görseli bulduğu sayfalarla bildirir."""
+    j = req(port, "POST", "/api/linkler/start", {}, cookie=ca)[2]
+    check("bağlantı taraması başlar", "başladı" in j.get("msg", ""), j)
+    for _ in range(100):
+        r = req(port, "GET", "/api/linkler", cookie=ca)[2]
+        if not r["tarama"]["running"]:
+            break
+        time.sleep(0.1)
+    check("kırık sayfa bağlantısı ve görsel bulunur", r["sayilar"] == {"sayfa": 1, "gorsel": 1}
+          and r["tarama"]["son"]["sayfa"] == 4, (r.get("sayilar"), r["tarama"]))
+    k = next((x for x in r["items"] if x["tur"] == "sayfa"), {})
+    check("kırık bağlantının bulunduğu sayfalar ve metni bildirilir",
+          k.get("url") == "https://a-magaza.com/eski-kampanya" and k.get("durum") == 404
+          and {x["sayfa"] for x in k.get("kaynaklar", [])} == {"https://a-magaza.com/", "https://a-magaza.com/bosch-matkap"}
+          and k["kaynaklar"][0]["metin"] == "Kampanya", k)
+    check("genel bakış kırık bağlantı sayısını gösterir", req(port, "GET", "/api/overview", cookie=ca)[2]["counts"]["kirik"] == 2)
 
 
 def otopilot(port, appdir, ca):

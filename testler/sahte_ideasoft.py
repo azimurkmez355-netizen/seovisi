@@ -137,7 +137,26 @@ def route_public(self, method, p, q):
     return _route_public(self, method, p, q)
 
 
+# A mağazasının herkese açık sitesi (kırık bağlantı taraması için): bir kırık sayfa bağlantısı, bir kırık görsel
+SITE = {
+    "https://a-magaza.com/": (200, "text/html", '<a href="/matkaplar">Matkaplar</a> <a href="/eski-kampanya">Kampanya</a>'
+                                                '<img src="/resim/logo.png"><img src="/resim/silinen.jpg">'),
+    "https://a-magaza.com/matkaplar": (200, "text/html", '<a href="/bosch-matkap">Bosch</a><a href="/">Ana sayfa</a>'),
+    "https://a-magaza.com/bosch-matkap": (200, "text/html", '<a href="/eski-kampanya">Kampanya</a>'),
+    "https://a-magaza.com/resim/logo.png": (200, "image/png", ""),
+}
+
+
+def sahte_getirici():
+    def getir(url, govde=True):
+        st, ct, txt = SITE.get(url, (404, "text/html", ""))
+        return st, ct, txt if govde else "", url
+    return getir
+
+
 app.Ideasoft.call = fake_call
+app.site_getirici = sahte_getirici
+app.LINK_BEKLE = 0
 app.H.route_public = route_public
 app.OTO_BEKLE_DK = 0                     # testte yeni ürün beklemeden işlenir
 app.public_host = lambda h: h in STORES
