@@ -25,6 +25,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Testler: `python -X utf8 testler/hepsi.py` (hepsi) ya da `--hizli` (yalnızca birim testleri). Gerçek Ideasoft'a hiç istek gitmez.
   - `test_seo_metin.py`, `test_aciklama.py`: metin üreticileri ve SEO kuralları.
   - `test_sifre.py`: şifreleme ve ayar dosyalarındaki gizli bilgiler.
+  - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
   - `test_cok_magaza.py`: uygulamanın kendisini iki sahte mağazayla (`sahte_ideasoft.py`) çalıştıran betik.
   - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
@@ -50,6 +51,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Kodun geneli `CFG`, `DBI`, `API`, `SEOSCAN`, `CATSCAN`, `CATJOBS`, `SEOJOBS`, `IMG` adlarını tek mağaza varmış gibi kullanır. Bunlar `_Ref` vekilleridir ve o anki iş parçacığının mağazasına (`_cur.t`, bir `Tenant`) yönlenir.
 - İstek işleyicisi (`H._dispatch`) mağazayı oturumdan ya da yerel kipte `LOCAL["id"]` değerinden seçer.
 - Arka plan işleri `spawn()` ile başlatılır ve başlatan mağazanın bağlamını taşır. **Yeni arka plan işlerinde `threading.Thread` yerine mutlaka `spawn()` kullan.**
+  Paralel işler için de `ThreadPoolExecutor` yerine `pmap()`; yoksa iş parçacıkları "Mağaza seçilmedi" hatası verir.
+- Ideasoft'a giden her istek `Ideasoft.call` içinde `THROTTLE.acquire(mağaza)` ile izin alır: mağaza başına ve toplam dakikalık sınır
+  (`sunucu.json`: `hiz_magaza_dk`, `hiz_toplam_dk`; varsayılanlar tahmin). Toplam sınırda mağazalar sırayla izin alır. 429 gelirse
+  `THROTTLE.pause()` o mağazanın bütün işlerini `Retry-After` kadar bekletir. Ideasoft'a başka yoldan istek gönderme.
 - Eski kurulumdaki `data/ayarlar.json` ve `durum.db`, ilk açılışta `migrate_legacy()` ile mağaza klasörüne taşınır.
 
 ### Gizli bilgiler
@@ -86,4 +91,4 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
 - Panel Ideasoft'un içinde bir çerçevede açılacak. Bugünkü `SameSite=Lax` çerezi çerçeve içinde gönderilmeyebilir; giriş kapısı buna göre yapılmalı.
-- Faz 1 sürüyor; test paketi, anahtar şifreleme ve istek güvenliği bitti. Sırada Ideasoft hız sınırına uyan iş sırası, giriş kapısı, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği ve hız sınırı bitti. Sırada giriş kapısı, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.

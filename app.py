@@ -71,6 +71,8 @@ SERVER_DEFAULT = {
     "public_url": "",             # sunucu kipinde dışarıdan açılan adres, örn. https://app.seovisi.com.tr
     "yerel": "",                  # yerel kipte açılan mağaza klasörü
     "frame_hosts": [],            # panelin çerçevede açılabileceği ek adresler (FRAME_HOSTS'a ek)
+    "hiz_magaza_dk": 300,         # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
+    "hiz_toplam_dk": 1200,        # bütün mağazalar toplamı (uygulama başına sınır varsa)
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
 
@@ -104,6 +106,21 @@ def spawn(target, *args):
         _cur.t = t
         target(*args)
     threading.Thread(target=run, daemon=True).start()
+
+
+def pmap(fn, items, workers):
+    """Paralel map; iş parçacıkları başlatan mağazanın bağlamını taşır. **ThreadPoolExecutor'ı doğrudan kullanma.**"""
+    from concurrent.futures import ThreadPoolExecutor
+    t = getattr(_cur, "t", None)
+
+    def run(x):
+        _cur.t = t
+        try:
+            return fn(x)
+        finally:
+            _cur.t = None
+    with ThreadPoolExecutor(workers) as ex:
+        return list(ex.map(run, items))
 
 
 # ================================================================= yardımcılar
@@ -270,8 +287,96 @@ def token_request(host, data):
     return tok
 
 
+# ============================================================ Ideasoft hız sınırı
+
+# Dakikadaki istek sınırları sunucu.json'dan okunur ("hiz_magaza_dk", "hiz_toplam_dk"). Ideasoft'un gerçek sınırı
+# öğrenilene kadar varsayılanlar tahmindir; değişince yalnızca ayar değişir.
+RATE_DEFAULTS = {"hiz_magaza_dk": 300, "hiz_toplam_dk": 1200}
+
+
+class Throttle:
+    """Ideasoft'a giden her istek buradan izin alır: mağaza başına ve toplamda dakikada en çok N istek.
+    Toplam sınıra takılınca bekleyen mağazalar sırayla (en uzun süredir istek gönderemeyen önce) izin alır;
+    çok sayıda iş parçacığı açan bir mağaza diğerlerini bekletmez. 429 alan mağaza bir süre bekletilir."""
+
+    def __init__(self, limits=None):
+        self.limits = limits or (lambda: (RATE_DEFAULTS["hiz_magaza_dk"], RATE_DEFAULTS["hiz_toplam_dk"]))
+        self.cv = threading.Condition()
+        self.stores = {}          # mağaza -> {"tok", "at", "until", "served"}
+        self.total = None         # [jeton, son dolum]
+        self.waiting = {}         # mağaza -> sıradaki istekler (FIFO)
+
+    @staticmethod
+    def _fill(b, rate, now):
+        cap = max(1.0, rate / 30.0)          # en çok 2 saniyelik birikim
+        b[0] = min(cap, b[0] + (now - b[1]) * rate / 60.0)
+        b[1] = now
+
+    def _store(self, key, rate, now):
+        s = self.stores.get(key)
+        if s is None:
+            s = self.stores[key] = {"b": [max(1.0, rate / 30.0), now], "until": 0.0, "served": 0.0}
+        self._fill(s["b"], rate, now)
+        return s
+
+    def acquire(self, key):
+        ticket = object()
+        with self.cv:
+            q = self.waiting.setdefault(key, deque())
+            q.append(ticket)
+            try:
+                while True:
+                    per, total = (max(1, int(x)) for x in self.limits())
+                    now = time.monotonic()
+                    if self.total is None:
+                        self.total = [max(1.0, total / 30.0), now]
+                    self._fill(self.total, total, now)
+                    ready = []
+                    for k in self.waiting:
+                        s = self._store(k, per, now)
+                        if s["b"][0] >= 1 and s["until"] <= now:
+                            ready.append(k)
+                    if self.total[0] >= 1 and ready:
+                        pick = min(ready, key=lambda k: self.stores[k]["served"])
+                        if pick == key and q[0] is ticket:
+                            s = self.stores[key]
+                            s["b"][0] -= 1
+                            self.total[0] -= 1
+                            s["served"] = now
+                            q.popleft()
+                            self.cv.notify_all()
+                            return
+                    # bir sonraki jetonun gelmesine kalan süre kadar (ya da başkası izin alınca) bekle
+                    waits = [(1 - self.total[0]) * 60.0 / total] if self.total[0] < 1 else []
+                    for k in self.waiting:
+                        s = self.stores[k]
+                        waits.append(max(s["until"] - now, (1 - s["b"][0]) * 60.0 / per if s["b"][0] < 1 else 0))
+                    self.cv.wait(min(0.5, max(0.002, min([w for w in waits if w > 0] or [0.05]))))
+            finally:
+                if ticket in q:
+                    q.remove(ticket)
+                if not q and self.waiting.get(key) is q:
+                    del self.waiting[key]
+                    self.cv.notify_all()
+
+    def pause(self, key, seconds):
+        """Ideasoft "yavaşla" (429) dediğinde mağazanın isteklerini bir süre durdurur."""
+        with self.cv:
+            s = self._store(key, max(1, int(self.limits()[0])), time.monotonic())
+            s["until"] = max(s["until"], time.monotonic() + seconds)
+            self.cv.notify_all()
+
+
+def rate_limits():
+    get = SRV.get if SRV else RATE_DEFAULTS.get
+    return tuple(_num(get(k)) or RATE_DEFAULTS[k] for k in ("hiz_magaza_dk", "hiz_toplam_dk"))
+
+
+THROTTLE = Throttle(rate_limits)
+
+
 class Ideasoft:
-    PROTECTED = ("name", "sku", "barcode", "price1", "stockAmount", "status", "discount", "discountType",
+    PROTECTED =("name", "sku", "barcode", "price1", "stockAmount", "status", "discount", "discountType",
                  "taxIncluded", "tax", "slug", "hasOption", "buyingPrice", "warranty")
 
     def __init__(self):
@@ -321,6 +426,7 @@ class Ideasoft:
             req = urllib.request.Request(url, data=data, method=method, headers={
                 "Authorization": f"Bearer {CFG.get('access_token')}",
                 "Accept": "application/json", "Content-Type": "application/json; charset=utf-8"})
+            THROTTLE.acquire(current().id)
             self.req_times.append(time.time())
             try:
                 with urllib.request.urlopen(req, context=self.ctx, timeout=60) as r:
@@ -334,8 +440,11 @@ class Ideasoft:
                     self.refresh()
                     continue
                 if e.code in (429, 500, 502, 503, 504) and attempt < tries - 1:
-                    wait = float(e.headers.get("Retry-After") or 0) or min(30, 1.5 * 2 ** attempt)
-                    time.sleep(wait)
+                    wait = min(120, _num(e.headers.get("Retry-After")) or 0) or min(30, 1.5 * 2 ** attempt)
+                    if e.code == 429:              # mağazanın bütün işleri birlikte bekler, sıra diğerlerine geçer
+                        THROTTLE.pause(current().id, wait)
+                    else:
+                        time.sleep(wait)
                     continue
                 raise ApiError(e.code, txt, url)
             except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
@@ -817,9 +926,7 @@ class ImgScanner:
                     else:
                         missing.append(p)
                 if missing:
-                    from concurrent.futures import ThreadPoolExecutor
-                    with ThreadPoolExecutor(4) as ex:
-                        cnts = list(ex.map(lambda q: image_count(q["id"]), missing))
+                    cnts = pmap(lambda q: image_count(q["id"]), missing, 4)
                     rows += [(p["id"], p.get("sku"), p.get("name"), 1 if c else 0, c) for p, c in zip(missing, cnts)]
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 DBI.xm("""INSERT INTO img(pid, sku, name, has, cnt, checked) VALUES(?,?,?,?,?,?)
@@ -992,9 +1099,7 @@ class SeoScanner:
                     break
                 rows, now = [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if self.single:
-                    from concurrent.futures import ThreadPoolExecutor
-                    with ThreadPoolExecutor(4) as ex:
-                        page = list(ex.map(lambda q: API.call("GET", f"products/{q['id']}") or q, page))
+                    page = pmap(lambda q: API.call("GET", f"products/{q['id']}") or q, page, 4)
                 for p in page:
                     fields = seo_fields(p)
                     pct = panel_pct(fields)
@@ -1021,15 +1126,13 @@ class SeoScanner:
                         f"({','.join(str(x[0]) for x in rows)})")]
                     if todo:
                         self.phase = f"{len(todo)} eksik ürün için açıklama hazırlanıyor"
-                        from concurrent.futures import ThreadPoolExecutor
 
                         def prep(pid):
                             try:
                                 prepare_plan(pid)
                             except Exception as e:  # noqa: BLE001
                                 DBI.x("UPDATE seo SET pstate='hata', pmsg=? WHERE pid=?", (f"Hazırlanamadı: {str(e)[:200]}", pid))
-                        with ThreadPoolExecutor(3) as ex:
-                            list(ex.map(prep, todo))
+                        pmap(prep, todo, 3)
             if not self.stop_flag:
                 DBI.x("DELETE FROM seo WHERE checked < ?", (scan_start,))  # mağazadan silinmiş ürünler
             c = seo_counts()
@@ -2070,8 +2173,6 @@ class SeoJobs:
         self.stop_flag = True
 
     def _run(self, kind, pids):
-        from concurrent.futures import ThreadPoolExecutor
-
         def one(pid):
             if self.stop_flag:
                 return
@@ -2088,8 +2189,7 @@ class SeoJobs:
             self.done += 1
 
         try:
-            with ThreadPoolExecutor(2 if kind == "send" else 3) as ex:
-                list(ex.map(one, pids))
+            pmap(one, pids, 2 if kind == "send" else 3)
         finally:
             log(f"{'Toplu gönderim' if kind == 'send' else 'Açıklama hazırlama'} "
                 f"{'durduruldu' if self.stop_flag else 'bitti'}: {self.done}/{self.todo}.", "ok")
