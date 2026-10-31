@@ -60,12 +60,12 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 - [ ] Aylık e-posta raporu
 - [ ] Yapay zekâ ile ürüne özel açıklama; marka sesi seçimi (samimi, kurumsal, genç)
 - [ ] Açıklama şablonu ayarlama:
-  - hazır şablonlar: sade, bantlı, çizgili, kutulu
-  - ana renk (sitenin tema rengi önerilir)
-  - bölümleri açma, kapama ve sıralama; başlık metinleri
-  - madde işareti, kapanış metni, stok kodu / barkod gösterimi
-  - canlı önizleme ve SEO puanı tahmini
-  - eski açıklamaları yeni şablona toplu geçirme (yedekli)
+  - [x] hazır şablonlar: sade, bantlı, çizgili, kutulu
+  - [x] ana renk (sitenin tema rengi önerilir)
+  - [x] bölümleri açma, kapama ve sıralama; başlık metinleri
+  - [x] madde işareti, kapanış metni, stok kodu / barkod gösterimi
+  - [x] canlı önizleme ve SEO puanı tahmini
+  - [ ] eski açıklamaları yeni şablona toplu geçirme (yedekli)
 - [ ] Kopya ürün tespiti
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [ ] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
@@ -175,7 +175,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 - [x] (K) Kurulum sihirbazı: mağaza adı ve marka, açıklama görünümü (sade / bantlı, canlı önizleme), ilk tarama ve özet, paket bilgisi
   - [ ] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
-- [ ] (K) Açıklama şablonu ayarlama
+- [ ] (K) Açıklama şablonu ayarlama — ayarlar ekranı, 4 görünüm, renk, bölümler, önizleme bitti; eski açıklamaların toplu geçirilmesi kaldı
 - [ ] (K) Yeni ürün otopilotu ve iş sırası
 - [ ] (K) Kopya ürün tespiti
 - [ ] (K) Özellik doldurma

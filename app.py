@@ -39,6 +39,7 @@ import kategori as KT  # noqa: E402
 import profil as PR  # noqa: E402
 import sifre  # noqa: E402
 import abonelik as AB  # noqa: E402
+import sablon as TPL  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -60,7 +61,7 @@ DEFAULT_CFG = {
     "sample_sku": "",
     "lookup_mode": "",
     "profil": {},                 # mağaza profili (profil.py): mağaza adı, varsayılan marka
-    "gorunum": "",                # açıklama görünümü: "sade" | "bantli"; boşsa sunucuda sade, bilgisayarda bantlı
+    "sablon": {},                 # açıklama şablonu (sablon.py); boşsa sunucuda sade, bilgisayarda bantlı
     "kurulum_bitti": None,        # kurulum sihirbazı (sunucu); None: bu ayardan önce kurulmuş mağaza
     "seo_prepare": True,
     "eur_rate": 55,
@@ -1984,22 +1985,54 @@ SAFE_METHODS = "panel"
 PLAN_VERSION = 6   # açıklama üreticisi değiştikçe artar; eski hazırlıklar yeniden üretilir
 
 
-GORUNUMLER = {"sade": SM.STYLE, "bantli": SM.STYLE_BANTLI}
+def sablon():
+    """Mağazanın açıklama şablonu (sablon.py). Kaydedilmediyse bilgisayardaki kurulum (Ustapazar) sitedeki eski
+    açıklamalarla aynı lacivert bantlı, sunucuda satılan sürüm sade görünümle başlar."""
+    return TPL.yukle(CFG.get("sablon"), "sade" if SERVER["on"] else "bantli")
 
 
-def description_style(name=None):
-    """Açıklama görünümü: mağaza ayarı (gorunum); seçilmediyse bilgisayardaki kurulum (Ustapazar) sitedeki eski
-    açıklamalarla aynı lacivert bantlı görünümü, sunucuda satılan sürüm sade görünümü kullanır."""
-    return GORUNUMLER.get(name or CFG.get("gorunum")) or (SM.STYLE if SERVER["on"] else SM.STYLE_BANTLI)
-
-
+# Önizleme ürünü: mevcut açıklaması her bölümü içerir, böylece önizlemede bütün bölümler görünür
 ORNEK_URUN = {"name": "Paslanmaz Çelik Termos 500 ml", "categories": [{"id": 0, "name": "Termoslar"}]}
+ORNEK_ACIKLAMA = ("<h2>Öne Çıkan Özellikler</h2><ul><li>Çift cidarlı vakum yalıtım</li><li>Sızdırmaz kapak</li></ul>"
+                  "<h2>Teknik Özellikler</h2><table><tr><td>Hacim</td><td>500 ml</td></tr>"
+                  "<tr><td>Malzeme</td><td>18/8 paslanmaz çelik</td></tr></table>"
+                  "<h2>Kullanım Alanları</h2><ul><li>Ofis</li><li>Kamp ve yürüyüş</li></ul>"
+                  "<h2>Paket İçeriği</h2><ul><li>1 adet termos</li><li>Kullanım kılavuzu</li></ul>")
 
 
-def description_sample(name):
-    """Kurulum sihirbazı ve ayarlar için görünüm önizlemesi: mağaza adıyla uydurma bir ürünün açıklaması."""
-    return SM.build_machine_seo(ORNEK_URUN, sku="ORNEK-1", method=SAFE_METHODS, prof=PROFILE(),
-                                style=description_style(name))["details_html"]
+def sablon_onizleme(t):
+    """Şablon önizlemesi: mağaza adıyla uydurma bir ürünün açıklaması ve Ideasoft SEO puanı tahmini."""
+    method = CFG.get("count_method") or SAFE_METHODS
+    plan = SM.build_machine_seo(ORNEK_URUN, ORNEK_ACIKLAMA, sku="ORNEK-1", barcode="8690000000001", method=method,
+                                prof=PROFILE(), sablon=t)
+    sc = ST.seo_score(ORNEK_URUN["name"], plan["keyword"], plan["details_html"], plan["pageTitle"],
+                      plan["metaDescription"], method)
+    kurallar = 13                                      # seo_score: 7 açıklama + 6 başlık / meta kuralı
+    return {"html": plan["details_html"], "puan": round(100 * (kurallar - len(sc["fails"])) / kurallar),
+            "yogunluk": sc["density"], "kelime": sc["words"], "eksikler": sc["fails"]}
+
+
+class _PublicRedirects(urllib.request.HTTPRedirectHandler):
+    """Yönlendirme yalnızca internetteki bir adrese olabilir (sunucunun iç ağına istek gönderilmesin)."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not public_host(urllib.parse.urlparse(newurl).hostname or ""):
+            raise urllib.error.URLError("iç ağa yönlendirme reddedildi")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+def tema_rengi_oner():
+    """Mağazanın ana sayfasından tema rengi önerisi; bulunamazsa None."""
+    host = store_host(CFG.get("store"))
+    if not host or not public_host(host):
+        return None
+    opener = urllib.request.build_opener(_PublicRedirects, urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+    req = urllib.request.Request(f"https://{host}/", headers={"User-Agent": "Mozilla/5.0 (seovisi)"})
+    try:
+        with opener.open(req, timeout=8) as r:
+            return TPL.tema_rengi(r.read(400_000).decode("utf-8", "replace"))
+    except (urllib.error.URLError, socket.timeout, ConnectionError, ValueError):
+        return None
 
 
 def kurulum_gerekli():
@@ -2025,7 +2058,7 @@ def prepare_plan(pid, variant=0):
                                 cur_kw or prod.get("targetKeyword") or "",
                                 sku=prod.get("sku") or "", barcode=prod.get("barcode") or "", method=method,
                                 target=float(CFG.get("target_density") or 2.5), variant=variant, prof=PROFILE(),
-                                style=description_style())
+                                sablon=sablon())
     kw = plan["keyword"]
     kwl = ST.tr_lower(kw)
     old_t, old_m = (prod.get("pageTitle") or "").strip(), (prod.get("metaDescription") or "").strip()
@@ -2069,7 +2102,7 @@ def repair_plan(pid):
     prof = PR.with_brand(PROFILE(), prod)
     plan = SM.build_machine_seo(dict(prod, name=fixed_name), details, kw, sku=prod.get("sku") or "",
                                 barcode=prod.get("barcode") or "", method=method, target=2.5, prof=prof,
-                                style=description_style())
+                                sablon=sablon())
     kw = plan["keyword"]
     # etiket başlığında da özel karakter olmasın: hedef kelime + mağaza adı
     titles = [f"{kw} | {{magaza}}", f"{kw} - {{marka}} | {{magaza}}"]
@@ -2828,10 +2861,8 @@ class H(BaseHTTPRequestHandler):
                 ab["uyari"] = AB.engel(ab, (ab["ozellikler"] or ["seo_gonder"])[0], ab["urun_sayisi"])
             return self._send(200, {"cfg": cfg, "rpm": API.rpm(), "log": lg, "abonelik": ab,
                                     "kurulum": kurulum_gerekli(), "mode": "sunucu" if SERVER["on"] else "yerel"})
-        if p == "/api/gorunum/ornek":
-            if q.get("ad") not in GORUNUMLER:
-                return self._send(400, {"error": "Görünüm bulunamadı."})
-            return self._send(200, {"html": description_sample(q["ad"])})
+        if p == "/api/sablon":
+            return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/seo/state":
             st = SEOSCAN.state()
             st["jobs"] = SEOJOBS.state()
@@ -2962,7 +2993,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/settings":
             d = self._json()
             allowed = {"store", "client_id", "client_secret", "target_density", "kw_needle", "eur_rate",
-                       "sample_sku", "redirect_uri", "profil", "gorunum"}
+                       "sample_sku", "redirect_uri", "profil", "sablon"}
             if SERVER["on"]:
                 allowed -= {"store", "client_id", "client_secret", "redirect_uri"}
             upd = {k: v for k, v in d.items() if k in allowed}
@@ -2974,11 +3005,11 @@ class H(BaseHTTPRequestHandler):
                 upd["target_density"] = max(2.1, min(2.9, float(upd["target_density"])))
             if "profil" in upd:
                 upd["profil"] = PR.load(upd["profil"])
-            if "gorunum" in upd and upd["gorunum"] not in GORUNUMLER:
-                upd.pop("gorunum")
-            if "gorunum" in upd and upd["gorunum"] != CFG.get("gorunum"):
-                # hazırlanıp gönderilmemiş açıklamalar yeni görünümle yeniden hazırlanır
-                DBI.x("UPDATE seo SET pstate='', plan=NULL, pmsg=NULL WHERE ok=0 AND pstate='hazir'")
+            if "sablon" in upd:              # kısmi değişiklik kayıtlı şablona eklenir, geçersiz değerler düzeltilir
+                upd["sablon"] = TPL.yukle(TPL.birlestir(sablon(), upd["sablon"]), sablon()["gorunum"])
+                if upd["sablon"] != sablon():
+                    # hazırlanıp gönderilmemiş açıklamalar yeni şablonla yeniden hazırlanır
+                    DBI.x("UPDATE seo SET pstate='', plan=NULL, pmsg=NULL WHERE ok=0 AND pstate='hazir'")
             if "store" in upd and upd["store"] != CFG.get("store"):
                 upd.update(access_token="", refresh_token="", expires_at=0, lookup_mode="")
             CFG.update(**upd)
@@ -3053,6 +3084,13 @@ class H(BaseHTTPRequestHandler):
             if act == "stop":
                 SEOSCAN.stop()
                 return self._send(200, {"msg": "Durduruluyor…"})
+        if p == "/api/sablon/onizle":   # kaydetmeden: gönderilen (kısmi) şablonla örnek açıklama ve SEO puanı
+            t = TPL.yukle(TPL.birlestir(sablon(), self._json().get("sablon")), sablon()["gorunum"])
+            return self._send(200, sablon_onizleme(t))
+        if p == "/api/sablon/tema_rengi":
+            renk = tema_rengi_oner()
+            return self._send(200, {"renk": renk} if renk else
+                              {"error": "Sitenizde tema rengi bulunamadı; rengi kendiniz seçin."})
         if p == "/api/kurulum/bitti":   # sihirbaz tamamlandı ya da geçildi
             CFG.update(kurulum_bitti=True)
             return self._send(200, {"ok": True})

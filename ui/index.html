@@ -146,6 +146,16 @@ details.more .menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
 .wz-bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}
 .wz-bar i{display:block;width:35%;height:100%;background:var(--brand);border-radius:6px;animation:ind 1.4s ease-in-out infinite}
 @media (max-width:640px){.wz-pane{padding:20px 18px}.wz-looks{grid-template-columns:1fr}.wz-sum b{min-width:48px}}
+/* açıklama şablonu: solda ayarlar, sağda önizleme */
+.tpl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;max-width:1180px}
+.tpl-prev{position:sticky;top:16px}
+.tpl-prev .wz-prev{max-height:72vh}
+.tpl-color{width:56px;height:36px;padding:2px;border:1px solid var(--line2);border-radius:var(--r-s);background:var(--surface);flex:none}
+.tpl-b{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:8px;align-items:center;margin-bottom:8px}
+.tpl-b input[type=checkbox]{accent-color:var(--brand);width:18px;height:18px}
+.tpl-b input[type=text]:disabled{opacity:.5}
+.tpl-b .btn{padding:5px 10px}
+@media (max-width:980px){.tpl{grid-template-columns:1fr}.tpl-prev{position:static}}
 .plan{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;margin:4px 0 14px}
 .plan dt{color:var(--ink3)} .plan dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 .callout{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--ok-soft);border:1px solid #bfe3cf;border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
@@ -255,6 +265,8 @@ td.n{font-variant-numeric:tabular-nums;color:var(--ink3);width:70px}
 .field{display:grid;gap:5px;margin-bottom:12px}
 .field label{font-size:13px;color:var(--ink2);font-weight:500}
 .field input,.field select{width:100%}
+.field textarea,.tpl-b input[type=text]{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r-s);background:var(--surface);resize:vertical}
+.copyrow input.tpl-color{width:64px;flex:none;background:var(--surface)}
 .copyrow{display:flex;gap:8px}
 .copyrow input{flex:1;background:var(--surface2)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
@@ -341,10 +353,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <section class="wz-pane" data-w="1" hidden>
       <h1>Açıklamalar nasıl görünsün?</h1>
       <p>Eksik ürünlere hazırlanan açıklamalar bu görünümle yazılır. Yazı tipi ve renkler mağazanızın temasından gelir. Daha sonra Ayarlar'dan değiştirebilirsiniz.</p>
-      <div class="wz-looks">
-        <label class="wz-look"><input type="radio" name="wz-look" value="sade" checked><span><b>Sade</b><small>Başlıklar ve maddeler; her temaya uyar.</small></span></label>
-        <label class="wz-look"><input type="radio" name="wz-look" value="bantli"><span><b>Bantlı</b><small>Başlıklar lacivert bant içinde.</small></span></label>
-      </div>
+      <div class="wz-looks" id="wz-looks"></div>
       <div class="wz-prev" id="wz-prev" aria-label="Örnek açıklama"></div>
     </section>
 
@@ -502,7 +511,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
 <section class="view" id="v-ayarlar">
   <header class="ph"><div><h1>Ayarlar</h1><p class="lede">Mağaza bilgileri, Ideasoft bağlantısı ve çalışma tercihleri.</p></div></header>
   <div class="tabs" id="settabs" role="tablist">
-    <button data-p="magaza" class="on">Mağaza</button><button data-p="baglanti">Bağlantı</button><button data-p="seoay">SEO ayarları</button><button data-p="paket" data-sunucu>Paket</button>
+    <button data-p="magaza" class="on">Mağaza</button><button data-p="baglanti">Bağlantı</button><button data-p="sablon">Açıklama şablonu</button><button data-p="seoay">SEO ayarları</button><button data-p="paket" data-sunucu>Paket</button>
   </div>
 
   <div class="setpane" id="sp-paket"><div class="steps">
@@ -523,16 +532,38 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
       </div>
       <div class="acts" style="margin-top:8px"><button class="btn" id="b-saveprof">Profili kaydet</button></div>
     </div>
-    <div class="step">
-      <h3>Açıklama görünümü</h3>
-      <p>Eksik ürünlere hazırlanan açıklamalar bu görünümle yazılır. Değiştirince henüz gönderilmemiş açıklamalar yeni görünümle yeniden hazırlanır; gönderilmiş açıklamalar değişmez.</p>
-      <div class="wz-looks">
-        <label class="wz-look"><input type="radio" name="s-look" value="sade"><span><b>Sade</b><small>Başlıklar ve maddeler; her temaya uyar.</small></span></label>
-        <label class="wz-look"><input type="radio" name="s-look" value="bantli"><span><b>Bantlı</b><small>Başlıklar lacivert bant içinde.</small></span></label>
+  </div></div>
+
+  <div class="setpane" id="sp-sablon"><div class="tpl">
+    <div class="steps">
+      <div class="step">
+        <h3>Görünüm</h3>
+        <p>Eksik ürünlere hazırlanan açıklamalar bu şablonla yazılır. Yazı tipi mağazanızın temasından gelir. Kaydedince henüz gönderilmemiş açıklamalar yeniden hazırlanır; gönderilmiş açıklamalar değişmez.</p>
+        <div class="wz-looks" id="t-looks"></div>
+        <div class="field" id="t-renk-row"><label for="t-renk">Ana renk</label>
+          <div class="copyrow"><input type="color" id="t-renk" class="tpl-color"><button class="btn ghost" id="t-tema">Sitemin rengini öner</button></div></div>
       </div>
-      <div class="wz-prev" id="s-prev" aria-label="Örnek açıklama"></div>
-      <div class="acts"><button class="btn" id="b-savelook">Görünümü kaydet</button></div>
+      <div class="step">
+        <h3>Bölümler</h3>
+        <p>Açıp kapatın, sırasını ve başlığını değiştirin. Bir bölüm yalnızca ürünün o bilgisi varsa görünür.</p>
+        <div id="t-bolumler"></div>
+      </div>
+      <div class="step">
+        <h3>Ayrıntılar</h3>
+        <div class="field"><label for="t-madde">Madde işareti</label><select id="t-madde"></select></div>
+        <label class="check"><input type="checkbox" id="t-kapanis"><span>Kapanış cümlesi</span></label>
+        <div class="field"><label for="t-kapanis-metin">Kapanış metni (isteğe bağlı)</label>
+          <textarea id="t-kapanis-metin" rows="2" maxlength="300" placeholder="Boş bırakırsanız ürüne göre otomatik yazılır. {urun} ürünün hedef kelimesini, {magaza} mağaza adını yazar."></textarea></div>
+        <label class="check"><input type="checkbox" id="t-stok"><span>Stok kodunu göster</span></label>
+        <label class="check"><input type="checkbox" id="t-barkod"><span>Barkodu göster</span></label>
+      </div>
+      <div class="acts"><button class="btn" id="t-save">Şablonu kaydet</button><button class="btn ghost" id="t-reset">Varsayılana dön</button></div>
     </div>
+    <div class="tpl-prev"><div class="step">
+      <h3>Önizleme</h3>
+      <p id="t-score" class="muted">Hazırlanıyor…</p>
+      <div class="wz-prev" id="t-prev" aria-label="Örnek açıklama"></div>
+    </div></div>
   </div></div>
 
   <div class="setpane" id="sp-baglanti"><div class="steps">
@@ -668,7 +699,7 @@ function wOpen(){
   W.opened = true;
   const p = S.cfg.profil || {};
   $('#wz-magaza').value = p.magaza || ''; $('#wz-marka').value = p.marka || '';
-  const look = document.querySelector(`input[name="wz-look"][value="${S.cfg.gorunum || 'sade'}"]`); if(look) look.checked = true;
+  api('/api/sablon').then(r => { if(r.secenekler) lookCards($('#wz-looks'), 'wz-look', r.secenekler.gorunumler, r.sablon.gorunum, wPreview); });
   $('#wiz').hidden = false; wGo(0);
 }
 function wGo(i){
@@ -682,12 +713,12 @@ function wGo(i){
   if(i === 2){ wScan(); W.timer = setInterval(wScan, 2000); }
   if(i === 3) wPlan();
 }
+const wLook = () => (document.querySelector('input[name="wz-look"]:checked') || {}).value;
 async function wPreview(){
-  const ad = document.querySelector('input[name="wz-look"]:checked').value;
-  const r = await api('/api/gorunum/ornek?ad=' + ad);
+  if(!wLook()) return;
+  const r = await post('/api/sablon/onizle', {sablon: {gorunum: wLook()}});
   if(r.html) $('#wz-prev').innerHTML = r.html;   // sunucunun ürettiği, kaçışlı örnek açıklama
 }
-document.querySelectorAll('input[name="wz-look"]').forEach(x => x.onchange = wPreview);
 async function wScan(){
   const o = await api('/api/overview'); if(!o.counts) return;
   const c = o.counts, busy = o.scans.seo || o.scans.cat, done = c.seo_taranan > 0 && o.cat_ready;
@@ -736,7 +767,7 @@ $('#wz-next').onclick = async () => {
     await post('/api/settings', {profil: {magaza, marka: $('#wz-marka').value.trim()}});
     fillDone = false;
   }
-  if(W.i === 1) await post('/api/settings', {gorunum: document.querySelector('input[name="wz-look"]:checked').value});
+  if(W.i === 1 && wLook()) await post('/api/settings', {sablon: {gorunum: wLook()}});
   if(W.i === 3) return wFinish();
   wGo(W.i + 1);
 };
@@ -768,18 +799,75 @@ function fillSettings(c){
   if(c.has_secret) $('#s-csec').placeholder = 'Kayıtlı (değiştirmek için yazın)';
   const pr = c.profil || {};
   $('#p-magaza').value = pr.magaza || ''; $('#p-marka').value = pr.marka || '';
-  const look = c.gorunum || (S.mode === 'sunucu' ? 'sade' : 'bantli');   // seçilmediyse kurulum türünün varsayılanı
-  document.querySelector(`input[name="s-look"][value="${look}"]`).checked = true;
-  sPreviewLook();
+  tLoad();
 }
-async function sPreviewLook(){
-  const r = await api('/api/gorunum/ornek?ad=' + document.querySelector('input[name="s-look"]:checked').value);
-  if(r.html) $('#s-prev').innerHTML = r.html;
+
+/* görünüm kartları (sihirbaz ve şablon ekranı) */
+function lookCards(box, name, gorunumler, secili, onchange){
+  box.innerHTML = Object.entries(gorunumler).map(([k, g]) => `<label class="wz-look"><input type="radio" name="${name}" value="${k}" ${k === secili ? 'checked' : ''}>
+    <span><b>${esc(g.ad)}</b><small>${esc(g.aciklama)}</small></span></label>`).join('');
+  box.querySelectorAll('input').forEach(x => x.onchange = onchange);
+  onchange();
 }
-document.querySelectorAll('input[name="s-look"]').forEach(x => x.onchange = sPreviewLook);
-$('#b-savelook').onclick = async () => {
-  const r = await post('/api/settings', {gorunum: document.querySelector('input[name="s-look"]:checked').value});
-  if(r.ok) toast('Görünüm kaydedildi.');
+
+/* açıklama şablonu: değişiklik önce önizlenir, "Şablonu kaydet" ile kaydedilir */
+let T = null, TO = null, tTimer = null;
+async function tLoad(){
+  const r = await api('/api/sablon'); if(!r.sablon) return;
+  T = r.sablon; TO = r.secenekler; tRender();
+}
+function tRender(){
+  lookCards($('#t-looks'), 't-look', TO.gorunumler, T.gorunum, () => { T.gorunum = document.querySelector('input[name="t-look"]:checked').value; tColorRow(); tChanged(); });
+  $('#t-renk').value = T.renk;
+  $('#t-madde').innerHTML = Object.entries(TO.maddeler).map(([k, v]) => `<option value="${esc(k)}" ${k === T.madde ? 'selected' : ''}>${esc(v)}</option>`).join('');
+  $('#t-kapanis').checked = T.kapanis.acik; $('#t-kapanis-metin').value = T.kapanis.metin; $('#t-kapanis-metin').disabled = !T.kapanis.acik;
+  $('#t-stok').checked = T.stok_kodu; $('#t-barkod').checked = T.barkod;
+  tBolumler(); tColorRow();
+}
+function tColorRow(){ $('#t-renk-row').hidden = !TO.gorunumler[T.gorunum].renkli; }
+function tBolumler(){
+  const n = T.bolumler.length;
+  $('#t-bolumler').innerHTML = T.bolumler.map((b, i) => `<div class="tpl-b" data-i="${i}">
+    <input type="checkbox" ${b.acik ? 'checked' : ''} aria-label="${esc(b.baslik)} bölümünü göster">
+    <input type="text" value="${esc(b.baslik)}" maxlength="${TO.baslik_uzunluk}" aria-label="Bölüm başlığı" ${b.acik ? '' : 'disabled'}>
+    <button class="btn ghost" data-m="-1" ${i ? '' : 'disabled'} aria-label="Yukarı taşı">↑</button>
+    <button class="btn ghost" data-m="1" ${i < n - 1 ? '' : 'disabled'} aria-label="Aşağı taşı">↓</button></div>`).join('');
+  $('#t-bolumler').querySelectorAll('.tpl-b').forEach(row => {
+    const i = +row.dataset.i, [cb, tx] = row.querySelectorAll('input');
+    cb.onchange = () => { T.bolumler[i].acik = cb.checked; tx.disabled = !cb.checked; tChanged(); };
+    tx.oninput = () => { T.bolumler[i].baslik = tx.value; tChanged(); };
+    row.querySelectorAll('[data-m]').forEach(bt => bt.onclick = () => {
+      const j = i + +bt.dataset.m; [T.bolumler[i], T.bolumler[j]] = [T.bolumler[j], T.bolumler[i]]; tBolumler(); tChanged();
+    });
+  });
+}
+function tChanged(){ clearTimeout(tTimer); tTimer = setTimeout(tPreview, 300); }
+async function tPreview(){
+  const r = await post('/api/sablon/onizle', {sablon: T}); if(!r.html) return;
+  $('#t-prev').innerHTML = r.html;   // sunucunun ürettiği, kaçışlı örnek açıklama
+  $('#t-score').innerHTML = `Ideasoft SEO puanı tahmini: <b class="${r.puan === 100 ? 'ok-t' : 'bad-t'}">%${r.puan}</b> · hedef kelime yoğunluğu %${r.yogunluk.toLocaleString('tr-TR')} · ${r.kelime} kelime`
+    + (r.puan < 100 ? `<br><span class="bad-t">${r.eksikler.map(esc).join(' · ')}</span>` : '');
+}
+$('#t-renk').oninput = () => { T.renk = $('#t-renk').value; tChanged(); };
+$('#t-madde').onchange = () => { T.madde = $('#t-madde').value; tChanged(); };
+$('#t-kapanis').onchange = () => { T.kapanis.acik = $('#t-kapanis').checked; $('#t-kapanis-metin').disabled = !T.kapanis.acik; tChanged(); };
+$('#t-kapanis-metin').oninput = () => { T.kapanis.metin = $('#t-kapanis-metin').value; tChanged(); };
+$('#t-stok').onchange = () => { T.stok_kodu = $('#t-stok').checked; tChanged(); };
+$('#t-barkod').onchange = () => { T.barkod = $('#t-barkod').checked; tChanged(); };
+$('#t-tema').onclick = async () => {
+  $('#t-tema').disabled = true;
+  const r = await post('/api/sablon/tema_rengi'); $('#t-tema').disabled = false;
+  if(r.renk){ T.renk = r.renk; $('#t-renk').value = r.renk; tChanged(); toast('Sitenizin rengi seçildi; beğendiyseniz şablonu kaydedin.'); }
+};
+$('#t-save').onclick = async () => {
+  const r = await post('/api/settings', {sablon: T});
+  if(r.ok){ toast('Şablon kaydedildi. Gönderilmemiş açıklamalar bu şablonla yeniden hazırlanacak.'); tLoad(); }
+};
+$('#t-reset').onclick = async () => {
+  if(!await ask('Görünüm, renk, bölümler ve ayrıntılar ilk hâline döner. Kaydedene kadar mağazanızda bir şey değişmez.', {title: 'Şablon varsayılana dönsün mü?', ok: 'Varsayılana dön'})) return;
+  T = {gorunum: T.gorunum, renk: TO.varsayilan_renk, bolumler: TO.bolumler.map(b => ({k: b.k, acik: true, baslik: b.baslik})),
+       madde: '✔', kapanis: {acik: true, metin: ''}, stok_kodu: true, barkod: true};
+  tRender();
 };
 
 window.addEventListener('resize', () => { if(document.querySelector('#v-gorsel.on')) gDraw(); if(document.querySelector('#v-seo.on')) sDraw(); });

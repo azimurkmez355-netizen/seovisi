@@ -160,7 +160,16 @@ class AciklamaGonderme(Ortam):
         with mock.patch.dict(app.SERVER, {"on": True}):
             sade = app.prepare_plan(7)["details_html"]                   # sunucuda satılan sürüm: sade
         self.assertNotIn("1b4f72", sade)
-        self.assertIn(app.SM.STYLE["h"], sade)
+        self.assertIn(app.TPL.stiller(app.TPL.yukle({}))["h"], sade)
+
+    def test_sablon_hazirlanan_aciklamaya_uygulanir(self):
+        app.CFG.update(sablon={"gorunum": "kutulu", "renk": "#c0392b", "madde": "•", "barkod": False,
+                               "bolumler": [{"k": "teknik", "baslik": "Ürün Bilgileri"}]})
+        h = self.hazirla()["details_html"]
+        self.assertIn("border:1px solid #c0392b", h)
+        self.assertIn("Ürün Bilgileri", h)
+        self.assertNotIn("Barkod", h)
+        self.assertNotIn("✔", h)
 
     def test_gonderim_aciklamayi_yazar_ve_yedek_alir(self):
         plan = self.hazirla()
@@ -216,15 +225,30 @@ class Kurulum(Ortam):
             self.assertEqual(app.send_plan(7)[0], "gonderildi")
         self.assertEqual(self.api.urun["targetKeyword"], plan["keyword"])
 
-    def test_gorunum_magaza_ayarindan(self):
-        self.assertIs(app.description_style(), app.SM.STYLE_BANTLI)            # bilgisayar kurulumu varsayılanı
-        app.CFG.update(gorunum="sade")
-        self.assertIs(app.description_style(), app.SM.STYLE)
+    def test_sablon_varsayilani_kurulum_turune_gore(self):
+        self.assertEqual(app.sablon()["gorunum"], "bantli")                   # bilgisayar kurulumu (Ustapazar)
         with mock.patch.dict(app.SERVER, {"on": True}):
-            app.CFG.update(gorunum="")
-            self.assertIs(app.description_style(), app.SM.STYLE)               # sunucu varsayılanı
-            app.CFG.update(gorunum="bantli")
-            self.assertIn("1b4f72", app.description_sample(None))
+            self.assertEqual(app.sablon()["gorunum"], "sade")                 # sunucu
+            app.CFG.update(sablon={"gorunum": "cizgili"})
+            self.assertEqual(app.sablon()["gorunum"], "cizgili")              # mağazanın seçimi
+
+    def test_onizleme_seo_puani_ve_tum_bolumler(self):
+        o = app.sablon_onizleme(app.TPL.yukle({"gorunum": "bantli"}))
+        self.assertEqual(o["puan"], 100, o["eksikler"])
+        self.assertTrue(2.0 <= o["yogunluk"] <= 3.0, o["yogunluk"])
+        for b in ("Öne Çıkan Özellikler", "Teknik Özellikler", "Kullanım Alanları", "Paket İçeriği"):
+            self.assertIn(b, o["html"])
+
+    def test_tema_rengi_ic_aga_istek_gondermez(self):
+        app.CFG.update(store="magaza.com")
+        with mock.patch.object(app, "public_host", return_value=False), \
+                mock.patch.object(app.urllib.request.OpenerDirector, "open") as op:
+            self.assertIsNone(app.tema_rengi_oner())
+        op.assert_not_called()
+        h = app._PublicRedirects()
+        with mock.patch.object(app, "public_host", return_value=False):
+            with self.assertRaises(app.urllib.error.URLError):
+                h.redirect_request(None, None, 302, "", {}, "http://169.254.169.254/")
 
     def test_sihirbaz_yalnizca_yeni_magazaya(self):
         self.assertFalse(app.kurulum_gerekli())                                 # bilgisayar kurulumunda yok

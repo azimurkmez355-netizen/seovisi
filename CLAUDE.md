@@ -27,6 +27,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_sifre.py`: şifreleme ve ayar dosyalarındaki gizli bilgiler.
   - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
   - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
+  - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
   - `test_cok_magaza.py`: uygulamanın kendisini iki sahte mağazayla (`sahte_ideasoft.py`) çalıştıran betik.
   - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
@@ -40,7 +41,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `app.py` | Web sunucusu (`http.server`), Ideasoft Admin API istemcisi, taramalar ve arka plan işleri, uygulama / geri alma, oturum |
 | `kategori.py` | Kategori analizi. Ürün adlarından öğrenen sınıflandırıcı (Naive Bayes + kategori adı benzerliği); yanlış ve kategorisiz ürünler, yeni kategori önerileri. Sektöre özel kelime listesi yok; yaygın ve "seri" kelimeler mağazanın kendi verisinden çıkarılır. |
 | `seo_text.py` | Başlık, meta açıklama, anahtar kelimeler, kelime sayımı, SEO puanı. `panel_factor()` mağaza ayarından okunur. |
-| `seo_machine.py` | Ürün açıklaması (HTML) üretimi. Hedef kelime yoğunluğunu %2–3 aralığına oturtur. |
+| `seo_machine.py` | Ürün açıklaması (HTML) üretimi. Hedef kelime yoğunluğunu %2–3 aralığına oturtur; görünüm ve bölümler şablondan. |
+| `sablon.py` | Açıklama şablonu: görünümler, renk, bölümler, madde işareti, kapanış; stillerin SEO sayımını sabit tutar. |
 | `sifre.py` | Diskteki gizli bilgilerin şifrelenmesi (HMAC-SHA256 sayaç kipi + HMAC imza). Ana anahtar `SEOVISI_ANAHTAR` ortam değişkeninden, yoksa `data/anahtar.key` dosyasından. |
 | `abonelik.py` | Abonelik kaydı (mağaza klasöründe `abonelik.json`), geçerli paket ve yazma izni. Paketler `paketler.json` içinde. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
@@ -99,12 +101,23 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 ### Kurulum sihirbazı ve hedef kelime yeri
 
 - Yalnızca sunucuda, ilk girişte tam ekran açılır (`kurulum_gerekli()`, `ui/index.html` içinde `wOpen`): 1 mağaza adı ve marka,
-  2 açıklama görünümü (`/api/gorunum/ornek` canlı önizleme), 3 ilk tarama ve özet, 4 paket bilgisi. Bitince ya da "Şimdilik geç"
+  2 açıklama görünümü (şablonun görünüm seçimi, canlı önizleme), 3 ilk tarama ve özet, 4 paket bilgisi. Bitince ya da "Şimdilik geç"
   ile `/api/kurulum/bitti`. `kurulum_bitti` hiç yazılmamış ve taranmış mağazaya (bu ayardan önce kurulmuş) gösterilmez.
-- Açıklama görünümü mağaza ayarı `gorunum` ("sade" | "bantli"); boşsa sunucuda sade, bilgisayarda bantlı. Ayarlar > Mağaza'dan da değişir;
-  değişince hazırlanıp gönderilmemiş açıklamalar yeniden hazırlanır.
 - Hedef kelime yeri `kw_loc()`: mağazanın keşfettiği, yoksa `sunucu.json`daki `kw_loc` (Ustapazar'da bulunan). Mağaza sahibi keşif yapmaz.
   Doğrudan `CFG.get("kw_loc")` kullanma.
+
+### Açıklama şablonu (`sablon.py`)
+
+- Mağaza ayarı `sablon`: görünüm (sade, bantlı, çizgili, kutulu), ana renk, bölümler (açık / kapalı, sıra, başlık), madde işareti,
+  kapanış (açık / kapalı, kendi metni: `{urun}` hedef kelime, `{magaza}`), stok kodu ve barkod gösterimi. `app.sablon()` okur;
+  kaydedilmediyse sunucuda sade, bilgisayardaki Ustapazar kurulumunda lacivert bantlı. Ayarlar > Açıklama şablonu ekranı (canlı önizleme,
+  SEO puanı tahmini, sitenin tema rengi önerisi) ve sihirbazın görünüm adımı kullanır. `/api/settings` kısmi şablonu kayıtlıyla birleştirir;
+  değişince hazırlanıp gönderilmemiş açıklamalar yeniden hazırlanır.
+- Varsayılan şablon (sade ve bantlı #1b4f72) şablon sisteminden önceki açıklamaları birebir üretir; `test_sablon.py` parmak iziyle denetler.
+- Her görünümün stilleri, panel katsayısı (1,30) ölçülürkenki bantlı görünümle aynı sayıda kelime üretir (`TPL.STYLE_WORDS`; her renk tek
+  kelime). Ideasoft HTML'deki stilleri sayıyorsa farklı stil yoğunluğu yüzdeyi kaydırırdı. Yeni görünüm eklerken bu eşitliği koru.
+  Ideasoft'un sayımı test mağazasında ölçülünce (stilli ve stilsiz aynı açıklama gönderilip paneldeki yüzde karşılaştırılarak) sınır kalkabilir.
+- Tema rengi önerisi mağazanın ana sayfasını okur; yalnızca internetteki adreslere (`public_host`) ve yönlendirmelere izin verilir.
 
 ### Mağazaya yazma güvenliği
 
@@ -122,11 +135,7 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 ## Bilinen açık işler (v1'e girmeden)
 
-- Açıklama görünümü sabit bölüm düzeninde; v1'de ayarlanabilir "açıklama şablonu" gelecek. Şimdilik `description_style()`:
-  sunucuda sade (`SM.STYLE`), bilgisayardaki Ustapazar kurulumunda sitedeki eski açıklamalarla aynı lacivert bantlı (`SM.STYLE_BANTLI`).
-  Stillerin sayılan kelime sayısı (`STYLE_WORDS`) panel katsayısı ölçülürkenki bantlı görünümle aynı tutulur; Ideasoft HTML'deki
-  stilleri sayıyorsa farklı stil yoğunluğu kaydırır. `test_aciklama.py` bunu denetler. Şablon sistemi yapılmadan önce Ideasoft'un sayımı
-  test mağazasında ölçülmeli (stilli ve stilsiz aynı açıklama gönderilip paneldeki yüzde karşılaştırılarak).
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı bitti. Sırada açıklama şablonu ayarlama (sihirbazdaki görünüm adımı ve Ayarlar > Mağaza bunu kullanır). Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı ve açıklama şablonu ayarları bitti. Şablondan kalan: eski açıklamaları yeni şablona yedekli toplu
+  geçirme. Sonra yeni ürün otopilotu. Ayrıntılar `YOL_HARITASI.md` içinde.

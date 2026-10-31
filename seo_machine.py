@@ -13,6 +13,7 @@ import re
 from html.parser import HTMLParser
 
 import profil as PR
+import sablon as TPL
 import seo_text as ST
 
 # ------------------------------------------------------------ mevcut açıklamayı okuma
@@ -218,19 +219,6 @@ def pool(prof, key):
     return out
 
 
-# Açıklamadaki satır içi stiller (ayarlanabilir şablonlar Faz 2'de).
-#   STYLE: sade; renk ve yazı tipi mağazanın temasından gelir. Sunucuda satılan sürüm bunu kullanır.
-#   STYLE_BANTLI: Ustapazar'ın lacivert bantlı görünümü; bilgisayardaki (Ustapazar) kurulum, sitedeki eski açıklamalarla
-#                 aynı görünsün diye bunu kullanır. panel_factor (1,30) bu görünümle ölçüldü.
-# Ideasoft'un stilleri sayıp saymadığı bilinmediği için her görünüm aynı sayıda kelime üretir (STYLE_WORDS);
-# böylece katsayı her iki durumda da geçerli kalır. Test mağazasıyla ölçülene kadar bu eşitlik korunmalı.
-STYLE = {"h": "margin:16px 0 6px;padding:0", "kutu": "border-top:1px solid #ddd;clear:both",
-         "liste": "list-style:none;padding-left:6px"}
-STYLE_BANTLI = {"h": "background:#1b4f72;color:#fff;padding:8px", "kutu": "border-left:4px solid #1b4f72;padding:8px",
-                "liste": "list-style:none;padding-left:6px"}
-STYLE_WORDS = {"h": 6, "kutu": 7, "liste": 6}
-
-
 def _put(template, **vals):
     """Şablona değerleri yerleştirir (ürün adında süslü parantez olabileceği için format kullanılmaz)."""
     for k, v in vals.items():
@@ -239,9 +227,9 @@ def _put(template, **vals):
 
 
 def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="", method="", target=2.5,
-                      variant=0, min_words=60, prof=None, style=None):
-    """style: STYLE (sade, varsayılan) ya da STYLE_BANTLI."""
-    style = style or STYLE
+                      variant=0, min_words=60, prof=None, sablon=None):
+    """sablon: mağazanın açıklama şablonu (sablon.py); yoksa varsayılan sade şablon."""
+    t = TPL.yukle(sablon)
     name = re.sub(r"\s+", " ", (product.get("name") or "").strip())
     prof = PR.with_brand(prof, product)
     kw = machine_keyword(name, current_kw, prof)
@@ -262,6 +250,8 @@ def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="
 
     intro = _put(rng.choice(pool(prof, "intro")), label=label, kw=kw)
     closing = _put(rng.choice(pool(prof, "closing")), kw=kw)
+    if t["kapanis"]["metin"]:                          # mağazanın kendi kapanış metni: {urun} hedef kelime, {magaza}
+        closing = _put(PR.fill(t["kapanis"]["metin"], prof), urun=kw)
     kw_more = [_put(x, kw=kw) for x in pool(prof, "kw_extra")]
     rng.shuffle(kw_more)
     fill = [f for f in pool(prof, "fill") if ST.count_kw(f, kw) == 0]
@@ -271,55 +261,69 @@ def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="
     def esc(t):
         return html.escape(t, quote=False)
 
-    # Görünüm style'dan (STYLE / STYLE_BANTLI); her ikisi de aynı sayıda kelime üretir, panel katsayısı kaymaz.
-    # Madde işaretleri (✔) harf olmadığı için sayılmaz.
-    H = f'<h3 style="{style["h"]}">{{}}</h3>'
-    BOX = f'<div style="{style["kutu"]}">{{}}</div>'
+    # Görünüm şablondan; her görünüm aynı sayıda kelime üretir, panel katsayısı kaymaz (sablon.py).
+    # Madde işaretleri harf olmadığı için sayılmaz.
+    st = TPL.stiller(t)
+    H = f'<h3 style="{st["h"]}">{{}}</h3>'
+    BOX = f'<div style="{st["kutu"]}">{{}}</div>'
+    mark = t["madde"] + " " if t["madde"] else ""
+    order = [b["k"] for b in t["bolumler"] if b["acik"]]
+    head = {b["k"]: esc(b["baslik"]) for b in t["bolumler"]}
 
     def label_li(t):
         m = re.match(r"^([^:]{2,80}):\s*(.+)$", t)
         return f"<strong>{esc(m.group(1))}:</strong> {esc(m.group(2))}" if m else esc(t)
 
-    def ul(items, mark=""):
-        open_ = f'<ul style="{style["liste"]}">' if mark else "<ul>"
-        return open_ + "".join(f"<li>{mark}{label_li(i)}</li>" for i in items) + "</ul>"
+    def ul(items, marked=False):
+        open_ = f'<ul style="{st["liste"]}">' if marked else "<ul>"
+        return open_ + "".join(f"<li>{mark if marked else ''}{label_li(i)}</li>" for i in items) + "</ul>"
 
     def spec_ul(items):
         out = []
         for t, kids in items:
-            head = f"<strong>{esc(t)}</strong>" if kids else label_li(t)
-            out.append(f"<li>{head}{ul(kids) if kids else ''}</li>")
+            head_ = f"<strong>{esc(t)}</strong>" if kids else label_li(t)
+            out.append(f"<li>{head_}{ul(kids) if kids else ''}</li>")
         return "<ul>" + "".join(out) + "</ul>"
 
     uses_short = [u.split(":")[0].strip() if ":" in u and len(u) > 70 else u for u in uses]
     first = "" if ex_use else first_fill
     leads = {"spec": f"{kw} teknik özellikleri:", "use": f"{kw} kullanım alanları:", "pkg": f"{kw} paket içeriği:"}
+    tech = " ".join(x for x in (f"Stok kodu: {sku}" if sku and t["stok_kodu"] else "",
+                                f"Barkod: {barcode}" if barcode and t["barkod"] else "") if x)
 
     def render(k, n, with_feats=True, short_uses=False, lead=True):
         extra, ks = fill[:n], kw_more[:k]
-        rest = " ".join(([first] if first else []) + extra[: (n + 1) // 2] + ks[:1])
+        p2 = ks[2:] + extra[(n + 1) // 2:]
+        rest = ([first] if first else []) + extra[: (n + 1) // 2] + ks[:1]
+        if "neden" not in order:                       # "Neden tercih" kapalıysa o cümleler giriş paragrafına
+            rest, p2 = rest + p2, []
+        rest = " ".join(rest)
         intro_html = f"<strong>{esc(kw)}</strong>" + esc(intro[len(kw):]) if intro.startswith(kw) else esc(intro)
         parts = ["<p>" + intro_html + (" " + esc(rest) if rest else "") + "</p>"]
-        if feats and with_feats:
-            parts.append(H.format("Öne Çıkan Özellikler") + ul(feats, "✔ "))
-        if specs:
-            parts.append(H.format("Teknik Özellikler") + (f"<p><em>{esc(leads['spec'])}</em></p>" if lead else "")
-                         + spec_ul(specs))
-        if len(ks) > 1:
-            parts.append("<p>" + esc(ks[1]) + "</p>")
-        if uses:
-            parts.append(H.format("Kullanım Alanları") + (f"<p><em>{esc(leads['use'])}</em></p>" if lead else "")
-                         + ul(uses_short if short_uses else uses, "✔ "))
-        if pkg:
-            parts.append(H.format("Paket İçeriği") + (f"<p><em>{esc(leads['pkg'])}</em></p>" if lead else "")
-                         + ul(pkg, "✔ "))
-        p2 = ks[2:] + extra[(n + 1) // 2:]
-        if p2:
-            parts.append(H.format("Neden Tercih Etmelisiniz?") + ul(p2, "✔ "))
-        tech = " ".join(x for x in (f"Stok kodu: {sku}" if sku else "", f"Barkod: {barcode}" if barcode else "") if x)
+        blocks = {
+            "one_cikan": H.format(head["one_cikan"]) + ul(feats, True) if feats and with_feats else "",
+            "teknik": H.format(head["teknik"]) + (f"<p><em>{esc(leads['spec'])}</em></p>" if lead else "")
+            + spec_ul(specs) if specs else "",
+            "kullanim": H.format(head["kullanim"]) + (f"<p><em>{esc(leads['use'])}</em></p>" if lead else "")
+            + ul(uses_short if short_uses else uses, True) if uses else "",
+            "paket": H.format(head["paket"]) + (f"<p><em>{esc(leads['pkg'])}</em></p>" if lead else "")
+            + ul(pkg, True) if pkg else "",
+            "neden": H.format(head["neden"]) + ul(p2, True) if p2 else "",
+        }
+        ara = "<p>" + esc(ks[1]) + "</p>" if len(ks) > 1 else ""   # bölümler arasındaki tek hedef kelimeli cümle
+        if ara and "teknik" not in order:
+            parts.append(ara)
+        for key in order:
+            if blocks[key]:
+                parts.append(blocks[key])
+            if key == "teknik" and ara:
+                parts.append(ara)
         store = esc(prof["magaza"])
-        parts.append(BOX.format("<p>" + (esc(closing).replace(store, f"<strong>{store}</strong>", 1) if store else esc(closing)) + "</p>"
-                                + (f"<p>{esc(tech)}</p>" if tech else "")))
+        if t["kapanis"]["acik"]:
+            parts.append(BOX.format("<p>" + (esc(closing).replace(store, f"<strong>{store}</strong>", 1) if store else esc(closing))
+                                    + "</p>" + (f"<p>{esc(tech)}</p>" if tech else "")))
+        elif tech:
+            parts.append(f"<p>{esc(tech)}</p>")
         return "\n".join(parts)
 
     methods = [m for m in (method or "").split(",") if m in ST.COUNT_METHODS] or list(ST.COUNT_METHODS)

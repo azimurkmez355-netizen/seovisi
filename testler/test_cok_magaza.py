@@ -171,16 +171,23 @@ def kurulum(port, ca):
     check("yeni mağazaya kurulum sihirbazı açılır", s["kurulum"] is True, s.get("kurulum"))
     check("hedef kelime yeri sunucudaki varsayılandan gelir (keşif gerekmez)",
           req(port, "GET", "/api/seo/state", cookie=ca)[2].get("has_loc") is True)
-    sade = req(port, "GET", "/api/gorunum/ornek?ad=sade", cookie=ca)[2].get("html", "")
-    bantli = req(port, "GET", "/api/gorunum/ornek?ad=bantli", cookie=ca)[2].get("html", "")
-    check("görünüm önizlemesi iki görünümü de gösterir", "Termos" in sade and "1b4f72" not in sade and "1b4f72" in bantli)
-    check("bilinmeyen görünüm istenemez", req(port, "GET", "/api/gorunum/ornek?ad=yok", cookie=ca)[0] == 400)
-    req(port, "POST", "/api/settings", {"gorunum": "<script>"}, cookie=ca)
-    g1 = req(port, "GET", "/api/state", cookie=ca)[2]["cfg"].get("gorunum")
-    req(port, "POST", "/api/settings", {"gorunum": "bantli"}, cookie=ca)
-    g2 = req(port, "GET", "/api/state", cookie=ca)[2]["cfg"].get("gorunum")
-    check("görünüm ayarı kaydedilir, geçersiz değer reddedilir", g1 == "" and g2 == "bantli", (g1, g2))
-    req(port, "POST", "/api/settings", {"gorunum": "sade"}, cookie=ca)
+    on = lambda t: req(port, "POST", "/api/sablon/onizle", {"sablon": t}, cookie=ca)[2]
+    sade, bantli = on({"gorunum": "sade"}), on({"gorunum": "bantli", "renk": "#c0392b"})
+    check("şablon önizlemesi görünümü, rengi ve SEO puanını gösterir",
+          "Termos" in sade["html"] and "c0392b" not in sade["html"] and "c0392b" in bantli["html"]
+          and sade["puan"] == 100 and bantli["puan"] == 100, (sade.get("puan"), bantli.get("puan")))
+    g0 = req(port, "GET", "/api/sablon", cookie=ca)[2]
+    check("şablon ekranı seçenekleri ve kayıtlı şablonu alır",
+          set(g0["secenekler"]["gorunumler"]) == {"sade", "bantli", "cizgili", "kutulu"} and g0["sablon"]["gorunum"] == "sade")
+    req(port, "POST", "/api/settings", {"sablon": {"gorunum": "<script>", "renk": "kırmızı"}}, cookie=ca)
+    g1 = req(port, "GET", "/api/sablon", cookie=ca)[2]["sablon"]
+    req(port, "POST", "/api/settings", {"sablon": {"gorunum": "cizgili", "renk": "#C0392B"}}, cookie=ca)
+    req(port, "POST", "/api/settings", {"sablon": {"madde": "•"}}, cookie=ca)       # kısmi değişiklik diğerlerini korur
+    g2 = req(port, "GET", "/api/sablon", cookie=ca)[2]["sablon"]
+    check("şablon kaydedilir, geçersiz değerler düzeltilir, kısmi değişiklik korunur",
+          g1["gorunum"] == "sade" and g1["renk"] == "#1b4f72"
+          and (g2["gorunum"], g2["renk"], g2["madde"]) == ("cizgili", "#c0392b", "•"), (g1, g2))
+    req(port, "POST", "/api/settings", {"sablon": {"gorunum": "sade"}}, cookie=ca)
     req(port, "POST", "/api/kurulum/bitti", {}, cookie=ca)
     check("sihirbaz bitince bir daha açılmaz", req(port, "GET", "/api/state", cookie=ca)[2]["kurulum"] is False)
 
