@@ -1,0 +1,26 @@
+# Her gönderimde (push) ve her birleştirme isteğinde (pull request) bütün testleri çalıştırır.
+# Python 3.8 en eski desteklenen sürüm; Windows, Ustapazar'daki bilgisayar kurulumu için.
+name: testler
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04, python: "3.8" }
+          - { os: ubuntu-latest, python: "3.13" }
+          - { os: windows-latest, python: "3.13" }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Testler
+        run: python -X utf8 testler/hepsi.py

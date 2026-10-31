@@ -22,7 +22,13 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Sunucu kipi: `python app.py --sunucu --port 8080 [--host 127.0.0.1]`. Mağazalar Ideasoft OAuth ile giriş yapar;
   oturum imzalı bir çerezle (`sv`) tutulur. `data/sunucu.json` dosyasında `client_id`, `client_secret` ve `public_url`
   bulunmalı. Ideasoft'taki yönlendirme adresi `<public_url>/callback` olur.
-- Testler: `python -X utf8 testler/test_cok_magaza.py`. İki sahte mağaza kurar ve gerçek Ideasoft'a hiç istek göndermez.
+- Testler: `python -X utf8 testler/hepsi.py` (hepsi) ya da `--hizli` (yalnızca birim testleri). Gerçek Ideasoft'a hiç istek gitmez.
+  - `test_seo_metin.py`, `test_aciklama.py`: metin üreticileri ve SEO kuralları.
+  - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
+  - `test_cok_magaza.py`: uygulamanın kendisini iki sahte mağazayla (`sahte_ideasoft.py`) çalıştıran betik.
+  - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
+  - Commit öncesi kanca `.githooks/pre-commit`; bir kez `git config core.hooksPath .githooks` ile açılır.
+    Yeni klonda kancanın çalıştırılabilir kalması için ilk eklemede `git add --chmod=+x .githooks/pre-commit`.
 
 ## Mimari
 
@@ -62,4 +68,4 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
 - Panel Ideasoft'un içinde bir çerçevede açılacak. Bugünkü `SameSite=Lax` çerezi çerçeve içinde gönderilmeyebilir; giriş kapısı buna göre yapılmalı.
-- Sırada Faz 1 var (test paketi, anahtar şifreleme, güvenlik başlıkları, abonelik kaydı). Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 1 sürüyor; test paketi bitti. Sırada anahtar şifreleme, güvenlik başlıkları, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Commit öncesi hızlı kontrol: birim testleri kalırsa commit yapılmaz.
+# Bir kez etkinleştirilir: git config core.hooksPath .githooks
+PY=python
+command -v python >/dev/null 2>&1 || PY=python3
+command -v "$PY" >/dev/null 2>&1 || { command -v py >/dev/null 2>&1 && PY="py -3"; }
+$PY -X utf8 testler/hepsi.py --hizli || {
+  echo "Testler kaldı; commit yapılmadı. Ayrıntı için: python -X utf8 testler/hepsi.py"
+  exit 1
+}
