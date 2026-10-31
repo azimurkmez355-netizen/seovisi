@@ -166,7 +166,9 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
   - [ ] (?) Ideasoft'un imzalı açılış bilgisi: `ideasoft_launch()` Ideasoft'un 1. soruya cevabıyla doldurulacak
 - [x] (K) Abonelik kaydı, paket ayar dosyası ve kota (ürün sınırı; yapay zekâ hakkı Faz 4'te)
   - [ ] (?) Kaydı Ideasoft'un bildirimi / API'si besleyecek (5, 6, 8. sorular); o zamana kadar `python app.py --abonelik`
-- [ ] (K) Açıklama şablonundaki Ustapazar renginin ve sabit düzenin kaldırılması (şablon sistemi gelene kadar sade görünüm)
+- [x] (K) Açıklama şablonundaki Ustapazar renginin ve sabit düzenin kaldırılması (şablon sistemi gelene kadar sade görünüm)
+  - Not: sade stiller, panel katsayısı (1,30) ölçülürkenki stillerle aynı sayıda kelime üretir. Ideasoft'un HTML'i nasıl saydığı
+    test mağazasında ölçülünce (aşağıdaki uçtan uca deneme) şablon sistemi bu sınırdan kurtulur.
 - [ ] (S+K) Gerçek bir Ideasoft test mağazasıyla uçtan uca deneme
 
 ## Faz 2 — v1 özellikleri (5–6 hafta)

@@ -1971,6 +1971,12 @@ SAFE_METHODS = "panel"
 PLAN_VERSION = 6   # açıklama üreticisi değiştikçe artar; eski hazırlıklar yeniden üretilir
 
 
+def description_style():
+    """Açıklama görünümü: bilgisayardaki kurulum (Ustapazar) sitedeki eski açıklamalarla aynı lacivert bantlı görünümü,
+    sunucuda satılan sürüm sade görünümü kullanır. Ayarlanabilir şablonlar gelince mağaza ayarından okunacak."""
+    return SM.STYLE if SERVER["on"] else SM.STYLE_BANTLI
+
+
 def prepare_plan(pid, variant=0):
     """Ürünü okuyup açıklama ve SEO alanlarını hazırlar; mağazaya hiçbir şey yazmaz."""
     prod = API.get_product(pid)
@@ -1982,7 +1988,8 @@ def prepare_plan(pid, variant=0):
     plan = SM.build_machine_seo(dict(prod, name=fixed_name), (detail or {}).get("details") or "",
                                 cur_kw or prod.get("targetKeyword") or "",
                                 sku=prod.get("sku") or "", barcode=prod.get("barcode") or "", method=method,
-                                target=float(CFG.get("target_density") or 2.5), variant=variant, prof=PROFILE())
+                                target=float(CFG.get("target_density") or 2.5), variant=variant, prof=PROFILE(),
+                                style=description_style())
     kw = plan["keyword"]
     kwl = ST.tr_lower(kw)
     old_t, old_m = (prod.get("pageTitle") or "").strip(), (prod.get("metaDescription") or "").strip()
@@ -2025,7 +2032,8 @@ def repair_plan(pid):
     method = "panel_lo,panel,panel_hi"
     prof = PR.with_brand(PROFILE(), prod)
     plan = SM.build_machine_seo(dict(prod, name=fixed_name), details, kw, sku=prod.get("sku") or "",
-                                barcode=prod.get("barcode") or "", method=method, target=2.5, prof=prof)
+                                barcode=prod.get("barcode") or "", method=method, target=2.5, prof=prof,
+                                style=description_style())
     kw = plan["keyword"]
     # etiket başlığında da özel karakter olmasın: hedef kelime + mağaza adı
     titles = [f"{kw} | {{magaza}}", f"{kw} - {{marka}} | {{magaza}}"]

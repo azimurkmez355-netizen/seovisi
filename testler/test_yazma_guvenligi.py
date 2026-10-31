@@ -10,6 +10,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import seo_text as ST  # noqa: E402
@@ -153,6 +154,13 @@ class AciklamaGonderme(Ortam):
         plan = self.hazirla()
         self.assertTrue(plan["details_html"])
         self.assertEqual(self.api.yazmalar(), [])
+
+    def test_gorunum_kurulum_turune_gore(self):
+        self.assertIn("1b4f72", self.hazirla()["details_html"])        # bilgisayardaki kurulum: Ustapazar görünümü
+        with mock.patch.dict(app.SERVER, {"on": True}):
+            sade = app.prepare_plan(7)["details_html"]                   # sunucuda satılan sürüm: sade
+        self.assertNotIn("1b4f72", sade)
+        self.assertIn(app.SM.STYLE["h"], sade)
 
     def test_gonderim_aciklamayi_yazar_ve_yedek_alir(self):
         plan = self.hazirla()

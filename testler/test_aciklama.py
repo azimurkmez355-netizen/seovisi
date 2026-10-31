@@ -65,6 +65,23 @@ class Aciklama(unittest.TestCase):
         plan = self.kur({"name": "Kupa <script>alert(1)</script> Bardak Seti", "categories": []})
         self.assertNotIn("<script", plan["details_html"])
 
+    def test_magazaya_ozel_renk_yok(self):
+        for p in URUNLER:
+            h = self.kur(p)["details_html"]
+            self.assertNotIn("1b4f72", h)
+            self.assertNotIn("background", h)
+
+    def test_stiller_panel_katsayisini_kaydirmaz(self):
+        # panel_factor bantlı (Ustapazar) görünümle ölçüldü; sade görünüm de aynı sayıda kelime vermeli
+        for st in (SM.STYLE, SM.STYLE_BANTLI):
+            for k, v in st.items():
+                self.assertEqual(ST._ascii_split(v), SM.STYLE_WORDS[k], k)
+        for p in URUNLER:
+            sade, bantli = self.kur(p, ESKI)["details_html"], self.kur(p, ESKI, style=SM.STYLE_BANTLI)["details_html"]
+            self.assertNotEqual(sade, bantli)
+            self.assertIn("1b4f72", bantli)
+            self.assertEqual(ST.count_words(sade, "panel"), ST.count_words(bantli, "panel"), p["name"])
+
     def test_stok_kodu_ve_barkod_eklenir(self):
         metin = ST.strip_tags(self.kur(URUNLER[1])["details_html"])
         self.assertIn("SKU-1", metin)

@@ -218,6 +218,19 @@ def pool(prof, key):
     return out
 
 
+# Açıklamadaki satır içi stiller (ayarlanabilir şablonlar Faz 2'de).
+#   STYLE: sade; renk ve yazı tipi mağazanın temasından gelir. Sunucuda satılan sürüm bunu kullanır.
+#   STYLE_BANTLI: Ustapazar'ın lacivert bantlı görünümü; bilgisayardaki (Ustapazar) kurulum, sitedeki eski açıklamalarla
+#                 aynı görünsün diye bunu kullanır. panel_factor (1,30) bu görünümle ölçüldü.
+# Ideasoft'un stilleri sayıp saymadığı bilinmediği için her görünüm aynı sayıda kelime üretir (STYLE_WORDS);
+# böylece katsayı her iki durumda da geçerli kalır. Test mağazasıyla ölçülene kadar bu eşitlik korunmalı.
+STYLE = {"h": "margin:16px 0 6px;padding:0", "kutu": "border-top:1px solid #ddd;clear:both",
+         "liste": "list-style:none;padding-left:6px"}
+STYLE_BANTLI = {"h": "background:#1b4f72;color:#fff;padding:8px", "kutu": "border-left:4px solid #1b4f72;padding:8px",
+                "liste": "list-style:none;padding-left:6px"}
+STYLE_WORDS = {"h": 6, "kutu": 7, "liste": 6}
+
+
 def _put(template, **vals):
     """Şablona değerleri yerleştirir (ürün adında süslü parantez olabileceği için format kullanılmaz)."""
     for k, v in vals.items():
@@ -226,7 +239,9 @@ def _put(template, **vals):
 
 
 def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="", method="", target=2.5,
-                      variant=0, min_words=60, prof=None):
+                      variant=0, min_words=60, prof=None, style=None):
+    """style: STYLE (sade, varsayılan) ya da STYLE_BANTLI."""
+    style = style or STYLE
     name = re.sub(r"\s+", " ", (product.get("name") or "").strip())
     prof = PR.with_brand(prof, product)
     kw = machine_keyword(name, current_kw, prof)
@@ -256,18 +271,17 @@ def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="
     def esc(t):
         return html.escape(t, quote=False)
 
-    # Görünüm: Ideasoft editöründe (TinyMCE) sorunsuz çalışan sade satır içi stiller. Ideasoft kelime
-    # sayımına HTML etiketlerini de kattığı için stil yalnız başlıklarda ve tek bir vurgu kutusunda var;
-    # madde işaretleri (✔) harf olmadığı için sayıma girmez.
-    H = '<h3 style="background:#1b4f72;color:#fff;padding:8px">{}</h3>'
-    BOX = '<div style="border-left:4px solid #1b4f72;padding:8px">{}</div>'
+    # Görünüm style'dan (STYLE / STYLE_BANTLI); her ikisi de aynı sayıda kelime üretir, panel katsayısı kaymaz.
+    # Madde işaretleri (✔) harf olmadığı için sayılmaz.
+    H = f'<h3 style="{style["h"]}">{{}}</h3>'
+    BOX = f'<div style="{style["kutu"]}">{{}}</div>'
 
     def label_li(t):
         m = re.match(r"^([^:]{2,80}):\s*(.+)$", t)
         return f"<strong>{esc(m.group(1))}:</strong> {esc(m.group(2))}" if m else esc(t)
 
     def ul(items, mark=""):
-        open_ = '<ul style="list-style:none;padding-left:6px">' if mark else "<ul>"
+        open_ = f'<ul style="{style["liste"]}">' if mark else "<ul>"
         return open_ + "".join(f"<li>{mark}{label_li(i)}</li>" for i in items) + "</ul>"
 
     def spec_ul(items):

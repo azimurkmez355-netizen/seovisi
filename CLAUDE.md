@@ -112,6 +112,10 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 ## Bilinen açık işler (v1'e girmeden)
 
-- `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
-- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği, hız sınırı, giriş kapısı ve abonelik kaydı bitti. Sırada
-  açıklama şablonundaki Ustapazar renginin kaldırılması ve test mağazasıyla uçtan uca deneme. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Açıklama görünümü sabit bölüm düzeninde; v1'de ayarlanabilir "açıklama şablonu" gelecek. Şimdilik `description_style()`:
+  sunucuda sade (`SM.STYLE`), bilgisayardaki Ustapazar kurulumunda sitedeki eski açıklamalarla aynı lacivert bantlı (`SM.STYLE_BANTLI`).
+  Stillerin sayılan kelime sayısı (`STYLE_WORDS`) panel katsayısı ölçülürkenki bantlı görünümle aynı tutulur; Ideasoft HTML'deki
+  stilleri sayıyorsa farklı stil yoğunluğu kaydırır. `test_aciklama.py` bunu denetler. Şablon sistemi yapılmadan önce Ideasoft'un sayımı
+  test mağazasında ölçülmeli (stilli ve stilsiz aynı açıklama gönderilip paneldeki yüzde karşılaştırılarak).
+- Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
+  HTML kelime sayımı). Sonra Faz 2. Ayrıntılar `YOL_HARITASI.md` içinde.
