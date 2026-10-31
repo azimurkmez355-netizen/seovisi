@@ -70,6 +70,7 @@ SERVER_DEFAULT = {
     "client_id": "", "client_secret": "",   # sunucu kipinde Ideasoft uygulamasının ortak anahtarları
     "public_url": "",             # sunucu kipinde dışarıdan açılan adres, örn. https://app.seovisi.com.tr
     "yerel": "",                  # yerel kipte açılan mağaza klasörü
+    "frame_hosts": [],            # panelin çerçevede açılabileceği ek adresler (FRAME_HOSTS'a ek)
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
 
@@ -2171,6 +2172,60 @@ def public_host(host):
     return bool(infos) and all(ipaddress.ip_address(i[4][0].split("%")[0]).is_global for i in infos)
 
 
+# ============================================================ istek güvenliği
+
+MAX_BODY = 5 * 1024 * 1024        # en büyük istek gövdesi (toplu iş listeleri, düzenlenmiş açıklama bunun çok altında)
+MAX_PENDING = 10000               # aynı anda açık bekleyen Ideasoft izin isteği
+# Panel bu adreslerin içinde (çerçevede) açılabilir; giriş yapmış mağazanın kendi adresi ayrıca eklenir.
+# Ideasoft'un cevabına göre sunucu.json'daki "frame_hosts" listesiyle genişletilir.
+FRAME_HOSTS = ("https://*.myideasoft.com", "https://*.ideasoft.com.tr")
+CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; "
+       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+       "img-src 'self' https: http: data:; connect-src 'self'; form-action 'self' https:; base-uri 'self'; "
+       "object-src 'none'; frame-ancestors {}")
+_HOST_RX = re.compile(r"(https://)?(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{1,5})?")
+
+
+class TooLarge(Exception):
+    pass
+
+
+class RateLimit:
+    """Aynı adresten belirli sürede en çok n deneme."""
+
+    def __init__(self, n, per):
+        self.n, self.per = n, per
+        self.hits, self.lock = {}, threading.Lock()
+
+    def hit(self, key):
+        """Denemeyi sayar. Sınır aşıldıysa beklenmesi gereken saniyeyi, aşılmadıysa 0 döndürür."""
+        now = time.time()
+        with self.lock:
+            if len(self.hits) > 10000:
+                self.hits = {k: q for k, q in self.hits.items() if q and now - q[-1] < self.per}
+            q = self.hits.setdefault(key, deque())
+            while q and now - q[0] >= self.per:
+                q.popleft()
+            if len(q) >= self.n:
+                return int(self.per - (now - q[0])) + 1
+            q.append(now)
+            return 0
+
+
+LOGIN_TRIES = RateLimit(20, 600)  # giriş: aynı adresten 10 dakikada en çok 20 deneme
+
+
+def frame_ancestors(store=""):
+    """Panelin hangi sayfaların içinde açılabileceği. Mağaza bilinmiyorsa (giriş sayfası) her HTTPS sayfası:
+    giriş sayfasında tıklatılarak yaptırılabilecek zararlı bir iş yok."""
+    if not store:
+        return "'self' https:"
+    extra = SRV.get("frame_hosts") if SRV else []
+    hosts = [f"https://{store}"] + list(FRAME_HOSTS) + [h for h in extra or [] if isinstance(h, str)]
+    return " ".join(["'self'"] + [h if h.startswith("https://") else f"https://{h}"
+                                  for h in dict.fromkeys(hosts) if _HOST_RX.fullmatch(h)])
+
+
 # Ideasoft izin sayfasına giden her istek bir "state" taşır; dönüşte hangi mağaza ya da giriş olduğu buradan bulunur
 _pending, _pending_lock = {}, threading.Lock()
 
@@ -2181,6 +2236,8 @@ def new_state(info):
         now = time.time()
         for k in [k for k, v in _pending.items() if now - v["at"] > 900]:
             del _pending[k]
+        if len(_pending) >= MAX_PENDING:          # bellek sınırı: en eskisi düşer
+            del _pending[min(_pending, key=lambda k: _pending[k]["at"])]
         _pending[st] = dict(info, at=now)
     return st
 
@@ -2290,9 +2347,18 @@ button{{width:100%;margin-top:14px;font:inherit;font-weight:600;padding:12px;bor
 
 class H(BaseHTTPRequestHandler):
     server_version = "seovisi/1.0"
+    timeout = 60                  # yavaş ya da yarım kalan bağlantı bir iş parçacığını süresiz tutmasın
 
     def log_message(self, *a):
         pass
+
+    def _security_headers(self):
+        t = getattr(_cur, "t", None)
+        h = {"Content-Security-Policy": CSP.format(frame_ancestors(store_host(CFG.get("store")) if t else "")),
+             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin"}
+        if SERVER["on"] and SRV.get("public_url", "").startswith("https://"):
+            h["Strict-Transport-Security"] = "max-age=31536000"
+        return h
 
     def _send(self, code, body, ctype="application/json; charset=utf-8", extra=None):
         if isinstance(body, (dict, list)):
@@ -2303,15 +2369,31 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
-        for k, v in (extra or {}).items():
+        for k, v in dict(self._security_headers(), **(extra or {})).items():
             self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
     def _body(self):
-        n = int(self.headers.get("Content-Length") or 0)
-        raw = self.rfile.read(n) if n else b""
-        return raw
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            raise TooLarge()
+        if not 0 <= n <= MAX_BODY:
+            raise TooLarge()
+        return self.rfile.read(n) if n else b""
+
+    def client_ip(self):
+        """İsteği gönderenin adresi. Önündeki ters vekil (Caddy) aynı makinedeyse onun eklediği son adres."""
+        ip = self.client_address[0]
+        fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
+        try:
+            if fwd and ipaddress.ip_address(ip).is_loopback:
+                ipaddress.ip_address(fwd)
+                return fwd
+        except ValueError:
+            pass
+        return ip
 
     def _json(self):
         raw = self._body()
@@ -2340,6 +2422,9 @@ class H(BaseHTTPRequestHandler):
                 return self._send(401, {"error": "Oturum kapandı; yeniden giriş yapın.", "login": True})
             _cur.t = tenant(tid)
             route(u.path, q)
+        except TooLarge:
+            self.close_connection = True          # okunmayan gövde bağlantıda kalmasın
+            self._send(413, {"error": "İstek çok büyük."})
         except ApiError as e:
             self._send(502, {"error": str(e)})
         except Exception as e:  # noqa: BLE001
@@ -2369,7 +2454,11 @@ class H(BaseHTTPRequestHandler):
         if p == "/giris" and method == "POST" and SERVER["on"]:
             form = {k: v[0] for k, v in urllib.parse.parse_qs(self._body().decode("utf-8", "replace")).items()}
             host = store_host(form.get("store"))
-            if not all(SRV.get(k) for k in ("client_id", "client_secret", "public_url")):
+            wait = LOGIN_TRIES.hit(self.client_ip())
+            if wait:
+                self._html(login_page(f"Çok fazla deneme yapıldı. {-(-wait // 60)} dakika sonra yeniden deneyin."),
+                           429, {"Retry-After": str(wait)})
+            elif not all(SRV.get(k) for k in ("client_id", "client_secret", "public_url")):
                 self._html(login_page())
             elif not public_host(host):
                 self._html(login_page("Bu adres bulunamadı. Mağazanızın adresini magaza.myideasoft.com ya da "

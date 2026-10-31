@@ -160,7 +160,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 - [x] (K) Otomatik test paketi ve her commit'te çalışması
 - [x] (K) Mağaza anahtarlarının diskte şifrelenmesi
-- [ ] (K) Girişte deneme sınırı, güvenlik başlıkları, istek boyutu sınırı
+- [x] (K) Girişte deneme sınırı, güvenlik başlıkları, istek boyutu sınırı
 - [ ] (K) Ideasoft hız sınırına uyan adil iş sırası
 - [ ] (K) Giriş kapısı: çerçeve içinde çalışan oturum
 - [ ] (K) Abonelik kaydı, paket ayar dosyası ve kota

@@ -209,6 +209,22 @@ class Oturum(unittest.TestCase):
         for h in ("localhost", "127.0.0.1", "10.0.0.5", "metadata.google.internal", ""):
             self.assertFalse(app.public_host(h), h)
 
+    def test_cerceve_adresleri_baslik_icine_kod_sokamaz(self):
+        app.SRV.update(frame_hosts=["panel.ornek.com", "kotu.com; script-src *", "https://x.com\r\nSet-Cookie: a=b"])
+        fa = app.frame_ancestors("magaza.com")
+        self.assertEqual(fa, "'self' https://magaza.com https://*.myideasoft.com https://*.ideasoft.com.tr "
+                             "https://panel.ornek.com")
+        self.assertEqual(app.frame_ancestors("kotu.com; script-src *"),
+                         "'self' https://*.myideasoft.com https://*.ideasoft.com.tr https://panel.ornek.com")
+
+    def test_deneme_siniri(self):
+        rl = app.RateLimit(3, 60)
+        self.assertEqual([rl.hit("1.1.1.1") for _ in range(3)], [0, 0, 0])
+        self.assertGreater(rl.hit("1.1.1.1"), 0)
+        self.assertEqual(rl.hit("2.2.2.2"), 0)
+        rl.hits["1.1.1.1"] = app.deque(t - 61 for t in rl.hits["1.1.1.1"])   # süre doldu
+        self.assertEqual(rl.hit("1.1.1.1"), 0)
+
     def test_magaza_adresi_temizlenir(self):
         self.assertEqual(app.store_host("https://A-Magaza.com/panel/"), "a-magaza.com")
 

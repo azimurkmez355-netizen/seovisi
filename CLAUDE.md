@@ -60,6 +60,14 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   bağlantı yok sayılır.
 - Testler anahtarı geçici klasörde üretir (`sifre.KEY_PATH`); projenin `data` klasörüne test yazmamalı.
 
+### İstek güvenliği (`app.py`, "istek güvenliği" bölümü)
+
+- İstek gövdesi en çok `MAX_BODY` (5 MB); fazlası ya da bozuk `Content-Length` okunmadan 413 döner. Gövdeyi her zaman `H._body()` ile oku.
+- Her yanıtta `H._security_headers()`: CSP, `nosniff`, `Referrer-Policy`, sunucuda HTTPS ise HSTS. Panel yalnızca `frame_ancestors()`
+  adreslerinde çerçevede açılır: mağazanın kendi adresi, `FRAME_HOSTS` ve `sunucu.json`daki `frame_hosts`. Giriş sayfası her HTTPS sayfasında açılabilir.
+  Panel dışarıdan yeni bir kaynak (yazı tipi, betik) yüklerse CSP'ye eklenmeli.
+- `/giris` aynı adresten 10 dakikada en çok 20 deneme (`LOGIN_TRIES`). Adres, yerel ters vekil (Caddy) varsa `X-Forwarded-For`'un son değeri.
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -78,4 +86,4 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
 - Panel Ideasoft'un içinde bir çerçevede açılacak. Bugünkü `SameSite=Lax` çerezi çerçeve içinde gönderilmeyebilir; giriş kapısı buna göre yapılmalı.
-- Faz 1 sürüyor; test paketi ve anahtar şifreleme bitti. Sırada giriş deneme sınırı ve güvenlik başlıkları, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 1 sürüyor; test paketi, anahtar şifreleme ve istek güvenliği bitti. Sırada Ideasoft hız sınırına uyan iş sırası, giriş kapısı, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.

@@ -6,6 +6,7 @@ import http.client
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -32,9 +33,9 @@ def copy_app(dst):
     shutil.copytree(os.path.join(SRC, "ui"), os.path.join(dst, "ui"))
 
 
-def req(port, method, path, body=None, cookie=None, form=False):
+def req(port, method, path, body=None, cookie=None, form=False, headers=None):
     c = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
-    h = {"Cookie": cookie} if cookie else {}
+    h = dict({"Cookie": cookie} if cookie else {}, **(headers or {}))
     if body is not None:
         body = urllib.parse.urlencode(body) if form else json.dumps(body)
         h["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
@@ -143,11 +144,43 @@ def sunucu_kipi():
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
         st, h, _ = req(8770, "GET", "/cikis", cookie=ca)
         check("çıkış çerezi siler", st == 302 and "Max-Age=0" in h.get("Set-Cookie", ""))
+        guvenlik(8770, ca)
     finally:
         proc.terminate()
         proc.wait()
     viol = open(VIOL, encoding="utf-8").read() if os.path.exists(VIOL) else ""
     check("hiçbir istek başka mağazanın anahtarıyla gitmedi", not viol, viol[:300])
+
+
+def raw_post(port, path, length, cookie=""):
+    """Gövdesini göndermeden büyük bir Content-Length bildirir; sunucunun okumadan reddetmesi beklenir."""
+    with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
+        s.sendall(f"POST {path} HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: {length}\r\n"
+                  f"{'Cookie: ' + cookie + chr(13) + chr(10) if cookie else ''}\r\n".encode())
+        return s.recv(4096).decode("utf-8", "replace").split(" ", 2)[1]
+
+
+def guvenlik(port, cookie):
+    _, h, _ = req(port, "GET", "/api/state", cookie=cookie)
+    csp = h.get("Content-Security-Policy", "")
+    fa = csp.split("frame-ancestors", 1)[-1]
+    check("panel yalnızca mağazanın ve Ideasoft'un sayfalarında çerçevede açılır",
+          "https://a-magaza.com" in fa and "https://*.myideasoft.com" in fa and "https:;" not in fa + ";"
+          and "https://b-moda.com" not in fa, csp)
+    check("güvenlik başlıkları gönderilir", h.get("X-Content-Type-Options") == "nosniff"
+          and h.get("Referrer-Policy") == "same-origin" and "object-src 'none'" in csp, h)
+    _, h, _ = req(port, "GET", "/")
+    check("giriş sayfası Ideasoft panelinde açılabilir", h.get("Content-Security-Policy", "").endswith("frame-ancestors 'self' https:"))
+    check("çok büyük istek okunmadan reddedilir", raw_post(port, "/api/settings", 50 * 1024 * 1024, cookie) == "413")
+    check("bozuk boyut bilgisi reddedilir", raw_post(port, "/giris", "-5") == "413")
+    st, _, _ = req(port, "POST", "/api/settings", {"profil": {"magaza": "x" * 1000}}, cookie=cookie)
+    check("normal boyuttaki istek çalışır", st == 200, st)
+    codes = [req(port, "POST", "/giris", {"store": "localhost"}, form=True)[0] for _ in range(25)]
+    st, h, page = req(port, "POST", "/giris", {"store": "localhost"}, form=True)
+    check("art arda giriş denemesi engellenir", 429 in codes and st == 429 and "Çok fazla deneme" in page
+          and int(h.get("Retry-After", 0)) > 0, codes)
+    st, _, _ = req(port, "POST", "/giris", {"store": "localhost"}, form=True, headers={"X-Forwarded-For": "203.0.113.9"})
+    check("engel yalnızca o adrese uygulanır (ters vekil arkasında)", st == 200, st)
 
 
 def yerel_kip():
