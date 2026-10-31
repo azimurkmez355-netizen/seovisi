@@ -66,7 +66,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
   - [x] madde işareti, kapanış metni, stok kodu / barkod gösterimi
   - [x] canlı önizleme ve SEO puanı tahmini
   - [ ] eski açıklamaları yeni şablona toplu geçirme (yedekli)
-- [ ] Kopya ürün tespiti
+- [x] Kopya ürün tespiti
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [ ] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
 - [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)
@@ -178,7 +178,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [ ] (K) Açıklama şablonu ayarlama — ayarlar ekranı, 4 görünüm, renk, bölümler, önizleme bitti; eski açıklamaların toplu geçirilmesi kaldı
 - [x] (K) Yeni ürün otopilotu ve iş sırası (saatlik kontrol; yayına alınıp 30 dk geçen ürün; onaylı / otomatik; şüpheli öneri her zaman onaya)
   - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
-- [ ] (K) Kopya ürün tespiti
+- [x] (K) Kopya ürün tespiti (aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama; neredeyse aynılar v2 varyant önerisinde)
 - [ ] (K) Özellik doldurma
 - [ ] (K) Kırık bağlantı taraması
 - [x] (K) Fiyat ve satılamaz ürün uyarıları (fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat; yayında ama stokta yok)

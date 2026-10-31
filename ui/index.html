@@ -517,7 +517,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
   </header>
   <div class="tools"><input type="search" id="uq" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><div class="seg" id="useg"></div></div>
   <div class="tablewrap"><table>
-    <thead><tr><th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th></tr></thead>
+    <thead><tr id="uthead"><th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th></tr></thead>
     <tbody id="urows"></tbody>
   </table></div>
   <div class="pager"><span id="upinfo"></span><button class="btn ghost sm" id="uprev">Önceki</button><button class="btn ghost sm" id="unext">Sonraki</button></div>
@@ -1642,6 +1642,8 @@ function oTodo(){
   add(c.supheli, 'var(--sari)', 'ürünün kategorisi şüpheli', 'Bulunduğu kategoriye uymuyor; bir göz atmanızı öneririz.', 'İncele', () => oGo('cat', 's'));
   add(c.uyari_satilamaz, 'var(--sari)', 'ürün yayında ama stokta yok', 'Sitede görünüyorlar ama satın alınamıyorlar.',
     'Uyarılara git', () => { ufilt = 'satilamaz'; show('uyari'); });
+  add(c.kopya, 'var(--sari)', 'kopya ürün grubu', 'Aynı stok kodu, barkod, ad, sayfa başlığı ya da meta açıklama; Google aynı içerikten yalnızca birini gösterebilir.',
+    'Kopyaları gör', () => { ufilt = 'kopya'; show('uyari'); });
   add(c.ekle, 'var(--isle)', 'ürün başka bir kategoriye de eklenebilir', 'Mevcut kategorisi doğru; ikinci bir uygun kategori bulundu.', 'İncele', () => oGo('cat', 'e'));
   const box = $('#o-todo');
   if(!items.length){
@@ -1664,11 +1666,12 @@ window.addEventListener('resize', () => { if(O && document.querySelector('#v-gen
 setInterval(() => { if(document.querySelector('#v-genel.on')) oTick(); }, 3000);
 
 /* ---------------- uyarılar (yalnızca okur) */
-let ufilt = '', upage = 0, U = null;
+let ufilt = '', upage = 0, U = null, UK = null;
 function uSeg(){
   const say = (U && U.sayilar) || {}, tur = (U && U.turler) || {};
   const grup = g => Object.entries(say).filter(([k]) => (tur[k] || [])[0] === g).reduce((a, [, n]) => a + n, 0);
-  const opts = [['', 'Tümü'], ['fiyat', `Fiyat hataları (${grup('fiyat')})`], ['satilamaz', `Stokta yok (${grup('satilamaz')})`]];
+  const opts = [['', 'Tümü'], ['fiyat', `Fiyat hataları (${grup('fiyat')})`], ['satilamaz', `Stokta yok (${grup('satilamaz')})`],
+                ['kopya', `Kopyalar (${(UK && UK.toplam) || 0})`]];
   $('#useg').innerHTML = opts.map(([k, t]) => `<button data-k="${k}" class="${k === ufilt ? 'on' : ''}">${t}</button>`).join('');
   document.querySelectorAll('#useg button').forEach(b => b.onclick = () => { ufilt = b.dataset.k; upage = 0; uSeg(); uRows(); });
 }
@@ -1677,9 +1680,13 @@ $('#uprev').onclick = () => { if(upage > 0){ upage--; uRows(); } };
 $('#unext').onclick = () => { upage++; uRows(); };
 $('#u-scan').onclick = async () => { const r = await post('/api/overview/scan'); if(r.msg) toast(r.msg); };
 async function uRows(){
-  const r = await api(`/api/uyarilar?tur=${ufilt}&q=${encodeURIComponent($('#uq').value)}&page=${upage}`);
+  const kopya = ufilt === 'kopya', ilk = !U || !UK;
+  UK = await api(`/api/kopyalar?page=${kopya ? upage : 0}`);
+  const r = await api(kopya ? '/api/uyarilar' : `/api/uyarilar?tur=${ufilt}&q=${encodeURIComponent($('#uq').value)}&page=${upage}`);
   if(!r.items) return;
-  const ilk = !U; U = r; if(ilk) uSeg();
+  U = r; if(ilk) uSeg();                       // süzgeç düğmelerindeki sayılar
+  if(kopya) return kRows();
+  $('#uthead').innerHTML = '<th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th>'; $('#uq').hidden = false;
   $('#u-info').textContent = r.taranan
     ? `Taranan ${nf(r.taranan)} üründe fiyatı hatalı görünen ve yayında olup satılamayan ürünler. Mağazada hiçbir şey değiştirilmez; düzeltmeyi Ideasoft panelinde yaparsınız.`
     : 'Uyarılar mağaza taramasında okunan fiyat ve stok bilgilerinden çıkar. Önce mağazayı tarayın.';
@@ -1693,6 +1700,21 @@ async function uRows(){
     : `<tr><td colspan="4" class="muted">${r.taranan ? 'Bu süzgece uyan uyarı yok.' : 'Henüz taranmadı.'}</td></tr>`;
   $('#upinfo').textContent = r.toplam ? `${nf(upage * 50 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 50))} / ${nf(r.toplam)}` : '';
   $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 50 >= r.toplam;
+}
+/* kopya ürünler: aynı stok kodu, barkod, ad, sayfa başlığı ya da meta açıklama taşıyan ürün grupları */
+function kRows(){
+  const r = UK; if(!r.gruplar) return;
+  $('#uthead').innerHTML = '<th>Kopya</th><th>Ortak değer</th><th>Ürünler</th>'; $('#uq').hidden = true;
+  $('#u-info').textContent = 'Aynı stok kodunu, barkodu, adı, sayfa başlığını ya da meta açıklamayı taşıyan ürünler. Aynı içerikli sayfalardan Google çoğu zaman yalnızca birini gösterir. Mağazada hiçbir şey değiştirilmez.';
+  const panel = pid => r.panel ? ` <a href="${esc(r.panel)}/panel/products/edit/${pid}" target="_blank" rel="noopener">panelde aç</a>` : '';
+  $('#urows').innerHTML = r.gruplar.length ? r.gruplar.map(g => `<tr>
+      <td><span class="pill"><i style="background:${g.tur === 'ayni_sku' || g.tur === 'ayni_barkod' ? 'var(--kirmizi)' : 'var(--sari)'}"></i>${esc(g.baslik)}</span><br><small>${esc(g.mesaj)}</small></td>
+      <td style="max-width:260px;overflow-wrap:anywhere">${esc(g.deger)}</td>
+      <td>${g.urunler.slice(0, 10).map(u => `<div><b>${esc(u.name)}</b> <small class="muted">${esc(u.sku)} · no ${u.pid}${u.aktif ? '' : ' · pasif'}</small>${panel(u.pid)}</div>`).join('')}
+        ${g.urunler.length > 10 ? `<small class="muted">+${g.urunler.length - 10} ürün daha</small>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="3" class="muted">${r.taranan ? 'Kopya ürün bulunmadı.' : 'Henüz taranmadı.'}</td></tr>`;
+  $('#upinfo').textContent = r.toplam ? `${nf(upage * 30 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 30))} / ${nf(r.toplam)} grup` : '';
+  $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 30 >= r.toplam;
 }
 setInterval(() => { if(document.querySelector('#v-uyari.on')) uRows(); }, 5000);
 

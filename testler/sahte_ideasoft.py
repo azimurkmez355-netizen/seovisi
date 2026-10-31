@@ -40,6 +40,7 @@ def build(tree, words, prefix, n_each, seed):
         p.update(price1=round(fiyat.uniform(0.8, 1.2) * (200 + 50 * (cid % 10)), 2), stockAmount=fiyat.randint(1, 20),
                  currency={"id": 1, "abbr": "TL"}, discount=0, discountType=0)
         p["buyingPrice"] = round(p["price1"] * 0.6, 2)
+        p["barcode"] = f"869{seed}{p['id']:08d}"
     return cats, prods
 
 
@@ -52,6 +53,14 @@ def fiyat_hatalari(prods):
     p[2]["price1"] *= 100
     p[3]["buyingPrice"] = p[3]["price1"] * 2
     p[4]["stockAmount"] = 0
+    return prods
+
+
+def kopya_hatalari(prods):
+    """Kopya testi için A mağazasında: iki ürün aynı stok kodu, iki ürün aynı barkod. (Uydurma adlar zaten tekrarlıdır.)"""
+    p = [prods[i] for i in sorted(prods)[5:9]]
+    p[1]["sku"] = p[0]["sku"]
+    p[3]["barcode"] = p[2]["barcode"]
     return prods
 
 
@@ -82,6 +91,7 @@ def giyim():
 
 STORES = {"a-magaza.com": hirdavat(), "b-moda.com": giyim()}
 fiyat_hatalari(STORES["a-magaza.com"][1])
+kopya_hatalari(STORES["a-magaza.com"][1])
 
 
 def fake_call(self, method, path, params=None, body=None, tries=6):

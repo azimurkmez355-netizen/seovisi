@@ -13,6 +13,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Commit yalnızca kullanıcı isteyince yapılır.
 - Kullanıcı "konuşalım" dediğinde kod yazma, komut çalıştırma; önce konuşarak netleştir.
 - Gerçek mağazaya (Ustapazar) asla test amaçlı yazma. Testler yalnızca sahte Ideasoft ve kopya / uydurma veriyle yapılır.
+- Proje klasöründeki `data/` kullanıcının kendi çalışan kurulumu olabilir (programı buradan açıp gerçek mağazasına bağlanıyor).
+  İçindekileri asla silme, taşıma ya da değiştirme; test artığı gibi görünse bile önce `islem.log` tarihlerine bak ve kullanıcıya sor.
 
 ## Kurulum ve çalıştırma
 
@@ -28,7 +30,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
   - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
   - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
-  - `test_uyari.py`: uyarı kuralları.
+  - `test_uyari.py`, `test_kopya.py`: uyarı ve kopya kuralları.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -49,6 +51,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `sifre.py` | Diskteki gizli bilgilerin şifrelenmesi (HMAC-SHA256 sayaç kipi + HMAC imza). Ana anahtar `SEOVISI_ANAHTAR` ortam değişkeninden, yoksa `data/anahtar.key` dosyasından. |
 | `abonelik.py` | Abonelik kaydı (mağaza klasöründe `abonelik.json`), geçerli paket ve yazma izni. Paketler `paketler.json` içinde. |
 | `uyari.py` | Ürün uyarıları (yalnızca okur): fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat, yayında ama stokta yok. |
+| `kopya.py` | Kopya ürün grupları (yalnızca okur): aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). |
 | `ui/marka/` | Logo, simge ve renkler. |
@@ -142,6 +145,9 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Yalnızca yayındaki ürünler denetlenir; seçenekli ürünlerin stoğu varyantlarda olduğu için stok kuralı onları atlar. Bilinmeyen alan
   o alanın kuralını atlatır. Aşırı fiyat, ürünün en az ürünlü (en özel) kategorisinin ortancasıyla ve aynı para biriminde karşılaştırılır.
 - Uyarılar sayfası ve genel bakıştaki maddeler; mağazaya yazmaz, düzeltme "Panelde aç" ile Ideasoft'ta yapılır.
+- Kopyalar (`kopya.py`, `/api/kopyalar`) aynı `urunbilgi` tablosundan (barkod, başlık, meta da orada). Stok kodu ve barkod
+  bütün ürünlerde, ad / başlık / meta yalnızca yayındakilerde; aynı ürün kümesi daha önemli türde bildirildiyse tekrar edilmez.
+  Yalnızca renk / beden farkıyla ayrılan ürünler bilerek işaretlenmez (v2: varyant önerisi).
 
 ### Mağazaya yazma güvenliği
 
@@ -161,5 +167,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu ve uyarılar bitti. Kalan: eski açıklamaları yeni şablona
-  yedekli toplu geçirme, kopya ürün tespiti, özellik doldurma, kırık bağlantı taraması, aylık e-posta raporu. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar ve kopya ürün tespiti bitti. Kalan: eski açıklamaları
+  yeni şablona yedekli toplu geçirme, özellik doldurma, kırık bağlantı taraması, aylık e-posta raporu. Ayrıntılar `YOL_HARITASI.md` içinde.

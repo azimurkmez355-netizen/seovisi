@@ -41,6 +41,7 @@ import sifre  # noqa: E402
 import abonelik as AB  # noqa: E402
 import sablon as TPL  # noqa: E402
 import uyari as UY  # noqa: E402
+import kopya as KP  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -1041,6 +1042,11 @@ class SeoScanner:
         DBI.x("""CREATE TABLE IF NOT EXISTS urunbilgi(pid INTEGER PRIMARY KEY, sku TEXT, name TEXT, fiyat REAL, satis REAL,
                  alis REAL, indirim REAL, indirim_tip INTEGER, stok REAL, aktif INTEGER, secenekli INTEGER, para TEXT,
                  kats TEXT, guncellendi TEXT)""")
+        for col in ("barkod TEXT", "baslik TEXT", "meta TEXT"):      # kopya ürün tespiti (kopya.py)
+            try:
+                DBI.x(f"ALTER TABLE urunbilgi ADD COLUMN {col}")
+            except sqlite3.OperationalError:
+                pass
         for col in ("pscore TEXT", "src TEXT", "plan TEXT", "pstate TEXT", "pmsg TEXT", "backup TEXT",
                     "price REAL", "cur TEXT"):
             try:
@@ -1144,13 +1150,15 @@ class SeoScanner:
                     bilgi.append((p["id"], p.get("sku"), p.get("name"), _num(p.get("price1")), price,
                                   _num(p.get("buyingPrice")), _num(p.get("discount")), int(_num(p.get("discountType")) or 0),
                                   _num(p.get("stockAmount")), None if p.get("status") is None else (0 if _pasif(p) else 1),
-                                  1 if p.get("hasOption") else 0, cur, json.dumps(_cat_ids(p)), now))
+                                  1 if p.get("hasOption") else 0, cur, json.dumps(_cat_ids(p)), now,
+                                  p.get("barcode"), p.get("pageTitle"), p.get("metaDescription")))
                 DBI.xm("""INSERT INTO seo(pid, sku, name, kw, top, bottom, ok, codes, fails, words,
                           density, checked, pscore, src, price, cur) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                           ON CONFLICT(pid) DO UPDATE SET sku=excluded.sku, name=excluded.name, ok=excluded.ok,
                           checked=excluded.checked, pscore=excluded.pscore, src=excluded.src,
                           price=excluded.price, cur=excluded.cur""", rows)
-                DBI.xm("INSERT OR REPLACE INTO urunbilgi VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", bilgi)
+                DBI.xm("""INSERT OR REPLACE INTO urunbilgi(pid, sku, name, fiyat, satis, alis, indirim, indirim_tip, stok, aktif,
+                          secenekli, para, kats, guncellendi, barkod, baslik, meta) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", bilgi)
                 self.done_session += len(rows)
                 last = max(p["id"] for p in page)
                 if CFG.get("seo_prepare", True):
@@ -1810,12 +1818,13 @@ def overview():
     made = {r["key"] for r in DBI.q("SELECT key FROM catnew")}
     jobs = SEOJOBS.state()
     uy = Counter(u["grup"] for u in uyarilar()[0])
+    uy["kopya"] = len(kopyalar())
     return {
         "pids": pids, "maps": maps,
         "counts": {"seo_eksik": maps["seo"].count("y"), "seo_hazir": jobs["hazir"],
                    "seo_taranan": len(seo), "img_yok": maps["img"].count("y"), "img_taranan": len(img),
                    "tasi": maps["cat"].count("t"), "supheli": maps["cat"].count("s"), "ekle": maps["cat"].count("e"),
-                   "kategorisiz": maps["cat"].count("k"), "uyari_fiyat": uy["fiyat"], "uyari_satilamaz": uy["satilamaz"],
+                   "kategorisiz": maps["cat"].count("k"), "uyari_fiyat": uy["fiyat"], "uyari_satilamaz": uy["satilamaz"], "kopya": uy["kopya"],
                    "yeni_kategori": sum(1 for g in rep.get("newcats") or [] if g["kind"] == "alt" and newcat_key(g) not in made)},
         "scans": {"seo": SEOSCAN.running, "cat": CATSCAN.running, "img": IMG.running,
                   "phase": SEOSCAN.phase or CATSCAN.phase or IMG.phase or "",
@@ -1829,6 +1838,11 @@ def uyarilar():
     """Taranan ürünlerin uyarıları (uyari.py); her istekte kayıtlı bilgilerden hesaplanır."""
     rows = DBI.q("SELECT * FROM urunbilgi")
     return UY.hesapla([dict(r, kats=json.loads(r["kats"] or "[]")) for r in rows]), len(rows)
+
+
+def kopyalar():
+    """Kopya ürün grupları (kopya.py); taramada kaydedilen bilgilerden her istekte hesaplanır."""
+    return KP.hesapla([dict(r) for r in DBI.q("SELECT pid, sku, name, barkod, baslik, meta, aktif FROM urunbilgi")])
 
 
 def category_paths():
@@ -3210,6 +3224,13 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/otopilot":
             return self._send(200, OTO.state())
+        if p == "/api/kopyalar":
+            gruplar = kopyalar()
+            page = max(0, int(q.get("page") or 0))
+            return self._send(200, {"sayilar": Counter(g["tur"] for g in gruplar), "toplam": len(gruplar),
+                                    "gruplar": gruplar[page * 30:(page + 1) * 30], "turler": {k: v[0] for k, v in KP.TURLER.items()},
+                                    "taranan": DBI.q("SELECT COUNT(*) n FROM urunbilgi", one=True)["n"],
+                                    "panel": API.base() if CFG.get("store") else ""})
         if p == "/api/uyarilar":
             items, taranan = uyarilar()
             say = Counter(u["tur"] for u in items)

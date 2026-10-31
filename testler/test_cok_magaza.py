@@ -256,6 +256,14 @@ def uyarilar(port, ca, cb):
     check("temiz mağazada uyarı yok, mağazalar ayrı", b["taranan"] == 275 and b["sayilar"] == {}, b.get("sayilar"))
     c = req(port, "GET", "/api/overview", cookie=ca)[2]["counts"]
     check("genel bakış uyarı sayılarını gösterir", (c["uyari_fiyat"], c["uyari_satilamaz"]) == (4, 1), c)
+    ka, kb = (req(port, "GET", "/api/kopyalar", cookie=x)[2] for x in (ca, cb))
+    check("kopya: aynı stok kodu ve barkod bulunur", ka["sayilar"].get("ayni_sku") == 1 and ka["sayilar"].get("ayni_barkod") == 1
+          and ka["sayilar"].get("ayni_ad", 0) > 0, ka.get("sayilar"))
+    check("kopya grubu ürünleri ve panel bağlantısını taşır",
+          all(len(g["urunler"]) >= 2 and g["mesaj"] for g in ka["gruplar"]) and ka["panel"] == "https://a-magaza.com")
+    check("kopya: diğer mağazada stok kodu / barkod kopyası yok, mağazalar ayrı",
+          not kb["sayilar"].get("ayni_sku") and not kb["sayilar"].get("ayni_barkod"), kb.get("sayilar"))
+    check("genel bakış kopya grubu sayısını gösterir", c["kopya"] == ka["toplam"] > 0, (c["kopya"], ka["toplam"]))
 
 
 def otopilot(port, appdir, ca):
