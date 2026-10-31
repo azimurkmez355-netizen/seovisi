@@ -93,13 +93,14 @@ class Gecis(Ortam):
     def test_fiyat_bozulursa_eski_haline_yazilir_ve_durur(self):
         self.gonder(1)
         self.gonder(2)
-        fiyat = self.m.urunler[1]["price1"]
+        fiyat = {pid: self.m.urunler[pid]["price1"] for pid in (1, 2)}
         app.CFG.update(sablon={"gorunum": "cizgili"})
-        self.m.bozuk = True
+        self.m.bozuk = True                                            # ilk yazılan ürünün fiyatı bozulur (iki ürün paralel işlenir)
         st = self.calistir()
-        self.assertEqual(self.m.urunler[1]["price1"], fiyat)
-        self.assertEqual(self.satir(1)["gecis"], "hata")
-        self.assertIn("Korunan alan", self.satir(1)["pmsg"])
+        self.assertEqual({pid: self.m.urunler[pid]["price1"] for pid in (1, 2)}, fiyat)
+        hatali = [pid for pid in (1, 2) if self.satir(pid)["gecis"] == "hata"]
+        self.assertEqual(len(hatali), 1, [self.satir(p) for p in (1, 2)])
+        self.assertIn("Korunan alan", self.satir(hatali[0])["pmsg"])
         self.assertLess(st["sayilar"].get("gecti", 0), 2)              # toplu işlem durdu
 
     def test_ayni_anda_iki_toplu_islem_baslamaz(self):
