@@ -1,0 +1,23 @@
+seovisi — Tarama ızgarası logosu
+
+Renkler (açık zemin)
+  Yazı / koyu      #15161A
+  Yeşil (tamam)    #1E9E5A
+  Mavi (vurgu)     #2F4BF0
+  Boş kare (gri)   #D3D6DD
+
+Renkler (koyu zemin)
+  Arka plan        #14151B
+  Yazı             #FFFFFF
+  Yeşil            #2BC071
+  Mavi             #5A70FF
+  Boş kare         #3A3D47
+
+Yazı tipi: Plus Jakarta Sans ExtraBold (800), harf aralığı -%3,5 — SVG'lerde vektöre çevrildi, font kurmak gerekmez.
+
+Dosyalar
+  svg/   — ölçeklenebilir ana dosyalar (web, baskı, tasarım programları)
+  png/   — şeffaf ve arka planlı raster sürümler
+  png/ikon/ — uygulama ikonu 16–1024 px (kare sürüm: köşeleri platformun yuvarladığı yerler için)
+  favicon.ico — web sitesi sekme ikonu
+  seovisi-uygulama.ico — Windows masaüstü uygulaması ikonu

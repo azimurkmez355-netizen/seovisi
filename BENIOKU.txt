@@ -1,0 +1,46 @@
+SEOVISI
+=======
+
+Ideasoft mağazaları için SEO ve kategori düzenleme aracı.
+
+Çalıştırma: baslat.bat dosyasına çift tıklayın. Ek kurulum yok, sadece Python 3 yeterli.
+Panel tarayıcıda açılır (http://localhost:8765). Siyah pencereyi kapatırsanız program durur.
+
+İlk kurulum (bir kez):
+ 1. Ideasoft > Entegrasyonlar > API > API Ekle
+      Uygulama Adı      : seovisi
+      Yönlendirme Adresi: http://localhost:8765/callback
+    Uygulama izinlerinde Katalog okuma + Katalog yazma açık olsun.
+ 2. Panelde Ayarlar > Bağlantı: mağaza adresi, Client ID ve Client Secret'ı girip Kaydet.
+ 3. "Mağazaya bağlan" > Ideasoft'ta izin verin.
+ 4. Ayarlar > Mağaza: mağaza adını yazın (başlık ve açıklamalarda kullanılır).
+ 5. Genel bakış > "Mağazayı tara".
+
+Neler yapar:
+ - Genel bakış: her ürünün SEO, görsel ve kategori durumu; önem sırasına göre yapılacaklar.
+ - Ürün SEO'su: Ideasoft'taki SEO yüzdesi; eksik ürünlere açıklama, başlık ve meta açıklama
+   hazırlanır, siz kontrol edip gönderirsiniz.
+ - Kategoriler: yanlış kategorideki ve kategorisiz ürünler, açılması önerilen alt kategoriler.
+ - Görseller: görseli olmayan ürünler (mağazada hiçbir şey değiştirilmez).
+
+Güvenlik:
+ - Tarama ve analiz mağazada hiçbir şey değiştirmez. Mağazaya yalnızca sizin onayladığınız
+   değişiklikler yazılır.
+ - Yazmadan önce ürün yeniden okunur; yazdıktan sonra fiyat, stok gibi korunan alanlar
+   kontrol edilir. Biri değişirse ürün eski hâline yazılır ve işlem durur.
+ - Eski açıklama ve kategoriler yedeklenir; her değişiklik geri alınabilir.
+
+Veriler:
+ - Her mağazanın ayarları, veritabanı ve işlem kaydı data/magazalar/<mağaza adresi> klasöründedir.
+ - Eski sürümden gelen data/ayarlar.json ve durum.db ilk açılışta bu klasöre kendiliğinden taşınır.
+ - data/sunucu.json oturum anahtarını tutar. data klasörünü paylaşmayın.
+
+Sunucu kipi (seovisi.com.tr gibi, birden çok mağaza):
+ - Başlatma: python app.py --sunucu --port 8080   (varsayılan adres 127.0.0.1; önüne HTTPS veren
+   Caddy ya da Nginx konur).
+ - data/sunucu.json içine yazılır:
+      client_id, client_secret : Ideasoft'taki seovisi uygulamasının anahtarları
+      public_url               : dışarıdan açılan adres, örn. https://app.seovisi.com.tr
+   Ideasoft'taki yönlendirme adresi: <public_url>/callback
+ - Mağazalar giriş sayfasında mağaza adreslerini yazıp Ideasoft'ta izin verir. Şifre alınmaz;
+   oturum 30 gün süren imzalı bir çerezle tutulur. Her mağaza yalnızca kendi verisini görür.

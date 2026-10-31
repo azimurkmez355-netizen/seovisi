@@ -1,0 +1,1345 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>seovisi</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="192x192" href="/marka/seovisi-ikon-192.png">
+<link rel="apple-touch-icon" href="/marka/seovisi-ikon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* seovisi tasarım sistemi (renkler logodan: ui/marka/RENKLER.txt)
+   - Açık, nötr yüzeyler; tek canlı ana renk (--brand) yalnızca eyleme ve seçime işaret eder.
+   - Durum renkleri (iyi / uyarı / sorun / kategorisiz) yalnızca durum bildirir.
+   - Akılda kalan tek öğe: genel bakıştaki ürün mozaiği. Geri kalan her şey sakin. */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --surface2:#f8f9f6; --line:#e3e5e0; --line2:#cfd3cc;
+  --ink:#15161a; --ink2:#535a64; --ink3:#868d97;
+  --brand:#2f4bf0; --brand2:#2238c4; --brand-soft:#eceefd;
+  --ok:#1e9e5a; --ok-soft:#e6f5ec; --warn:#e3a008; --warn-soft:#fdf4da; --bad:#e0452b; --bad-soft:#fcebe7;
+  --violet:#7b5cd6; --idle:#d3d6dd;
+  --disp:"Bricolage Grotesque","Segoe UI",sans-serif;
+  --body:"Instrument Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --r:10px; --r-s:7px;
+  /* önceki adlar (sayfa betiklerindeki renkler bunlara bağlı) */
+  --beton:var(--bg); --kagit:var(--surface); --cizgi:var(--line); --petrol:var(--brand); --petrol2:var(--brand2);
+  --yesil:var(--ok); --kirmizi:var(--bad); --sari:var(--warn); --isle:var(--brand); --mor:var(--violet); --bekle:var(--idle); --oniz:#9db3c7;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.55 var(--body);display:grid;grid-template-columns:252px minmax(0,1fr);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--brand)}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px}
+.muted{color:var(--ink3)}
+.ok-t{color:var(--ok);font-weight:600} .bad-t{color:var(--bad);font-weight:600}
+[hidden]{display:none!important}
+
+/* ---------- sol menü */
+.side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;background:var(--surface);border-right:1px solid var(--line);padding:22px 14px 16px}
+.logo-slot{display:block;margin:2px 10px 14px;line-height:0}
+.logo-slot img{height:30px;width:auto;display:block}
+.logo-mark{display:none;height:26px;width:26px;flex:none}
+.store{display:flex;align-items:center;gap:8px;margin:0 10px 22px;font-size:13px;color:var(--ink2);min-width:0}
+.store #brand-store{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:var(--ink)}
+.conn{display:inline-flex;align-items:center;flex:none}
+.conn i{width:8px;height:8px;border-radius:50%;background:var(--bad);display:inline-block}
+.conn.ok i{background:var(--ok)}
+.conn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.store .out{margin-left:auto;flex:none;color:var(--ink2);text-decoration:none;font-size:12px}
+.store .out:hover{color:var(--ink);text-decoration:underline}
+.sunucu [data-yerel]{display:none}
+nav{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0}
+nav a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--r-s);color:var(--ink2);text-decoration:none;cursor:pointer;font-weight:500}
+nav a svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+nav a:hover{background:var(--surface2);color:var(--ink)}
+nav a.on{background:var(--brand-soft);color:var(--brand2)}
+nav a .badge{margin-left:auto;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--bad);background:var(--bad-soft);padding:1px 8px;border-radius:999px}
+nav a .badge:empty{display:none}
+nav .sep{height:1px;background:var(--line);margin:10px 10px}
+nav .grow{flex:1}
+.dock{display:grid;gap:8px;margin:10px 0}
+.dock:empty{display:none}
+.job{border:1px solid var(--line);border-radius:var(--r-s);padding:9px 11px;background:var(--surface2);cursor:pointer;font-size:12.5px}
+.job b{display:block;font-size:13px;color:var(--ink)}
+.job span{color:var(--ink2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.job .jb{height:4px;background:var(--line);border-radius:4px;margin-top:7px;overflow:hidden}
+.job .jb i{display:block;height:100%;background:var(--brand);border-radius:4px}
+.job .jb.ind i{width:35%;animation:ind 1.4s ease-in-out infinite}
+@keyframes ind{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+
+/* ---------- sayfa */
+main{padding:30px 40px 56px;min-width:0;max-width:1280px;width:100%}
+section.view{display:none}
+section.view.on{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.ph>div:first-child{flex:1 1 340px;min-width:0}
+.ph-act{flex:none}
+.ph-act .btn.ghost:disabled{display:none}   /* işe yaramayan Duraklat/Durdur görünmesin */
+.ph h1{font:700 30px/1.1 var(--disp);letter-spacing:-.6px;margin:0 0 6px}
+.ph .lede{margin:0;color:var(--ink2);max-width:62ch}
+.ph-act{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2{font:700 19px/1.25 var(--disp);letter-spacing:-.3px;margin:0 0 12px}
+h3{font-size:15px;font-weight:600;margin:0 0 8px}
+.meta{display:flex;gap:18px;flex-wrap:wrap;color:var(--ink3);font-size:13px;margin:-8px 0 18px}
+.meta b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* tuşlar */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--brand);background:var(--brand);color:#fff;padding:8px 15px;border-radius:var(--r-s);cursor:pointer;font-weight:600;font-size:14px;line-height:1.3;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--brand2);border-color:var(--brand2)}
+.btn.ghost{background:var(--surface);color:var(--ink);border-color:var(--line2)}
+.btn.ghost:hover{background:var(--surface2);border-color:var(--ink3)}
+.btn.go{background:var(--ok);border-color:var(--ok)}
+.btn.go:hover{background:#178350;border-color:#178350}
+.btn.warn{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn:disabled{opacity:.42;cursor:not-allowed}
+.btn.sm{padding:5px 11px;font-size:13px}
+/* diğer işlemler menüsü */
+details.more{position:relative}
+details.more>summary{list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+details.more .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:6;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:6px;min-width:270px;box-shadow:0 12px 32px rgba(18,20,23,.12)}
+details.more .menu button,details.more .menu label{display:flex;width:100%;text-align:left;align-items:center;gap:8px;background:none;border:0;padding:9px 10px;border-radius:var(--r-s);cursor:pointer;font-weight:500}
+details.more .menu button:hover,details.more .menu label:hover{background:var(--surface2)}
+details.more .menu button:disabled{opacity:.4;cursor:not-allowed}
+details.more .menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
+
+/* kutular */
+.card,.panel,.sheet,.step{background:var(--surface);border:1px solid var(--line);border-radius:var(--r)}
+.card{padding:20px 22px;margin-bottom:20px}
+.panel{padding:18px 20px}
+.sheet{padding:18px 20px;margin-bottom:20px}
+.sheethead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.sheethead h2{margin:0;font-size:17px}
+.sheethead p{margin:0;color:var(--ink3);font-size:13px}
+.alert{display:none;background:var(--bad-soft);border:1px solid #f4c7bd;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#8f2716}
+.alert.show{display:block}
+.hint{background:var(--warn-soft);border:1px solid #f1dca0;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#6d4d00}
+.callout{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--ok-soft);border:1px solid #bfe3cf;border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
+.callout p{margin:0;color:#14583a}
+.callout b{font-variant-numeric:tabular-nums}
+
+/* durum sayıları: hem özet hem süzgeç */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.legend button{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 14px 6px 10px;cursor:pointer;text-align:left}
+.legend button:hover{border-color:var(--ink3)}
+.legend button i{width:10px;height:10px;border-radius:50%;flex:none}
+.legend .num{font:700 17px/1 var(--disp);font-variant-numeric:tabular-nums}
+.legend .lab{color:var(--ink2);font-size:13.5px}
+#s-sub,#g-sub{display:flex;flex-wrap:wrap;gap:6px 8px;margin:0 0 16px;font-size:13px;color:var(--ink2)}
+#s-sub a,#g-sub a{display:inline-flex;gap:4px;align-items:center;background:var(--surface2);border:1px solid var(--line);border-radius:999px;padding:3px 11px;text-decoration:none;margin:0!important}
+#s-sub a:hover,#g-sub a:hover{border-color:var(--ink3)}
+#s-sub br{display:none}
+#s-sub span,#g-sub span{align-self:center}
+.bar{height:6px;background:var(--line);border-radius:6px;display:flex;overflow:hidden;margin-top:12px}
+.bar span{display:block;height:100%}
+
+/* katlanır ürün haritası */
+details.mapbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:20px}
+details.mapbox>summary{cursor:pointer;padding:13px 18px;font-weight:600;display:flex;gap:10px;align-items:center;list-style:none}
+details.mapbox>summary::-webkit-details-marker{display:none}
+details.mapbox>summary:before{content:"";width:7px;height:7px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:rotate(-45deg);transition:transform .15s}
+details.mapbox[open]>summary:before{transform:rotate(45deg)}
+details.mapbox>summary span{color:var(--ink3);font-weight:400;font-size:13px}
+details.mapbox .mapin{padding:0 18px 18px}
+#map,#gmap,#smap{width:100%;display:block;cursor:pointer;image-rendering:pixelated}
+#mapwrap{position:relative}
+#tip,.tipbox{position:absolute;pointer-events:none;background:var(--ink);color:#fff;font-size:12px;padding:5px 9px;border-radius:6px;display:none;white-space:nowrap;z-index:3}
+
+/* liste araç çubuğu */
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.tools input[type=search]{flex:1;min-width:240px;padding:9px 13px;border:1px solid var(--line2);border-radius:var(--r-s);background:var(--surface)}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;background:#e8eae5;padding:3px;border-radius:var(--r-s)}
+.seg button{border:0;background:none;padding:6px 12px;border-radius:5px;cursor:pointer;color:var(--ink2);font-weight:500;font-size:13.5px}
+.seg button:hover{color:var(--ink)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(18,20,23,.12)}
+/* sekmeler */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.tabs button{border:0;background:none;padding:10px 14px;cursor:pointer;color:var(--ink2);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--brand2);border-bottom-color:var(--brand)}
+#ckind{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 14px;background:none;padding:0;border-radius:0;width:100%}
+#ckind button{border:0;background:none;padding:10px 14px;border-radius:0;cursor:pointer;color:var(--ink2);font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px;box-shadow:none}
+#ckind button.on{color:var(--brand2);border-bottom-color:var(--brand);background:none}
+.runbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-bottom:12px}
+.runbar label{display:inline-flex;align-items:center;gap:7px;color:var(--ink2);font-size:13.5px}
+.runbar select,.field select,.field input,.edit input,.edit textarea,select{padding:8px 10px;border:1px solid var(--line2);border-radius:var(--r-s);background:var(--surface)}
+.help{margin:-4px 0 12px;font-size:13px;color:var(--ink3)}
+.help summary{cursor:pointer;color:var(--ink2);font-weight:500}
+.help p{margin:6px 0 0;max-width:90ch}
+
+/* tablo */
+.tablewrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:auto}
+table{width:100%;border-collapse:collapse;background:var(--surface)}
+.tablewrap table{border:0}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--ink3);background:var(--surface2);font-size:12.5px;white-space:nowrap}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:#f6f8ff}
+tbody tr:last-child td{border-bottom:0}
+td.n{font-variant-numeric:tabular-nums;color:var(--ink3);width:70px}
+.pill{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-size:13px;font-weight:500}
+.pill i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.pager{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px;color:var(--ink2);font-size:13px}
+.pager span{margin-right:auto}
+
+/* genel bakış */
+.ov-grid{display:grid;grid-template-columns:290px minmax(0,1fr);gap:18px;margin-bottom:30px}
+.health{display:grid;gap:10px;align-content:start}
+.health button{display:grid;grid-template-columns:1fr auto;gap:2px 10px;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px;cursor:pointer}
+.health button:hover{border-color:var(--ink3)}
+.health button.on{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.health .h-name{font-weight:600}
+.health .h-pct{font:700 26px/1 var(--disp);font-variant-numeric:tabular-nums;grid-row:span 2;align-self:center}
+.health .h-note{color:var(--ink3);font-size:13px}
+.health .h-bar{grid-column:1/-1;height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin-top:8px}
+.health .h-bar i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.lensbox{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px 20px;min-width:0}
+.lens-top{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+.lens-top h2{margin:0;font-size:17px}
+.lens-top p{margin:0;color:var(--ink3);font-size:13px}
+#o-map{width:100%;display:block;cursor:pointer}
+#o-progress{margin:10px 0 0;color:var(--ink2);font-size:13px}
+#o-progress:empty{display:none}
+.todo{list-style:none;margin:0 0 28px;padding:0;counter-reset:t;display:grid;gap:8px}
+.todo li{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;position:relative}
+.todo li:after{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--c,var(--brand))}
+.todo li:before{counter-increment:t;content:counter(t);font:700 17px var(--disp);color:var(--ink3);text-align:center}
+.todo .n{font:700 20px/1 var(--disp);font-variant-numeric:tabular-nums;margin-right:3px}
+.todo strong{font-weight:600}
+.todo p{margin:3px 0 0;color:var(--ink2);font-size:13.5px}
+.todo li.ok{--c:var(--ok)}
+.todo li.ok:before{content:"✓";color:var(--ok)}
+.calm{background:var(--ok-soft);border:1px solid #bfe3cf;border-radius:var(--r);padding:15px 18px;margin:0 0 28px;color:#14583a}
+
+/* ayarlar */
+.setpane{display:none}
+.setpane.on{display:block}
+.steps{display:grid;gap:14px;max-width:860px}
+.step{padding:18px 20px 20px}
+.step h3{font-size:16px;margin:0 0 4px}
+.step>p{margin:0 0 12px;color:var(--ink2)}
+.field{display:grid;gap:5px;margin-bottom:12px}
+.field label{font-size:13px;color:var(--ink2);font-weight:500}
+.field input,.field select{width:100%}
+.copyrow{display:flex;gap:8px}
+.copyrow input{flex:1;background:var(--surface2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}
+.check{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
+.check input{margin-top:4px;accent-color:var(--brand)}
+.acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-height:240px;overflow:auto;font-size:12px;white-space:pre-wrap}
+
+/* ayrıntı paneli */
+#drawer{position:fixed;top:0;right:0;bottom:0;width:min(680px,100vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:-24px 0 48px rgba(18,20,23,.14);transform:translateX(104%);transition:transform .2s ease;overflow:auto;z-index:8;padding:24px 28px 0}
+#drawer.open{transform:none}
+#drawer h2{font:700 21px/1.25 var(--disp);margin:10px 0 4px}
+#drawer .acts{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);margin:20px -28px 0;padding:14px 28px}
+.x{position:absolute;right:16px;top:14px;border:0;background:var(--surface2);width:34px;height:34px;border-radius:50%;font-size:20px;line-height:1;cursor:pointer;color:var(--ink2)}
+.x:hover{background:var(--line)}
+.kv{display:grid;grid-template-columns:140px 1fr;gap:8px 14px;margin:16px 0}
+.kv dt{color:var(--ink3)} .kv dd{margin:0}
+.desc{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-s);padding:12px 14px;margin:8px 0 14px}
+.desc p{margin:0 0 8px} .desc h3{font-size:15px;margin:10px 0 4px} .desc ul{margin:0 0 8px;padding-left:20px}
+.desc mark{background:#ffe78a;padding:0 2px}
+.meter{display:flex;align-items:center;gap:10px;margin:4px 0}
+.meter .m{flex:1;height:8px;background:var(--line);border-radius:8px;overflow:hidden}
+.meter .m span{display:block;height:100%;border-radius:8px}
+.edit textarea,.edit input{width:100%;font:13.5px/1.5 var(--body)}
+.edit textarea.code{font:12px/1.5 Consolas,monospace;min-height:260px}
+.edit label{font-size:13px;color:var(--ink2);display:block;margin:12px 0 5px}
+
+/* onay penceresi */
+#ask{border:0;border-radius:14px;padding:0;max-width:min(520px,92vw);width:100%;box-shadow:0 24px 64px rgba(18,20,23,.28)}
+#ask::backdrop{background:rgba(18,20,23,.38)}
+#ask .in{padding:22px 24px 8px}
+#ask h2{font-size:19px;margin:0 0 8px}
+#ask .body{color:var(--ink2);white-space:pre-line}
+#ask .row{display:flex;justify-content:flex-end;gap:8px;padding:14px 24px 18px}
+
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(30px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;opacity:0;transition:.2s;z-index:12;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:980px){
+  body{grid-template-columns:1fr}
+  .side{position:sticky;top:0;z-index:7;height:auto;flex-direction:row;align-items:center;gap:10px;padding:10px 12px;border-right:0;border-bottom:1px solid var(--line);overflow-x:auto}
+  .logo-slot{display:none} .logo-mark{display:block} .store{margin:0;flex:none;max-width:130px}
+  nav{flex-direction:row;flex:none;gap:2px} nav .sep,nav .grow{display:none}
+  nav a{padding:8px 10px;white-space:nowrap} nav a .badge{display:none}
+  .dock{display:none}
+  main{padding:20px 16px 40px}
+  .ov-grid,.cols,.grid2{grid-template-columns:1fr}
+  .todo li{grid-template-columns:1fr}.todo li:before{display:none}
+  .ph h1{font-size:25px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<aside class="side">
+  <a class="logo-slot" href="#" data-v="genel" aria-label="seovisi, genel bakışa dön"><img src="/marka/seovisi-logo.svg" alt="seovisi"></a>
+  <img class="logo-mark" src="/marka/seovisi-isaret.svg" alt="seovisi">
+  <div class="store"><span class="conn" id="conn" title="Bağlantı durumu"><i></i><span>Bağlı değil</span></span><span id="brand-store">Mağaza bağlı değil</span><a class="out" id="b-logout" href="/cikis" hidden>Çıkış</a></div>
+  <nav aria-label="Ana menü">
+    <a data-v="genel" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Genel bakış</a>
+    <a data-v="seo"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>Ürün SEO'su<b class="badge" id="nb-seo"></b></a>
+    <a data-v="kategori"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Kategoriler<b class="badge" id="nb-kategori"></b></a>
+    <a data-v="gorsel"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>Görseller<b class="badge" id="nb-gorsel"></b></a>
+    <div class="grow"></div>
+    <div class="dock" id="dock" aria-live="polite"></div>
+    <a data-v="ayarlar"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ayarlar</a>
+  </nav>
+</aside>
+
+<main>
+<!-- ============================ GENEL BAKIŞ -->
+<section class="view on" id="v-genel">
+  <header class="ph">
+    <div><h1 id="o-title">Genel bakış</h1><p class="lede" id="o-sub">Mağazanızdaki her ürün bir kare. SEO, Görsel ya da Kategori'yi seçin; aynı ürünler o açıya göre renklenir.</p></div>
+    <div class="ph-act"><button class="btn" id="o-scan">Mağazayı tara</button></div>
+  </header>
+  <div id="o-setup"></div>
+  <div class="ov-grid">
+    <div class="health" id="o-lens" role="tablist" aria-label="Görünüm">
+      <button role="tab" data-l="seo" class="on"><span class="h-name">SEO</span><span class="h-pct" id="h-seo">–</span><span class="h-note" id="hn-seo">Taranmadı</span><span class="h-bar"><i id="hb-seo"></i></span></button>
+      <button role="tab" data-l="img"><span class="h-name">Görsel</span><span class="h-pct" id="h-img">–</span><span class="h-note" id="hn-img">Taranmadı</span><span class="h-bar"><i id="hb-img"></i></span></button>
+      <button role="tab" data-l="cat"><span class="h-name">Kategori</span><span class="h-pct" id="h-cat">–</span><span class="h-note" id="hn-cat">Analiz edilmedi</span><span class="h-bar"><i id="hb-cat"></i></span></button>
+    </div>
+    <div class="lensbox">
+      <div class="lens-top"><h2 id="o-lenstitle">Ürün haritası</h2><p id="o-lensinfo"></p></div>
+      <div class="legend" id="o-legend"></div>
+      <div style="position:relative"><canvas id="o-map" height="10"></canvas><div id="o-tip" class="tipbox"></div></div>
+      <p id="o-progress"></p>
+    </div>
+  </div>
+  <h2>Yapılacaklar</h2>
+  <div id="o-todo"></div>
+</section>
+
+<!-- ============================ ÜRÜN SEO'SU -->
+<section class="view" id="v-seo">
+  <header class="ph">
+    <div><h1>Ürün SEO'su</h1><p class="lede">Ürünlerin Ideasoft'taki SEO yüzdesi. Eksik olanlara açıklama hazırlanır; siz kontrol edip gönderirsiniz.</p></div>
+    <div class="ph-act">
+      <button class="btn ghost" id="s-pause">Duraklat</button>
+      <button class="btn ghost" id="s-stop">Durdur</button>
+      <button class="btn" id="s-start">Analizi başlat</button>
+      <details class="more"><summary class="btn ghost">Diğer işlemler</summary><div class="menu">
+        <button id="s-prepall">Hazırlanmamışları hazırla</button>
+        <button id="s-repair">Eksik ürünleri incele ve onar</button>
+        <hr><label><input type="checkbox" id="s-prep"> Analiz sırasında eksiklere açıklama hazırla</label>
+      </div></details>
+    </div>
+  </header>
+  <div class="meta"><span><b id="s-prog">%0</b> tarandı</span><span><b id="s-rate">0</b> ürün/dk</span></div>
+  <div class="alert" id="s-alert"></div>
+  <div class="hint" id="s-hint" style="display:none"></div>
+  <div class="callout" id="s-sendbox" hidden><p id="s-sendinfo"></p><button class="btn go" id="s-sendall">Toplu gönder</button></div>
+  <div class="legend" id="s-legend"></div>
+  <p id="s-sub"></p>
+  <details class="mapbox" data-draw="s"><summary>Ürün haritası <span id="s-info"></span></summary><div class="mapin">
+    <div style="position:relative"><canvas id="smap" height="10"></canvas><div id="stip" class="tipbox"></div></div>
+    <div class="bar" id="s-bar"></div></div></details>
+  <div class="tools"><input type="search" id="sq" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><div class="seg" id="sseg"></div></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Ürün no</th><th>Stok kodu</th><th>Ürün adı</th><th>SEO</th><th>Durum</th><th>Açıklama</th><th style="text-align:right">Fiyat (TL)</th></tr></thead>
+    <tbody id="srows"></tbody>
+  </table></div>
+  <div class="pager"><span id="spinfo"></span><button class="btn ghost sm" id="sprev">Önceki</button><button class="btn ghost sm" id="snext">Sonraki</button></div>
+</section>
+
+<!-- ============================ KATEGORİLER -->
+<section class="view" id="v-kategori">
+  <header class="ph">
+    <div><h1>Kategoriler</h1><p class="lede" id="c-info">Yanlış kategorideki ürünler, kategorisiz ürünler ve açılması önerilen yeni kategoriler. Her değişiklik geri alınabilir.</p></div>
+    <div class="ph-act">
+      <button class="btn ghost" id="c-stop">Durdur</button>
+      <button class="btn ghost" id="c-recalc" title="Mağazadan yeniden okumadan, kayıtlı verilerle hesaplar">Yeniden hesapla</button>
+      <button class="btn" id="c-start">Analizi başlat</button>
+    </div>
+  </header>
+  <div class="meta"><span>Durum: <b id="c-phase">–</b></span><span>Son analiz: <b id="c-when">–</b></span></div>
+  <div class="alert" id="c-alert"></div>
+  <div class="card" id="c-progress" style="display:none" aria-live="polite">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+      <h3 id="c-prog-title" style="margin:0">İşlem</h3><span id="c-prog-count" class="muted"></span>
+      <button class="btn ghost sm" id="c-jobstop" style="margin-left:auto">Durdur</button>
+    </div>
+    <div id="c-prog-body"></div>
+  </div>
+  <div class="legend" id="c-legend"></div>
+  <div class="seg" id="ckind"></div>
+  <div class="tools">
+    <div class="seg" id="cfseg"></div>
+    <input type="search" id="cq" placeholder="Ürün adı, stok kodu veya kategori ile ara">
+    <a class="btn ghost" id="c-csv" href="#">Excel için indir</a>
+  </div>
+  <details class="help"><summary>Bu liste nedir?</summary><p id="c-help"></p></details>
+  <div class="runbar" id="c-applybar">
+    <label>En az güven
+      <select id="c-min"><option value="0">Hepsi</option><option value="70">%70</option><option value="80">%80</option><option value="85">%85</option><option value="90">%90</option></select></label>
+    <label><input type="checkbox" id="c-pending"> Sadece uygulanmamışlar</label>
+    <span style="flex:1"></span>
+    <button class="btn ghost" id="c-apply-all">Listedekilerin hepsini uygula</button>
+    <button class="btn go" id="c-apply-sel" disabled>Seçilenleri uygula</button>
+  </div>
+  <div class="runbar" id="c-newbar" style="display:none">
+    <label><input type="checkbox" id="c-newpending" checked> Sadece açılmamışlar</label>
+    <span class="muted" style="font-size:13px">Kategori adlarını listede düzenleyebilirsiniz.</span>
+    <span style="flex:1"></span>
+    <button class="btn ghost" id="c-new-all">Bekleyenlerin hepsini aç</button>
+    <button class="btn go" id="c-new-sel" disabled>Seçilenleri toplu aç</button>
+  </div>
+  <div class="tablewrap"><table>
+    <thead id="chead"></thead>
+    <tbody id="crows"></tbody>
+  </table></div>
+  <div class="pager"><span id="cpinfo"></span><button class="btn ghost sm" id="cprev">Önceki</button><button class="btn ghost sm" id="cnext">Sonraki</button></div>
+</section>
+
+<!-- ============================ GÖRSELLER -->
+<section class="view" id="v-gorsel">
+  <header class="ph">
+    <div><h1>Görseller</h1><p class="lede" id="g-info">Görseli olmayan ürünleri bulur. Mağazada hiçbir şey değiştirilmez.</p></div>
+    <div class="ph-act">
+      <button class="btn ghost" id="g-pause">Duraklat</button>
+      <button class="btn ghost" id="g-stop">Durdur</button>
+      <button class="btn" id="g-start">Taramayı başlat</button>
+      <details class="more"><summary class="btn ghost">Diğer işlemler</summary><div class="menu">
+        <button id="g-reset">Sonuçları sil ve baştan tara</button>
+      </div></details>
+    </div>
+  </header>
+  <div class="meta"><span><b id="g-prog">0</b> tarandı</span><span><b id="g-rate">0</b> ürün/dk</span><span>Kalan süre: <b id="g-eta">–</b></span></div>
+  <div class="alert" id="g-alert"></div>
+  <div class="legend" id="g-legend"></div>
+  <p id="g-sub"></p>
+  <details class="mapbox" data-draw="g"><summary>Ürün haritası <span>Her kare bir ürün</span></summary><div class="mapin">
+    <div style="position:relative"><canvas id="gmap" height="10"></canvas><div id="gtip" class="tipbox"></div></div>
+    <div class="bar" id="g-bar"></div></div></details>
+  <div class="tools"><input type="search" id="gq" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><div class="seg" id="gseg"></div></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Ürün no</th><th>Stok kodu</th><th>Ürün adı</th><th>Görsel</th><th>Durum</th><th>Son kontrol</th></tr></thead>
+    <tbody id="grows"></tbody>
+  </table></div>
+  <div class="pager"><span id="gpinfo"></span><button class="btn ghost sm" id="gprev">Önceki</button><button class="btn ghost sm" id="gnext">Sonraki</button></div>
+</section>
+
+<!-- ============================ AYARLAR -->
+<section class="view" id="v-ayarlar">
+  <header class="ph"><div><h1>Ayarlar</h1><p class="lede">Mağaza bilgileri, Ideasoft bağlantısı ve çalışma tercihleri.</p></div></header>
+  <div class="tabs" id="settabs" role="tablist">
+    <button data-p="magaza" class="on">Mağaza</button><button data-p="baglanti">Bağlantı</button><button data-p="seoay">SEO ayarları</button>
+  </div>
+
+  <div class="setpane on" id="sp-magaza"><div class="steps">
+    <div class="step">
+      <h3>Mağaza profili</h3>
+      <p>Açıklama, sayfa başlığı ve meta açıklamalarda kullanılır. Marka, ürünün Ideasoft'taki marka alanı boşsa kullanılır.</p>
+      <div class="grid2">
+        <div class="field"><label for="p-magaza">Mağaza adı</label><input id="p-magaza" placeholder="Sitenizde görünen mağaza adı"></div>
+        <div class="field"><label for="p-marka">Varsayılan marka (isteğe bağlı)</label><input id="p-marka" placeholder="Ürünlerin çoğu tek markaysa"></div>
+      </div>
+      <div class="acts" style="margin-top:8px"><button class="btn" id="b-saveprof">Profili kaydet</button></div>
+    </div>
+  </div></div>
+
+  <div class="setpane" id="sp-baglanti"><div class="steps">
+    <div class="step" data-yerel>
+      <h3>1. API uygulamasını oluşturun</h3>
+      <p>Ideasoft panelinde Entegrasyonlar &gt; API &gt; API Ekle sayfasındaki ilk iki kutuya bunları yapıştırıp kaydedin.</p>
+      <div class="field"><label>Uygulama adı</label><div class="copyrow"><input readonly value="seovisi" id="c-appname"><button class="btn ghost" data-copy="c-appname">Kopyala</button></div></div>
+      <div class="field"><label>Yönlendirme adresi</label><div class="copyrow"><input readonly id="c-redirect"><button class="btn ghost" data-copy="c-redirect">Kopyala</button></div></div>
+      <p class="muted" style="margin:0">Uygulama izinlerinde Katalog okuma ve Katalog yazma açık olmalı.</p>
+    </div>
+    <div class="step" data-yerel>
+      <h3>2. Client ID ve Client Secret'ı girin</h3>
+      <p>Kaydettikten sonra Ideasoft bu iki değeri gösterir.</p>
+      <div class="field"><label for="s-store">Mağaza adresi</label><input id="s-store" placeholder="magazaniz.myideasoft.com"></div>
+      <div class="grid2">
+        <div class="field"><label for="s-cid">Client ID</label><input id="s-cid" autocomplete="off"></div>
+        <div class="field"><label for="s-csec">Client Secret</label><input id="s-csec" type="password" autocomplete="off" placeholder="Kayıtlıysa boş bırakın"></div>
+      </div>
+      <button class="btn" id="b-savecreds">Kaydet</button>
+    </div>
+    <div class="step">
+      <h3 id="conn-h">3. Mağazaya bağlanın</h3>
+      <p>Ideasoft izin sayfası açılır; onayladığınızda bu panele geri dönersiniz.</p>
+      <div class="acts" style="margin:0"><button class="btn" id="b-connect">Mağazaya bağlan</button><button class="btn ghost" id="b-disconnect">Bağlantıyı kaldır</button></div>
+      <p id="connstate" style="margin:12px 0 0"></p>
+    </div>
+  </div></div>
+
+  <div class="setpane" id="sp-seoay"><div class="steps">
+    <div class="step">
+      <h3>Açıklama yazımı</h3>
+      <div class="field" style="max-width:280px"><label for="s-dens">Hedef kelime yoğunluğu (%2 – %3)</label><input id="s-dens" type="number" step="0.1" min="2.1" max="2.9"></div>
+      <button class="btn" id="b-saveopts">Kaydet</button>
+    </div>
+    <div class="step">
+      <h3>Fiyat gösterimi</h3>
+      <p>Ürün SEO'su listesinde Euro fiyatlı ürünler bu kurla TL'ye çevrilerek sıralanır.</p>
+      <div class="field" style="max-width:200px"><label for="s-rate-eur">Euro kuru (₺)</label><input id="s-rate-eur" type="number" step="0.01" min="1"></div>
+    </div>
+    <div class="step">
+      <h3>Hedef kelimenin yeri</h3>
+      <p>Ideasoft hedef kelimeyi belgelenmiş bir alanda tutmuyor. Panelde hedef kelimesi yazılı bir ürünün stok kodunu ve o kelimeyi girin; program yerini bulur.</p>
+      <div class="grid2"><div class="field"><label for="s-sample">Örnek stok kodu</label><input id="s-sample"></div>
+        <div class="field"><label for="s-needle">Panelde yazan hedef kelime</label><input id="s-needle"></div></div>
+      <button class="btn" id="b-discover">Keşfet</button>
+      <p id="discmsg" style="margin:12px 0 0"></p>
+      <details id="discdet" style="display:none;margin-top:8px"><summary>Ham veri (sorun olursa bunu gönderin)</summary><pre class="json" id="discjson"></pre></details>
+    </div>
+    <div class="step">
+      <h3>Kelime sayımı</h3>
+      <p>Örnek ürünün açıklamasını değiştirmeden önce paneldeki “Kelime Sayısı” değerini yazın; program aynı sonucu veren sayım yöntemini seçer.</p>
+      <div class="grid2"><div class="field"><label for="s-pcount">Panelde görünen kelime sayısı</label><input id="s-pcount" type="number" min="1" placeholder="Ör. 25"></div>
+        <div class="field"><label>Seçili yöntem</label><input id="s-method" readonly></div></div>
+      <button class="btn" id="b-calib">Eşleştir</button>
+      <p id="calmsg" style="margin:12px 0 0"></p>
+      <table id="caltab" style="display:none;margin-top:8px"><thead><tr><th>Yöntem</th><th>Sayı</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div></div>
+
+</section>
+</main>
+
+<aside id="drawer" aria-hidden="true"><button class="x" id="dclose" aria-label="Kapat">×</button><div id="dbody"></div></aside>
+<dialog id="ask"><div class="in"><h2 id="ask-t"></h2><div class="body" id="ask-b"></div></div>
+  <div class="row"><button class="btn ghost" id="ask-no">Vazgeç</button><button class="btn" id="ask-ok">Onayla</button></div></dialog>
+<div id="toast" role="status"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s??'').toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S = null;
+
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200)}
+async function api(path, opt={}){
+  const r = await fetch(path, opt); let j = {};
+  try{ j = await r.json() }catch(e){}
+  if(r.status === 401 && j.login){ location.href = '/'; return {}; }   // sunucuda oturum kapandı: giriş sayfası
+  if(j.error) toast(j.error);
+  return j;
+}
+const post = (p, body) => api(p, {method:'POST', headers:{'Content-Type':'application/json'}, body: body ? JSON.stringify(body) : undefined});
+
+/* onay penceresi: ne olacağını başlık ve açıklamayla söyler; onay tuşu yapılacak işin adını taşır */
+function ask(body, opt={}){
+  const d = $('#ask'), ok = $('#ask-ok'), no = $('#ask-no');
+  $('#ask-t').textContent = opt.title || 'Emin misiniz?';
+  $('#ask-b').textContent = body || '';
+  ok.textContent = opt.ok || 'Onayla'; ok.className = 'btn' + (opt.danger ? ' warn' : opt.go ? ' go' : '');
+  no.textContent = opt.no || 'Vazgeç';
+  return new Promise(res => {
+    const done = v => { if(d.open) d.close(); ok.onclick = no.onclick = d.oncancel = null; res(v); };
+    ok.onclick = () => done(true); no.onclick = () => done(false);
+    d.oncancel = e => { e.preventDefault(); done(false); };
+    d.showModal(); ok.focus();
+  });
+}
+
+/* gezinme */
+document.querySelectorAll('nav a').forEach(a => a.onclick = () => show(a.dataset.v));
+$('.logo-slot').onclick = e => { e.preventDefault(); show('genel'); };
+function show(v){
+  document.querySelectorAll('nav a').forEach(x => x.classList.toggle('on', x.dataset.v===v));
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id==='v-'+v));
+  window.scrollTo(0, 0);
+  if(v==='genel') oTick();
+  if(v==='ayarlar'){ fillDone = false; tick(); }
+  if(v==='gorsel'){ gTick(); gRows(); }
+  if(v==='seo'){ sTick(); sRows(); }
+  if(v==='kategori'){ cTick(); cRows(); }
+}
+
+/* durum: bağlantı, mağaza adı ve ayarlar */
+async function tick(){
+  S = await api('/api/state');
+  if(!S.cfg) return;
+  const cfg = S.cfg, prof = cfg.profil || {}, srv = S.mode === 'sunucu';
+  document.body.classList.toggle('sunucu', srv); $('#b-logout').hidden = !srv;
+  $('#conn-h').textContent = srv ? 'Ideasoft bağlantısı' : '3. Mağazaya bağlanın';
+  $('#brand-store').textContent = prof.magaza || (cfg.store ? cfg.store.replace('.myideasoft.com', '') : 'Mağaza bağlı değil');
+  const conn = $('#conn'); conn.classList.toggle('ok', cfg.connected);
+  conn.querySelector('span').textContent = cfg.connected ? 'Mağazaya bağlı' : 'Bağlı değil';
+  $('#connstate').innerHTML = cfg.connected ? `<span class="ok-t">Bağlı:</span> ${esc(cfg.store)}` : '<span class="bad-t">Henüz bağlanılmadı.</span>';
+  if(!fillDone) fillSettings(cfg);
+}
+let fillDone = false;
+function fillSettings(c){
+  fillDone = true;
+  $('#c-redirect').value = c.redirect_uri; $('#s-store').value = c.store; $('#s-cid').value = c.client_id;
+  $('#s-sample').value = c.sample_sku; $('#s-needle').value = c.kw_needle || '';
+  $('#s-method').value = c.count_method ? c.count_method.split(',').map(m => METHODS[m] || m).join(' / ') : 'Henüz eşleşmedi (tüm yöntemlere göre güvenli aralık)';
+  if(c.kw_loc && c.kw_loc.res) $('#discmsg').innerHTML = `<span class="ok-t">Hedef kelime yeri kayıtlı:</span> ${esc(c.kw_loc.res)} › ${esc(c.kw_loc.path)}${c.kw_loc.varKey ? ' ('+esc(c.kw_loc.varKey)+')' : ''}`;
+  $('#s-dens').value = c.target_density;
+  if(c.has_secret) $('#s-csec').placeholder = 'Kayıtlı (değiştirmek için yazın)';
+  const pr = c.profil || {};
+  $('#p-magaza').value = pr.magaza || ''; $('#p-marka').value = pr.marka || '';
+}
+
+window.addEventListener('resize', () => { if(document.querySelector('#v-gorsel.on')) gDraw(); if(document.querySelector('#v-seo.on')) sDraw(); });
+
+/* ürün çekmecesi */
+function meter(label, v){ const c = v>=100 ? '#1e9e5a' : v>=60 ? '#e3a008' : '#e0452b';
+  return `<div class="meter"><span style="width:120px">${label}</span><div class="m"><span style="width:${v||0}%;background:${c}"></span></div><b>%${v??0}</b></div>`; }
+function hl(htmlStr, kw){
+  if(!kw) return htmlStr;
+  const re = new RegExp(kw.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'gi');
+  return htmlStr.replace(re, m => `<mark>${m}</mark>`);
+}
+$('#dclose').onclick = () => { $('#drawer').classList.remove('open'); $('#drawer').setAttribute('aria-hidden','true'); };
+document.addEventListener('keydown', e => { if(e.key==='Escape') $('#dclose').click(); });
+
+/* ayarlar */
+document.querySelectorAll('[data-copy]').forEach(b => b.onclick = () => { const i = $('#'+b.dataset.copy); i.select(); navigator.clipboard.writeText(i.value); toast('Kopyalandı.'); });
+$('#b-savecreds').onclick = async () => {
+  const r = await post('/api/settings', {store:$('#s-store').value.trim(), client_id:$('#s-cid').value.trim(), client_secret:$('#s-csec').value.trim()});
+  if(r.ok){ toast('Kaydedildi. Şimdi mağazaya bağlanın.'); $('#s-csec').value=''; fillDone=false; tick(); } };
+$('#b-connect').onclick = async () => { const r = await api('/api/connect'); if(r.url) window.open(r.url, '_blank'); };
+$('#b-disconnect').onclick = async () => { if(await ask('Yeniden bağlanana kadar tarama ve gönderim yapılamaz.', {title:'Mağaza bağlantısı kaldırılsın mı?', ok:'Bağlantıyı kaldır', danger:true})){ const r = await post('/api/disconnect'); if(r.login) location.href = '/'; else tick(); } };
+const METHODS = {ws_text:'Metin, boşluklara göre', uni_text:'Metin, noktalama ve boşluklara göre', asc_text:'Metin, Türkçe harfler ayırıcı',
+  ws_html:'Ham HTML, boşluklara göre', uni_html:'Ham HTML, noktalama ve boşluklara göre', asc_html:'Ham HTML, Türkçe harfler ayırıcı'};
+$('#b-discover').onclick = async () => {
+  const sku = $('#s-sample').value.trim(), kw = $('#s-needle').value.trim();
+  if(!kw){ toast('Panelde yazan hedef kelimeyi girin.'); return; }
+  $('#discmsg').textContent = 'Aranıyor… (filtre çalışmazsa tüm kayıtlar taranır, biraz sürebilir)';
+  const r = await post(`/api/discover?sku=${encodeURIComponent(sku)}&kw=${encodeURIComponent(kw)}`);
+  $('#discmsg').innerHTML = `<span class="${r.ok?'ok-t':'bad-t'}">${esc(r.msg||r.error||'')}</span>`;
+  if(r.checked){ $('#discdet').style.display='block'; $('#discdet').open = !r.ok;
+    $('#discjson').textContent = JSON.stringify({bulunan:r.loc||null, kontrol_edilenler:r.checked, kayitlar:r.records, urun:r.raw_product}, null, 2); }
+  fillDone=false; tick();
+};
+$('#b-calib').onclick = async () => {
+  const n = +$('#s-pcount').value; if(!n){ toast('Paneldeki kelime sayısını yazın.'); return; }
+  $('#calmsg').textContent = 'Okunuyor…';
+  const r = await post(`/api/calibrate?n=${n}&sku=${encodeURIComponent($('#s-sample').value.trim())}`);
+  $('#calmsg').innerHTML = `<span class="${r.ok?'ok-t':'bad-t'}">${esc(r.msg||r.error||'')}</span>`;
+  if(r.counts){ $('#caltab').style.display='table';
+    $('#caltab tbody').innerHTML = Object.entries(r.counts).map(([m,c]) => `<tr style="${c===r.panel?'background:#e6f5ed;font-weight:600':''}"><td>${METHODS[m]||m}</td><td>${c}</td></tr>`).join(''); }
+  fillDone=false; tick();
+};
+$('#b-saveopts').onclick = async () => {
+  await post('/api/settings', {target_density:+$('#s-dens').value});
+  toast('Ayarlar kaydedildi.'); fillDone=false; tick(); };
+$('#b-saveprof').onclick = async () => {
+  const r = await post('/api/settings', {profil: {magaza: $('#p-magaza').value.trim(), marka: $('#p-marka').value.trim()}});
+  if(r.ok) toast('Mağaza profili kaydedildi.'); fillDone=false; tick(); };
+/* ---------------- görsel kontrol */
+const GC = {v:'#1e9e5a', y:'#e0452b', n:'#d3d6dd', u:'#e3a008'};
+let G = null, GMAP = null, ggeo = null, gfilt = '', gpage = 0;
+async function gTick(){
+  G = await api('/api/img/state'); if(!G.counts) return;
+  const c = G.counts, tot = Math.max(G.total, c.taranan), left = Math.max(0, tot - c.taranan);
+  $('#g-legend').innerHTML = [['1',GC.v,c.var,'Görseli var'],['0',GC.y,c.yok,'Görseli yok'],['',GC.n,left,'Taranmadı']].map(([k,col,n,t]) =>
+    `<button data-h="${k}"><i style="background:${col}"></i><span class="num">${n.toLocaleString('tr-TR')}</span><span class="lab">${t}</span></button>`).join('');
+  document.querySelectorAll('#g-legend button').forEach(b => b.onclick = () => { gfilt = b.dataset.h; gpage = 0; gSeg(); gRows(); });
+  $('#g-sub').innerHTML = G.phase ? `<span>${esc(G.phase)}</span>` : '';
+  $('#g-bar').innerHTML = `<span style="width:${c.var/(tot||1)*100}%;background:${GC.v}"></span><span style="width:${c.yok/(tot||1)*100}%;background:${GC.y}"></span>`;
+  $('#g-info').textContent = `${tot.toLocaleString('tr-TR')} ürün. Görseli olmayan ürünleri bulur; mağazada hiçbir şey değiştirilmez.`;
+  $('#g-rate').textContent = G.rate || 0;
+  $('#g-eta').textContent = G.eta_min==null ? '–' : (G.eta_min < 1 ? '< 1 dk' : G.eta_min+' dk');
+  $('#g-prog').textContent = `%${tot ? Math.floor(c.taranan/tot*100) : 0}`;
+  $('#g-start').textContent = G.running ? (G.paused ? 'Devam et' : 'Taranıyor') : (c.taranan && c.taranan < tot ? 'Kaldığı yerden devam et' : (c.taranan ? 'Yeni ürünleri tara' : 'Taramayı başlat'));
+  $('#g-start').disabled = G.running && !G.paused;
+  $('#g-pause').disabled = !G.running || G.paused;
+  $('#g-stop').disabled = !G.running;
+  $('#g-reset').disabled = G.running;
+  $('#g-alert').classList.toggle('show', !!G.note); $('#g-alert').textContent = G.note || '';
+  gDraw();
+  if(G.running && document.querySelector('#v-gorsel.on') && gpage===0 && !$('#gq').value) gRows();
+}
+async function gDraw(){
+  GMAP = await api('/api/img/map'); if(GMAP.s===undefined) return;
+  const cv = $('#gmap'), n = Math.max(GMAP.total, GMAP.s.length), W = cv.parentElement.clientWidth;
+  if(!n || !W) return;
+  const cell = n > 5000 ? 9 : 12, step = cell + 1, cols = Math.max(20, Math.floor(W/step)), rows = Math.ceil(n/cols), dpr = devicePixelRatio || 1;
+  cv.style.height = rows*step+'px'; cv.width = W*dpr; cv.height = rows*step*dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,rows*step);
+  for(let i=0;i<n;i++){ g.fillStyle = GC[GMAP.s[i] || 'n']; g.fillRect((i%cols)*step, Math.floor(i/cols)*step, cell, cell); }
+  ggeo = {cols, step, n};
+}
+function gHit(ev){ if(!ggeo) return -1; const r = $('#gmap').getBoundingClientRect();
+  const x = Math.floor((ev.clientX-r.left)/ggeo.step), y = Math.floor((ev.clientY-r.top)/ggeo.step), i = y*ggeo.cols + x;
+  return (x>=0 && x<ggeo.cols && i < GMAP.s.length) ? i : -1; }
+$('#gmap').onmousemove = ev => { const i = gHit(ev), t = $('#gtip'); if(i<0){ t.style.display='none'; return; }
+  t.style.display='block'; t.textContent = `Ürün ${GMAP.pids[i]} – ${GMAP.s[i]==='v' ? 'görseli var' : 'görseli yok'}`;
+  const r = $('#gmap').getBoundingClientRect(); t.style.left = (ev.clientX-r.left+14)+'px'; t.style.top = (ev.clientY-r.top+10)+'px'; };
+$('#gmap').onmouseleave = () => $('#gtip').style.display='none';
+$('#gmap').onclick = ev => { const i = gHit(ev); if(i>=0) gOpen(GMAP.pids[i]); };
+async function gOpen(pid){
+  const it = await api('/api/img/item?pid='+pid); if(it.error) return;
+  $('#dbody').innerHTML = `
+    <span class="pill"><i style="background:${it.has ? GC.v : GC.y}"></i>${it.has ? 'Görseli var' : 'Görseli yok'}</span>
+    <h2>${esc(it.name) || 'Ürün '+it.pid}</h2>
+    <dl class="kv"><dt>Ürün no</dt><dd>${it.pid}</dd><dt>Stok kodu</dt><dd>${esc(it.sku)||'–'}</dd>
+      <dt>Görsel sayısı</dt><dd>${it.cnt ?? 0}</dd>
+      <dt>Son kontrol</dt><dd>${esc(it.checked)||'–'}</dd></dl>
+    ${it.has ? '' : '<p class="muted">Görseli Ideasoft panelinden ekleyebilirsiniz; bir sonraki taramada “Görseli var” olarak görünür.</p>'}
+    <div class="acts">
+      <a class="btn ghost" href="${it.panel_url}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>
+    </div>`;
+  $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
+}
+function gSeg(){
+  const opts = [['','Tümü'],['0','Görseli yok'],['1','Görseli var']];
+  $('#gseg').innerHTML = opts.map(([k,t]) => `<button data-k="${k}" class="${k===gfilt?'on':''}">${t}</button>`).join('');
+  document.querySelectorAll('#gseg button').forEach(b => b.onclick = () => { gfilt = b.dataset.k; gpage = 0; gSeg(); gRows(); });
+}
+let gqh; $('#gq').oninput = () => { clearTimeout(gqh); gqh = setTimeout(() => { gpage = 0; gRows(); }, 250); };
+$('#gprev').onclick = () => { if(gpage>0){ gpage--; gRows(); } };
+$('#gnext').onclick = () => { gpage++; gRows(); };
+async function gRows(){
+  const r = await api(`/api/img/items?has=${gfilt}&q=${encodeURIComponent($('#gq').value)}&page=${gpage}`);
+  if(!r.items) return;
+  if(gpage>0 && !r.items.length){ gpage--; return gRows(); }
+  $('#grows').innerHTML = r.items.length ? r.items.map(it => `<tr data-pid="${it.pid}">
+    <td class="n">${it.pid}</td><td>${esc(it.sku)}</td><td>${esc(it.name)}</td><td>${it.cnt}</td>
+    <td><span class="pill"><i style="background:${it.has ? GC.v : GC.y}"></i>${it.has ? 'Görseli var' : 'Görseli yok'}</span></td>
+    <td class="muted">${esc(it.checked)||''}</td></tr>`).join('')
+    : `<tr><td colspan="6" class="muted">${G && G.counts && G.counts.taranan ? 'Bu filtreye uyan ürün yok.' : 'Henüz tarama yapılmadı. Taramayı başlat ile başlayın.'}</td></tr>`;
+  document.querySelectorAll('#grows tr[data-pid]').forEach(tr => tr.onclick = () => gOpen(tr.dataset.pid));
+  $('#gpinfo').textContent = `${r.total.toLocaleString('tr-TR')} ürün, sayfa ${gpage+1} / ${Math.max(1, Math.ceil(r.total/100))}`;
+}
+$('#g-start').onclick = async () => { const r = await post(G && G.paused ? '/api/img/resume' : '/api/img/start'); if(r.msg) toast(r.msg); gTick(); };
+$('#g-pause').onclick = async () => { await post('/api/img/pause'); gTick(); };
+$('#g-stop').onclick = async () => { await post('/api/img/stop'); toast('Durduruluyor; Başlat ile kaldığı yerden devam eder.'); gTick(); };
+$('#g-reset').onclick = async () => { if(!await ask('Görsel taramasının bütün sonuçları silinir; ürünler baştan taranır. Mağazadaki görsellere dokunulmaz.', {title:'Sonuçlar silinsin mi?', ok:'Sonuçları sil', danger:true})) return; const r = await post('/api/img/reset'); if(r.msg) toast(r.msg); gpage=0; gTick(); gRows(); };
+gSeg();
+setInterval(() => { if(document.querySelector('#v-gorsel.on')) gTick(); }, 1500);
+
+/* ---------------- SEO analiz */
+let SS = null, SMAP = null, sgeo = null, sfilt = '', spage = 0, SREASONS = {};
+async function sTick(){
+  SS = await api('/api/seo/state'); if(!SS.counts) return;
+  const c = SS.counts, tot = Math.max(SS.total, c.taranan), left = Math.max(0, tot - c.taranan);
+  SREASONS = c.reasons;
+  $('#s-legend').innerHTML = [['1',GC.v,c.ok,'SEO %100'],['0',GC.y,c.eksik,'Eksik']].concat(c.bilinmiyor ? [['-1',GC.u,c.bilinmiyor,'Okunamadı']] : []).concat([['',GC.n,SS.running ? left : 0,'Taranmadı']]).map(([k,col,n,t]) =>
+    `<button data-o="${k}"><i style="background:${col}"></i><span class="num">${n.toLocaleString('tr-TR')}</span><span class="lab">${t}</span></button>`).join('');
+  document.querySelectorAll('#s-legend button').forEach(b => b.onclick = () => { sfilt = b.dataset.o; spage = 0; sSeg(); sRows(); });
+  $('#s-sub').innerHTML = Object.entries(c.reasons).filter(([k,v]) => v.n).map(([k,v]) =>
+    `<a href="#" data-c="${k}" style="color:inherit;margin-right:18px;white-space:nowrap">${esc(v.label)}: <b>${v.n.toLocaleString('tr-TR')}</b></a>`).join('') + (SS.phase ? ` <span>— ${esc(SS.phase)}</span>` : '');
+  document.querySelectorAll('#s-sub [data-c]').forEach(a => a.onclick = e => { e.preventDefault(); sfilt = 'c:'+a.dataset.c; spage = 0; sSeg(); sRows(); });
+  const J = SS.jobs;
+  $('#s-sub').innerHTML += `<br>` + [['hazir','Gönderilmeyi bekleyen',J.hazir],['gonderildi','Gönderilen',J.gonderildi],['hata','Gönderim hatası',J.hata]]
+    .map(([k,t,n]) => `<a href="#" data-p="${k}" style="color:inherit;margin-right:18px;white-space:nowrap">${t}: <b>${n.toLocaleString('tr-TR')}</b></a>`).join('')
+    + (J.running ? ` <span>— ${J.kind==='send' ? 'Gönderiliyor' : J.kind==='repair' ? 'İnceleniyor' : 'Hazırlanıyor'} ${J.done}/${J.todo} <a href="#" id="s-jstop">durdur</a></span>` : '');
+  document.querySelectorAll('#s-sub [data-p]').forEach(a => a.onclick = e => { e.preventDefault(); sfilt = 'p:'+a.dataset.p; spage = 0; sSeg(); sRows(); });
+  if($('#s-jstop')) $('#s-jstop').onclick = async e => { e.preventDefault(); const r = await post('/api/seo/jobs_stop'); if(r.msg) toast(r.msg); };
+  $('#s-prep').checked = SS.prepare;
+  if(document.activeElement !== $('#s-rate-eur')) $('#s-rate-eur').value = SS.eur_rate;
+  $('#s-sendall').textContent = `${J.hazir.toLocaleString('tr-TR')} ürünü gönder`;
+  $('#s-sendall').disabled = J.running || !J.hazir || SS.running;
+  $('#s-prepall').disabled = J.running || !J.bekleyen || SS.running;
+  $('#s-repair').disabled = J.running || !J.eksik || SS.running;
+  $('#s-repair').textContent = `Eksik ürünleri incele ve onar (${J.eksik.toLocaleString('tr-TR')})`;
+  $('#s-prepall').textContent = `Hazırlanmamışları hazırla (${J.bekleyen.toLocaleString('tr-TR')})`;
+  $('#s-bar').innerHTML = `<span style="width:${c.ok/(tot||1)*100}%;background:${GC.v}"></span><span style="width:${c.eksik/(tot||1)*100}%;background:${GC.y}"></span>`;
+  $('#s-info').textContent = `${tot.toLocaleString('tr-TR')} ürün, her kare bir ürün`;
+  $('#s-sendbox').hidden = !J.hazir;
+  $('#s-sendinfo').innerHTML = `<b>${J.hazir.toLocaleString('tr-TR')}</b> ürünün açıklaması hazır. Birkaçını açıp kontrol ettikten sonra hepsini tek seferde gönderebilirsiniz.`;
+  $('#s-rate').textContent = SS.rate || 0;
+  $('#s-prog').textContent = `%${tot ? Math.floor(c.taranan/tot*100) : 0}`;
+  $('#s-start').textContent = SS.running ? (SS.paused ? 'Devam et' : 'Analiz ediliyor') : (c.taranan ? 'Yeniden analiz et' : 'Analizi başlat');
+  $('#s-start').disabled = SS.running && !SS.paused;
+  $('#s-pause').disabled = !SS.running || SS.paused;
+  $('#s-stop').disabled = !SS.running;
+  $('#s-alert').classList.toggle('show', !!SS.note); $('#s-alert').textContent = SS.note || '';
+  let hint = '';
+  if(c.bilinmiyor && !SS.running) hint = 'Bazı ürünlerde Ideasoft\'un SEO yüzdesi okunamadı (sarı). Bir sarı kareye tıklayıp sağdaki “Ideasoft alanları” satırının ekran görüntüsünü gönderin.';
+  $('#s-hint').style.display = hint ? 'block' : 'none'; $('#s-hint').textContent = hint;
+  sDraw();
+  if(SS.running && document.querySelector('#v-seo.on') && spage===0 && !$('#sq').value) sRows();
+}
+async function sDraw(){
+  SMAP = await api('/api/seo/map'); if(SMAP.s===undefined) return;
+  const cv = $('#smap'), n = Math.max(SS && SS.running ? SMAP.total : 0, SMAP.s.length), W = cv.parentElement.clientWidth;
+  if(!n || !W){ cv.style.height = '0px'; return; }
+  const cell = n > 5000 ? 9 : 12, step = cell + 1, cols = Math.max(20, Math.floor(W/step)), rows = Math.ceil(n/cols), dpr = devicePixelRatio || 1;
+  cv.style.height = rows*step+'px'; cv.width = W*dpr; cv.height = rows*step*dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,rows*step);
+  for(let i=0;i<n;i++){ g.fillStyle = GC[SMAP.s[i] || 'n']; g.fillRect((i%cols)*step, Math.floor(i/cols)*step, cell, cell); }
+  sgeo = {cols, step, n};
+}
+function sHit(ev){ if(!sgeo) return -1; const r = $('#smap').getBoundingClientRect();
+  const x = Math.floor((ev.clientX-r.left)/sgeo.step), y = Math.floor((ev.clientY-r.top)/sgeo.step), i = y*sgeo.cols + x;
+  return (x>=0 && x<sgeo.cols && i < SMAP.s.length) ? i : -1; }
+$('#smap').onmousemove = ev => { const i = sHit(ev), t = $('#stip'); if(i<0){ t.style.display='none'; return; }
+  t.style.display='block'; t.textContent = `Ürün ${SMAP.pids[i]} – ${SMAP.s[i]==='v' ? 'SEO %100' : SMAP.s[i]==='y' ? 'eksik' : 'okunamadı'}`;
+  const r = $('#smap').getBoundingClientRect(); t.style.left = (ev.clientX-r.left+14)+'px'; t.style.top = (ev.clientY-r.top+10)+'px'; };
+$('#smap').onmouseleave = () => $('#stip').style.display='none';
+$('#smap').onclick = ev => { const i = sHit(ev); if(i>=0) sOpen(SMAP.pids[i]); };
+function sSeg(){
+  const opts = [['','Tümü'],['1','SEO %100'],['0','Eksik'],['-1','Okunamadı']];
+  let h = opts.map(([k,t]) => `<button data-k="${k}" class="${k===sfilt?'on':''}">${t}</button>`).join('');
+  if(sfilt.startsWith('c:')) h += `<button class="on" data-k="${sfilt}">${esc((SREASONS[sfilt.slice(2)]||{}).label||'')}</button>`;
+  if(sfilt.startsWith('p:')) h += `<button class="on" data-k="${sfilt}">${esc(PST[sfilt.slice(2)]||'')}</button>`;
+  $('#sseg').innerHTML = h;
+  document.querySelectorAll('#sseg button').forEach(b => b.onclick = () => { sfilt = b.dataset.k; spage = 0; sSeg(); sRows(); });
+}
+let sqh; $('#sq').oninput = () => { clearTimeout(sqh); sqh = setTimeout(() => { spage = 0; sRows(); }, 250); };
+$('#sprev').onclick = () => { if(spage>0){ spage--; sRows(); } };
+$('#snext').onclick = () => { spage++; sRows(); };
+async function sRows(){
+  const fq = sfilt.startsWith('c:') ? `code=${sfilt.slice(2)}` : sfilt.startsWith('p:') ? `pstate=${sfilt.slice(2)}` : `ok=${sfilt}`;
+  const r = await api(`/api/seo/items?${fq}&q=${encodeURIComponent($('#sq').value)}&page=${spage}`);
+  if(!r.items) return;
+  if(spage>0 && !r.items.length){ spage--; return sRows(); }
+  $('#srows').innerHTML = r.items.length ? r.items.map(it => `<tr data-pid="${it.pid}">
+    <td class="n">${it.pid}</td><td>${esc(it.sku)}</td><td>${esc(it.name)}</td>
+    <td>${it.pscore != null ? '%'+it.pscore : '–'}</td>
+    <td><span class="pill"><i style="background:${it.ok===1 ? GC.v : it.ok===0 ? GC.y : GC.u}"></i>${it.ok===1 ? 'SEO %100' : it.ok===0 ? 'Eksik' : 'Okunamadı'}</span></td>
+    <td>${esc(PST[it.pstate]||'')}</td>
+    <td style="text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums" title="${it.price != null ? it.price.toLocaleString('tr-TR') + ' ' + esc(it.cur||'') : ''}">${it.price_tl > 0 ? it.price_tl.toLocaleString('tr-TR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' ₺' : '<span class="muted">–</span>'}</td></tr>`).join('')
+    : `<tr><td colspan="7" class="muted">${SS && SS.counts && SS.counts.taranan ? 'Bu filtreye uyan ürün yok.' : 'Henüz analiz yapılmadı. Analizi başlat ile başlayın.'}</td></tr>`;
+  document.querySelectorAll('#srows tr[data-pid]').forEach(tr => tr.onclick = () => sOpen(tr.dataset.pid));
+  $('#spinfo').textContent = `${r.total.toLocaleString('tr-TR')} ürün, sayfa ${spage+1} / ${Math.max(1, Math.ceil(r.total/100))}`;
+}
+const PST = {hazir:'Gönderilmeyi bekliyor', gonderildi:'Gönderildi', hata:'Hata'};
+async function sOpen(pid){
+  const it = await api('/api/seo/item?pid='+pid); if(it.error) return;
+  const col = it.ok===1 ? GC.v : it.ok===0 ? GC.y : GC.u, lab = it.ok===1 ? 'SEO %100' : it.ok===0 ? 'Eksik' : 'Okunamadı';
+  const P = it.plan;
+  $('#dbody').innerHTML = `
+    <span class="pill"><i style="background:${col}"></i>${lab}</span>
+    <h2>${esc(it.name) || 'Ürün '+it.pid}</h2>
+    <dl class="kv"><dt>Ürün no</dt><dd>${it.pid}</dd><dt>Stok kodu</dt><dd>${esc(it.sku)||'–'}</dd>
+      <dt>Ideasoft SEO</dt><dd>${it.pscore != null ? '%'+it.pscore : 'Okunamadı'}</dd>
+      <dt>Açıklama durumu</dt><dd>${esc(PST[it.pstate]||'Hazırlanmadı')}${it.pmsg ? ' — '+esc(it.pmsg) : ''}</dd></dl>
+    ${it.pscore != null ? meter('Ideasoft SEO', +it.pscore) : ''}
+    ${P ? `
+    <h3 style="font:600 16px var(--disp);margin:18px 0 4px">Hazırlanan içerik</h3>
+    <p class="muted" style="margin:0 0 6px">Göndermeden önce kontrol edin; isterseniz alanları düzenleyebilirsiniz. Beklenen sonuç:</p>
+    ${P.diag ? `<div class="hint" style="margin:6px 0 10px;padding:8px 12px"><b>Teşhis (mağazadaki şimdiki hâli):</b><ul style="margin:4px 0 0;padding-left:18px">${P.diag.map(d => `<li>${esc(d)}</li>`).join('')}</ul>
+      ${P.old && P.old.keyword !== P.keyword ? `<div style="margin-top:6px">Hedef kelime değişecek: <b>${esc(P.old.keyword||'–')}</b> → <b>${esc(P.keyword)}</b></div>` : ''}</div>` : ''}
+    <div id="s-pred"></div>
+    ${P.name_fix ? `<p class="hint" style="margin:6px 0 10px;padding:8px 12px">Ürün adındaki fazla boşluk düzeltilecek (adın başka hiçbir yeri değişmez):<br><b>${esc(P.name_fix)}</b></p>` : ''}
+    <div class="desc" id="s-prev">${hl(P.details_html, P.keyword)}</div>
+    <div class="edit">
+      <label for="e-kw">Hedef kelime</label><input id="e-kw" value="${esc(P.keyword)}">
+      <label for="e-title">Etiket başlığı</label><input id="e-title" value="${esc(P.pageTitle)}">
+      <label for="e-meta">Meta açıklama</label><textarea id="e-meta" rows="3">${esc(P.metaDescription)}</textarea>
+      <details style="margin-top:10px"><summary>Açıklamanın HTML'ini düzenle</summary><textarea id="e-html" class="code">${esc(P.details_html)}</textarea></details>
+      ${P.old && P.old.details_html ? `<details style="margin-top:6px"><summary>Ürünün şimdiki açıklaması</summary><div class="desc" style="border-left-color:var(--bekle)">${P.old.details_html}</div></details>` : ''}
+    </div>` : `<p class="muted" style="margin-top:14px">${it.ok===1 ? 'Bu ürünün SEO\'su tamam; işlem gerekmiyor.' : 'Bu ürün için henüz açıklama hazırlanmadı.'}</p>`}
+    ${it.pstate==='gonderildi' && it.ok!==1 ? `<div class="hint" style="margin-top:12px">Gönderildi ama hâlâ eksik. Paneldeki “Hedef kelime ... Oran: %X” değerini yazın; program hesabını panele göre ayarlar.
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="s-oran" placeholder="Ör. 3,00" style="width:110px;padding:7px 8px;border:1px solid var(--cizgi)"><button class="btn ghost" id="s-cal">Panele göre ayarla</button></div></div>` : ''}
+    <div class="acts">
+      ${P && it.ok!==1 ? '<button class="btn go" id="s-send">Ideasoft\'a gönder</button>' : ''}
+      ${it.ok!==1 ? `<button class="btn ghost" id="s-regen">${P ? 'Yeniden oluştur' : 'Açıklama hazırla'}</button>` : ''}
+      ${it.ok!==1 ? '<button class="btn ghost" id="s-rep">İncele ve onar</button>' : ''}
+      <a class="btn ghost" href="${it.panel_url}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>
+      <button class="btn ghost" id="s-raw">Ham ürün kaydı</button>
+    </div>
+    <pre class="json" id="s-rawbox" style="display:none;max-height:none"></pre>`;
+  const vals = () => ({keyword: $('#e-kw').value.trim(), pageTitle: $('#e-title').value.trim(),
+                       metaDescription: $('#e-meta').value.trim(), details_html: $('#e-html').value.trim()});
+  async function predict(){
+    if(!P) return;
+    const v = vals(), r = await post('/api/seo/score?pid='+pid, v);
+    $('#s-pred').innerHTML = meter('Ürün SEO', r.top) + meter('SEO bilgileri', r.bottom) +
+      (r.fails && r.fails.length ? `<p class="bad-t" style="font-weight:400;margin:4px 0">${r.fails.map(esc).join('; ')}</p>` : '');
+    $('#s-prev').innerHTML = hl(v.details_html, v.keyword);
+  }
+  if(P){ predict(); let t; ['e-kw','e-title','e-meta','e-html'].forEach(id => $('#'+id).oninput = () => { clearTimeout(t); t = setTimeout(predict, 400); }); }
+  if($('#s-send')) $('#s-send').onclick = async () => {
+    if(!await ask('Açıklama, hedef kelime ve SEO bilgileri Ideasoft\'a yazılır. Eski hâli yedeklenir.', {title:'Bu ürün gönderilsin mi?', ok:'Ideasoft\'a gönder', go:true})) return;
+    const b = $('#s-send'); b.disabled = true; b.textContent = 'Gönderiliyor…';
+    const r = await post('/api/seo/send?pid='+pid, vals()); if(r.msg) toast(r.msg);
+    sOpen(pid); sTick(); sRows();
+  };
+  if($('#s-cal')) $('#s-cal').onclick = async () => { const v = $('#s-oran').value.trim(); if(!v) return;
+    const r = await post(`/api/seo/calibrate_panel?pid=${pid}&oran=${encodeURIComponent(v)}`); if(r.msg) toast(r.msg); sOpen(pid); sTick(); };
+  if($('#s-rep')) $('#s-rep').onclick = async () => { const b = $('#s-rep'); b.disabled = true; b.textContent = 'İnceleniyor…';
+    const r = await post('/api/seo/repair?pid='+pid); if(r.msg) toast(r.msg); sOpen(pid); sTick(); sRows(); };
+  if($('#s-regen')) $('#s-regen').onclick = async () => {
+    const b = $('#s-regen'); b.disabled = true; b.textContent = 'Hazırlanıyor…';
+    const r = await post(`/api/seo/prepare?pid=${pid}&variant=${((P && P.variant) || 0) + 1}`); if(r.msg) toast(r.msg);
+    sOpen(pid); sTick(); sRows();
+  };
+  $('#s-raw').onclick = async () => { const r = await api('/api/seo/raw?pid='+pid); $('#s-rawbox').style.display='block'; $('#s-rawbox').textContent = JSON.stringify(r, null, 2); };
+  $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
+}
+$('#s-rate-eur').onchange = async () => { const v = parseFloat($('#s-rate-eur').value.replace(',','.')); if(!(v > 0)) return;
+  await post('/api/settings', {eur_rate: v}); toast('Euro kuru: ' + v + ' ₺'); sRows(); };
+$('#s-prep').onchange = async () => { const r = await post('/api/seo/toggle_prepare'); if(r.msg) toast(r.msg); sTick(); };
+$('#s-repair').onclick = async () => {
+  if(!await ask('Her eksik ürün incelenir ve onarım planı hazırlanır. Mağazaya hiçbir şey gönderilmez; gönderimi siz yaparsınız.', {title:'Eksik ürünler incelensin mi?', ok:'İncelemeyi başlat'})) return;
+  const r = await post('/api/seo/repair_all'); if(r.msg) toast(r.msg); sTick(); };
+$('#s-prepall').onclick = async () => { const r = await post('/api/seo/prepare_all'); if(r.msg) toast(r.msg); sTick(); };
+$('#s-sendall').onclick = async () => {
+  const n = SS && SS.jobs ? SS.jobs.hazir : 0;
+  if(!await ask(`Hazırlanan ${n.toLocaleString('tr-TR')} ürünün açıklaması, hedef kelimesi ve SEO bilgileri Ideasoft'a yazılır. Göndermeden önce birkaç ürünü açıp kontrol etmenizi öneririz.`, {title:`${n.toLocaleString('tr-TR')} ürün gönderilsin mi?`, ok:'Hepsini gönder', go:true})) return;
+  const r = await post('/api/seo/send_all'); if(r.msg) toast(r.msg); sTick();
+};
+$('#s-start').onclick = async () => { const r = await post(SS && SS.paused ? '/api/seo/resume' : '/api/seo/start'); if(r.msg) toast(r.msg); sTick(); };
+$('#s-pause').onclick = async () => { await post('/api/seo/pause'); sTick(); };
+$('#s-stop').onclick = async () => { await post('/api/seo/stop'); sTick(); };
+sSeg();
+setInterval(() => { if(document.querySelector('#v-seo.on')) sTick(); }, 1500);
+
+/* ---------------- Kategori analiz */
+let CS = null, ckind = 'wrong', cf = '', cpage = 0, cWasRunning = false, cJobWas = false, CROWS = [], CSEL = new Set();
+let CNEW = new Set(), CNAMES = {}, cProgHidden = false;
+const CKINDS = {
+  wrong: {t:'Kategori düzeltme', f:[['','Tümü'],['tasi','Taşınmalı'],['supheli','Şüpheli'],['ekle','Eklenebilir']], apply:true,
+    help:'Taşınmalı: ürün adında bulunduğu kategorinin hiçbir kelimesi yok, başka bir kategorinin adı ise tam olarak geçiyor. Şüpheli: bulunduğu kategoriye uymuyor, benzer adlı ürünler başka bir kategoride. Eklenebilir: mevcut kategorisi doğru, adı başka bir kategoriyi de tam karşılıyor (ör. hem 12 V Sistem hem Zımpara Makineleri). Güven: kategori adı, aynı seriden ürünlerin yeri ve benzer ürün adlarından hesaplanır.',
+    head:['','Ürün no','Ürün adı','Değişiklik','Öneri','Güven','Durum']},
+  uncat: {t:'Kategorisiz', f:[['','Tümü'],['guclu','Önerisi olan'],['yok','Önerisi olmayan']], apply:true,
+    help:'Sitede görünen ama hiçbir kategoriye bağlı olmayan ürünlerin hepsi. Adı bir kategori adıyla birebir eşleşen ürünlere öneri yapılır; benzer ürünleri bir kategoride olanlara “olası” öneri yapılır, bunları uygulamadan önce kontrol edin. Önerisi olmayan ürüne tıklayıp kategoriyi kendiniz seçebilirsiniz. Pasif ürünler sayılmaz.',
+    head:['','Ürün no','Ürün adı','Eklenecek kategori','Güven','Durum']},
+  newcats: {t:'Yeni kategori önerileri', f:[['','Tümü'],['alt','Alt kategori'],['genel','Dağınık ürün grubu']], newbar:true,
+    help:'Alt kategori: kalabalık bir kategoride ortak tipte bir ürün grubu var; kutusunu işaretleyip toplu açabilir ya da satıra tıklayıp SEO bilgilerini görerek tek tek açabilirsiniz. Dağınık ürün grubu: aynı tip ürünler birçok kategoriye dağılmış; yerini siz seçmelisiniz.',
+    head:['','Öneri','Kategori adı','Nereye','Ürün sayısı','Durum']},
+  categories: {t:'Kategoriler', f:[['','Tümü'],['az','Az ürünlü (0-2)']],
+    help:'Uyum: kategorideki ürünlerin kaçının adı da bu kategoriyi işaret ediyor. Düşük uyumlu kategoriler karışık demektir.',
+    head:['Kategori','Doğrudan ürün','Alt kategorilerle','Alt kategori','Uyum']},
+};
+const ACT = {tasi:{t:'Taşınmalı', c:'#e0452b'}, supheli:{t:'Şüpheli', c:'#e3a008'}, ekle:{t:'Eklenebilir', c:'#2f4bf0'}};
+const FIX = {uygulandi:{t:'Uygulandı', c:'#1e9e5a'}, hata:{t:'Uygulanamadı', c:'#e0452b'}, geri:{t:'Geri alındı', c:'#868d97'}};
+const scoreCol = s => s >= 85 ? '#1e9e5a' : s >= 70 ? '#9a6b00' : '#868d97';
+const fixPill = it => it.fix ? `<span class="pill" title="${esc(it.fixmsg)}"><i style="background:${FIX[it.fix].c}"></i>${FIX[it.fix].t}</span>` : '<span class="muted">–</span>';
+const applied = it => it.fix === 'uygulandi' || it.fix === 'geri';
+const changeHtml = it => [...(it.rem_p||[]).map(p => `<div class="bad-t" style="font-weight:400">− ${esc(p)}</div>`),
+                          ...(it.add_p||[]).map(p => `<div class="ok-t" style="font-weight:400">+ ${esc(p)}</div>`)].join('');
+function cQuery(){ const pend = ckind === 'newcats' ? $('#c-newpending').checked : $('#c-pending').checked;
+  return `kind=${ckind}&f=${cf}&q=${encodeURIComponent($('#cq').value)}&min=${$('#c-min').value}&pending=${pend?1:0}`; }
+const canOpen = it => it.kind === 'alt' && !it.created;
+function cSeg(){
+  $('#ckind').innerHTML = Object.entries(CKINDS).map(([k,v]) => `<button data-k="${k}" class="${k===ckind?'on':''}">${v.t}</button>`).join('');
+  document.querySelectorAll('#ckind button').forEach(b => b.onclick = () => { ckind = b.dataset.k; cf = ''; cpage = 0; CSEL.clear(); cSeg(); cRows(); });
+  const f = CKINDS[ckind].f;
+  $('#cfseg').style.display = f.length ? '' : 'none';
+  $('#cfseg').innerHTML = f.map(([k,t]) => `<button data-k="${k}" class="${k===cf?'on':''}">${t}</button>`).join('');
+  document.querySelectorAll('#cfseg button').forEach(b => b.onclick = () => { cf = b.dataset.k; cpage = 0; CSEL.clear(); cSeg(); cRows(); });
+  $('#c-help').textContent = CKINDS[ckind].help;
+  $('#c-applybar').style.display = CKINDS[ckind].apply ? '' : 'none';
+  $('#c-newbar').style.display = CKINDS[ckind].newbar ? '' : 'none';
+  $('#chead').innerHTML = '<tr>' + CKINDS[ckind].head.map((h,i) => i===0 && (CKINDS[ckind].apply || CKINDS[ckind].newbar)
+    ? '<th style="width:28px"><input type="checkbox" id="c-all" aria-label="Sayfadakilerin hepsini seç"></th>' : `<th>${h}</th>`).join('') + '</tr>';
+  if($('#c-all')) $('#c-all').onchange = e => {
+    if(ckind === 'newcats') CROWS.filter(canOpen).forEach(it => e.target.checked ? CNEW.add(it.i) : CNEW.delete(it.i));
+    else CROWS.filter(it => !applied(it)).forEach(it => e.target.checked ? CSEL.add(it.pid) : CSEL.delete(it.pid));
+    cRows(); };
+  $('#c-csv').href = '/api/cat/csv?kind=' + ckind;
+  cSelInfo();
+}
+function cSelInfo(){
+  const b = $('#c-apply-sel'), busy = CS && CS.jobs && CS.jobs.running;
+  b.disabled = !CSEL.size || busy; b.textContent = CSEL.size ? `Seçilen ${CSEL.size} ürünü uygula` : 'Seçilenleri uygula';
+  $('#c-apply-all').disabled = busy;
+  const n = $('#c-new-sel');
+  n.disabled = !CNEW.size || busy; n.textContent = CNEW.size ? `Seçilen ${CNEW.size} kategoriyi toplu aç` : 'Seçilenleri toplu aç';
+  $('#c-new-all').disabled = busy;
+}
+const ucFirst = s => s ? s[0].toLocaleUpperCase('tr-TR') + s.slice(1) : s;
+function progHtml(j){
+  const pct = j.todo ? Math.floor(j.done / j.todo * 100) : 0;
+  const res = (j.results || []).map(r => r.error
+    ? `<li class="bad-t" style="font-weight:400"><b>${esc(r.name)}</b>: açılamadı — ${esc(r.error)}</li>`
+    : `<li style="font-weight:400"><b>${esc(r.name)}</b> açıldı (no ${r.cid})${CS && CS.panel ? ` · <a target="_blank" rel="noopener" href="${esc(CS.panel)}/panel/categories/edit/${r.cid}">panelde aç</a>` : ''}
+        <div style="font-size:13px">${(r.notes||[]).map(n => `<span class="${/kaydetmedi|yüklenemedi|indirilemedi/.test(n) ? 'bad-t' : 'ok-t'}" style="font-weight:400">${esc(n)}</span>`).join(' · ')}</div></li>`).join('');
+  return `<div class="meter"><div class="m"><span style="width:${pct}%;background:${j.running ? 'var(--isle)' : 'var(--yesil)'}"></span></div><b>%${pct}</b></div>
+    <p class="muted" style="margin:4px 0">${j.running ? 'Şu an: ' + esc(j.current || '…') : 'Tamamlandı.'}</p>
+    ${res ? `<ul style="margin:6px 0 0;padding-left:18px">${res}</ul>` : ''}`;
+}
+async function cTick(){
+  CS = await api('/api/cat/state'); if(CS.running===undefined) return;
+  const s = CS.summary, j = CS.jobs;
+  $('#c-phase').textContent = CS.running ? 'Çalışıyor' : (s ? 'Hazır' : 'Bekliyor');
+  $('#c-when').textContent = CS.generated || '–';
+  $('#c-info').textContent = CS.running ? (CS.phase || 'Çalışıyor…') :
+    (s ? `${s.urun.toLocaleString('tr-TR')} ürün ve ${s.kategori.toLocaleString('tr-TR')} kategori incelendi.` + (CS.applied ? ` ${CS.applied} ürüne öneri uygulandı.` : '') + ' Sayılara tıklayınca liste açılır.'
+       : CS.stored ? 'Analiz kuralları güncellendi. Sonuçları görmek için Yeniden hesapla düğmesine basın.' : 'Henüz analiz yapılmadı. Analizi başlat ile mağazadan okuyun.');
+  $('#c-legend').innerHTML = s ? [['wrong','tasi',ACT.tasi.c,s.tasi,'Taşınmalı'],['wrong','supheli',ACT.supheli.c,s.supheli,'Şüpheli'],['wrong','ekle',ACT.ekle.c,s.ekle,'Başka kategoriye de eklenebilir'],
+      ['uncat','','#7b5cd6',s.kategorisiz,'Kategorisiz ürün'],['newcats','','#2f4bf0',s.oneri,'Yeni kategori önerisi'],['categories','az','#d3d6dd',s.az,'Az ürünlü kategori']]
+    .map(([k,f,col,n,t]) => `<button data-k="${k}" data-f="${f}"><i style="background:${col}"></i><span class="num">${n.toLocaleString('tr-TR')}</span><span class="lab">${t}</span></button>`).join('') : '';
+  document.querySelectorAll('#c-legend button').forEach(b => b.onclick = () => { ckind = b.dataset.k; cf = b.dataset.f; cpage = 0; CSEL.clear(); cSeg(); cRows(); });
+  $('#c-start').disabled = CS.running; $('#c-stop').disabled = !CS.running; $('#c-recalc').disabled = CS.running || !CS.stored;
+  $('#c-alert').classList.toggle('show', !!CS.note); $('#c-alert').textContent = CS.note || '';
+  if(j.running) cProgHidden = false;
+  $('#c-progress').style.display = (j.running || j.todo) && !cProgHidden ? '' : 'none';
+  if(j.todo){
+    $('#c-prog-title').textContent = ucFirst(j.label) + (j.running ? ' sürüyor' : (j.done < j.todo ? ' durdu' : ' bitti'));
+    $('#c-prog-count').textContent = `${j.done} / ${j.todo} işlem · ${j.ok} başarılı · ${j.err} başarısız`;
+    $('#c-prog-body').innerHTML = progHtml(j);
+    $('#c-jobstop').textContent = j.running ? 'Durdur' : 'Kapat';
+    const w = $('#cs-result'); if(w && w.dataset.watch) w.innerHTML = `<div class="desc">${progHtml(j)}</div>`;
+  }
+  cSelInfo();
+  const typing = document.activeElement && document.activeElement.closest && document.activeElement.closest('#crows');
+  if(!typing && ((cWasRunning && !CS.running) || (j.running || cJobWas))) cRows();
+  cWasRunning = CS.running; cJobWas = j.running;
+}
+async function cRows(){
+  const r = await api(`/api/cat/list?${cQuery()}&page=${cpage}`);
+  if(!r.items) return;
+  if(cpage>0 && !r.items.length){ cpage--; return cRows(); }
+  CROWS = r.items;
+  const cols = CKINDS[ckind].head.length;
+  // önerisi olmayan ürün toplu uygulanamaz; kategorisi elle seçilir
+  const box = it => `<td onclick="event.stopPropagation()">${applied(it) || !(it.add || []).length ? '' : `<input type="checkbox" data-sel="${it.pid}" ${CSEL.has(it.pid)?'checked':''} aria-label="Seç">`}</td>`;
+  const sc = it => `<td><b style="color:${scoreCol(it.score)}">%${it.score}</b></td>`;
+  const row = {
+    wrong: it => `<tr data-pid="${it.pid}">${box(it)}<td class="n">${it.pid}</td><td>${esc(it.name)}<div class="muted" style="font-size:12px">${esc(it.sku)}</div></td>
+      <td style="font-size:13px">${changeHtml(it)}</td>
+      <td><span class="pill"><i style="background:${ACT[it.act].c}"></i>${ACT[it.act].t}</span></td>${sc(it)}<td>${fixPill(it)}</td></tr>`,
+    uncat: it => `<tr data-pid="${it.pid}">${box(it)}<td class="n">${it.pid}</td><td>${esc(it.name)}<div class="muted" style="font-size:12px">${esc(it.sku)}</div></td>
+      <td>${sugHtml(it)}</td>${it.sug ? sc(it) : '<td class="muted">–</td>'}<td>${fixPill(it)}</td></tr>`,
+    newcats: it => `<tr data-i="${it.i}"><td onclick="event.stopPropagation()">${canOpen(it) ? `<input type="checkbox" data-new="${it.i}" ${CNEW.has(it.i)?'checked':''} aria-label="Seç">` : ''}</td>
+      <td>${it.kind==='alt' ? 'Alt kategori' : 'Dağınık ürün grubu'}</td>
+      <td onclick="${canOpen(it) ? 'event.stopPropagation()' : ''}">${canOpen(it)
+        ? `<input data-name="${it.i}" value="${esc(CNAMES[it.i] ?? it.label)}" aria-label="Kategori adı" style="width:100%;min-width:180px;padding:6px 8px;border:1px solid var(--cizgi)">`
+        : `<b>${esc(it.created ? it.created.name : it.label)}</b>`}</td>
+      <td>${it.kind==='alt' ? esc(it.parent) + ` <span class="muted">(ürünlerinin %${it.share}'i)</span>` : it.spread.slice(0,3).map(x => `${esc(x.path)} <span class="muted">(${x.n})</span>`).join('<br>')}</td>
+      <td>${it.count.toLocaleString('tr-TR')}</td>
+      <td>${it.created ? `<span class="pill"><i style="background:#1e9e5a"></i>Açıldı (no ${it.created.cid})</span>` : '<span class="muted">–</span>'}</td></tr>`,
+    categories: it => `<tr><td style="padding-left:${10+it.depth*18}px">${esc(it.path.split(' › ').pop())}<div class="muted" style="font-size:12px">${esc(it.path)}</div></td>
+      <td>${it.direct}</td><td>${it.total}</td><td>${it.children}</td>
+      <td>${it.uyum==null ? '<span class="muted">–</span>' : `<span class="${it.uyum<70?'bad-t':''}">%${it.uyum}</span>`}</td></tr>`,
+  }[ckind];
+  $('#crows').innerHTML = r.items.length ? r.items.map(row).join('')
+    : `<tr><td colspan="${cols}" class="muted">${CS && CS.summary ? 'Bu listede ürün yok.' : 'Henüz analiz yapılmadı. Analizi başlat ile başlayın.'}</td></tr>`;
+  document.querySelectorAll('#crows tr[data-pid]').forEach(tr => tr.onclick = () => cOpen(r.items.find(x => x.pid == tr.dataset.pid)));
+  document.querySelectorAll('#crows tr[data-i]').forEach(tr => tr.onclick = () => cGroup(tr.dataset.i));
+  document.querySelectorAll('#crows [data-sel]').forEach(cb => cb.onchange = () => { const p = +cb.dataset.sel; cb.checked ? CSEL.add(p) : CSEL.delete(p); cSelInfo(); });
+  document.querySelectorAll('#crows [data-new]').forEach(cb => cb.onchange = () => { const k = +cb.dataset.new; cb.checked ? CNEW.add(k) : CNEW.delete(k); cSelInfo(); });
+  document.querySelectorAll('#crows [data-name]').forEach(inp => inp.oninput = () => { CNAMES[+inp.dataset.name] = inp.value; });
+  $('#cpinfo').textContent = `${r.total.toLocaleString('tr-TR')} kayıt, sayfa ${cpage+1} / ${Math.max(1, Math.ceil(r.total/100))}`;
+  cSelInfo();
+}
+const panelLink = pid => CS && CS.panel ? `<a class="btn ghost" href="${esc(CS.panel)}/panel/products/edit/${pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : '';
+const sugHtml = it => !it.sug ? '<span class="muted">Öneri yok, tıklayıp kategori seçin</span>'
+  : `<b>${esc(it.sug)}</b>${it.strength === 'olasi' ? ' <span class="pill" style="color:#9a6b00"><i style="background:var(--warn)"></i>olası</span>' : ''}`;
+let CTREE = null;
+async function catTree(){ if(!CTREE){ const r = await api('/api/cat/tree'); CTREE = r.items || []; } return CTREE; }
+
+function cOpen(it){
+  if(!it) return;
+  const k = it.act ? 'wrong' : 'uncat';
+  const label = it.act === 'ekle' || !it.act ? 'Kategoriye ekle' : 'Kategoriyi taşı';
+  $('#dbody').innerHTML = `
+    ${it.act ? `<span class="pill"><i style="background:${ACT[it.act].c}"></i>${ACT[it.act].t}</span>` : '<span class="pill"><i style="background:#7b5cd6"></i>Kategorisiz</span>'}
+    ${it.sug ? `<span class="pill" style="margin-left:14px">Güven <b style="color:${scoreCol(it.score)}">%${it.score}</b></span>` : ''}
+    ${it.fix ? `<span style="margin-left:14px">${fixPill(it)}</span>` : ''}
+    <h2>${esc(it.name)}</h2>
+    <dl class="kv"><dt>Ürün no</dt><dd>${it.pid}</dd><dt>Stok kodu</dt><dd>${esc(it.sku)||'–'}</dd>
+      ${it.cur ? `<dt>Şu anki kategori</dt><dd>${it.cur.map(esc).join('<br>')}</dd>` : ''}
+      <dt>${it.sug ? 'Yapılacak değişiklik' : 'Öneri'}</dt><dd>${changeHtml(it) || '<span class="muted">Yok</span>'}</dd>
+      ${it.reason ? `<dt>Neden</dt><dd>${esc(it.reason)}</dd>` : ''}
+      ${it.fixmsg ? `<dt>Son işlem</dt><dd>${esc(it.fixmsg)}</dd>` : ''}</dl>
+    ${!it.act && it.fix !== 'uygulandi' ? `<div class="field" style="margin-top:6px">
+      <label for="c-pick">${it.sug ? 'Ya da başka bir kategori seçin' : 'Kategori seçin'}</label>
+      <div class="copyrow"><input id="c-pick" list="c-picklist" placeholder="Kategori adı yazın, listeden seçin" autocomplete="off">
+        <button class="btn ${it.sug ? 'ghost' : 'go'}" id="c-assign" disabled>Bu kategoriye ekle</button></div>
+      <datalist id="c-picklist"></datalist></div>` : ''}
+    <p class="muted">Sadece ürünün kategorileri değişir. Yazmadan önce ürünün kategorilerinin değişmediği, yazdıktan sonra fiyat, stok gibi alanların aynı kaldığı kontrol edilir.</p>
+    <div class="acts">
+      ${it.fix === 'uygulandi' ? '<button class="btn ghost" id="c-undo">Geri al</button>' : (it.sug ? `<button class="btn go" id="c-one">${label}</button>` : '')}
+      ${panelLink(it.pid)}
+    </div>`;
+  const one = $('#c-one'), undo = $('#c-undo'), pick = $('#c-pick');
+  if(pick) catTree().then(list => {
+    $('#c-picklist').innerHTML = list.map(c => `<option value="${esc(c.path)}"></option>`).join('');
+    const sel = () => list.find(c => c.path === pick.value.trim());
+    pick.oninput = () => { $('#c-assign').disabled = !sel(); };
+    $('#c-assign').onclick = async () => {
+      const c = sel(); if(!c) return;
+      const b = $('#c-assign'); b.disabled = true; b.textContent = 'Ekleniyor…';
+      const r = await post(`/api/cat/assign?pid=${it.pid}&cid=${c.id}`); if(r.msg) toast(r.msg);
+      await cRows(); cOpen(CROWS.find(x => x.pid === it.pid) || it); cTick();
+    };
+  });
+  if(one) one.onclick = async () => { one.disabled = true; one.textContent = 'Uygulanıyor…';
+    const r = await post(`/api/cat/apply?kind=${k}&pid=${it.pid}`); if(r.msg) toast(r.msg);
+    await cRows(); cOpen(CROWS.find(x => x.pid === it.pid) || it); cTick(); };
+  if(undo) undo.onclick = async () => { if(!await ask('Ürünün kategorileri uygulamadan önceki hâline döner.', {title:'Değişiklik geri alınsın mı?', ok:'Geri al'})) return;
+    undo.disabled = true; undo.textContent = 'Geri alınıyor…';
+    const r = await post(`/api/cat/undo?pid=${it.pid}`); if(r.msg) toast(r.msg);
+    await cRows(); cOpen(CROWS.find(x => x.pid === it.pid) || it); cTick(); };
+  $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
+}
+async function cGroup(i){
+  const g = await api('/api/cat/group?i='+i); if(g.error) return;
+  const alt = g.kind === 'alt';
+  CIMGS = [];
+  $('#dbody').innerHTML = `
+    <span class="pill"><i style="background:#2f4bf0"></i>${alt ? 'Alt kategori önerisi' : 'Dağınık ürün grubu'}</span>
+    <h2>${esc(g.label)}</h2>
+    <p>${alt ? `<b>${esc(g.parent)}</b> kategorisindeki ${g.count} ürünün (%${g.share}) adında “${esc(g.label)}” geçiyor. Bu ürünler için bir alt kategori açılabilir.`
+      : `${g.count} ürünün adında “${esc(g.label)}” geçiyor ama bu ürünler tek bir kategoride toplanmamış:`}</p>
+    ${g.spread.length ? '<ul>' + g.spread.map(x => `<li>${esc(x.path)}: ${x.n} ürün</li>`).join('') + '</ul>' : ''}
+    ${alt ? `<div class="edit" id="c-new">
+      <label for="c-newname">Kategori adı</label>
+      <div class="copyrow"><input id="c-newname" value="${esc(g.label)}"><button class="btn ghost" id="c-regen" title="Ada göre SEO metnini yeniden üret">Metni yeniden üret</button></div>
+      <div id="c-seo"><p class="muted">SEO bilgileri ve görseller hazırlanıyor…</p></div>
+    </div>` : ''}
+    <h3 style="font:600 15px var(--disp);margin:18px 0 6px">Ürünler</h3>
+    <table><thead><tr><th>Ürün no</th><th>Stok kodu</th><th>Ürün adı</th><th>Kategorisi</th></tr></thead>
+    <tbody>${g.products.map(p => `<tr data-pid="${p.pid}"><td class="n">${p.pid}</td><td>${esc(p.sku)}</td><td>${esc(p.name)}</td><td>${esc(p.cats)}</td></tr>`).join('')}</tbody></table>`;
+  if(CS && CS.panel) document.querySelectorAll('#dbody tr[data-pid]').forEach(tr => tr.onclick = () => window.open(`${CS.panel}/panel/products/edit/${tr.dataset.pid}`, '_blank', 'noopener'));
+  $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
+  if(alt){ $('#c-regen').onclick = () => cNewSeo(i, g, false); cNewSeo(i, g, true); }
+}
+let CIMGS = [];
+async function cNewSeo(i, g, withImages){
+  const name = $('#c-newname').value.trim(); if(!name) return toast('Kategori adı yazın.');
+  const box = $('#c-seo'); box.innerHTML = '<p class="muted">SEO bilgileri hazırlanıyor…</p>';
+  const r = await post('/api/cat/newpreview?i='+i, {name, images: withImages && !CIMGS.length});
+  if(!r.seo) return;
+  if(r.images && r.images.length) CIMGS = r.images;
+  const s = r.seo, cnt = id => `<span class="muted" id="${id}-n"></span>`;
+  box.innerHTML = `
+    <p class="muted" style="margin:6px 0 0">Hedef kelime kategori adının kendisidir.</p>
+    <label for="cs-slug">SEO adresi</label><input id="cs-slug" value="${esc(s.slug)}">
+    <label for="cs-title">Sayfa başlığı ${cnt('cs-title')}</label><input id="cs-title" value="${esc(s.pageTitle)}">
+    <label for="cs-meta">Meta açıklama ${cnt('cs-meta')}</label><textarea id="cs-meta" rows="2">${esc(s.metaDescription)}</textarea>
+    <label for="cs-keys">Anahtar kelimeler</label><input id="cs-keys" value="${esc(s.metaKeywords)}">
+    <label>Kategori resmi</label>
+    <div id="cs-imgs" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px">${CIMGS.length ? CIMGS.map((im,k) => `
+      <label style="display:block;margin:0;cursor:pointer;border:2px solid ${k===0?'var(--petrol)':'var(--cizgi)'};padding:3px;background:#fff" data-img="${k}">
+        <input type="radio" name="cs-img" value="${esc(im.url)}" ${k===0?'checked':''} style="display:none">
+        <img src="${esc(im.url)}" alt="Ürün ${im.pid} görseli" style="width:84px;height:84px;object-fit:contain;display:block"></label>`).join('')
+      + `<label style="display:flex;align-items:center;margin:0;cursor:pointer;border:2px solid var(--cizgi);padding:3px 10px;background:#fff" data-img="-1">
+        <input type="radio" name="cs-img" value="" style="display:none">Resimsiz</label>`
+      : '<span class="muted">Ürünlerde görsel bulunamadı; resmi sonra panelden ekleyebilirsiniz.</span>'}</div>
+    <div class="desc" id="cs-check" style="border-left-color:var(--yesil)"></div>
+    <div class="acts"><button class="btn go" id="c-create">Kategoriyi aç ve ${g.count} ürünü taşı</button></div>
+    <div id="cs-result"></div>`;
+  const fields = () => ({name: $('#c-newname').value.trim(), slug: $('#cs-slug').value,
+    pageTitle: $('#cs-title').value, metaDescription: $('#cs-meta').value, metaKeywords: $('#cs-keys').value});
+  let h; const check = () => { clearTimeout(h); h = setTimeout(async () => {
+    const f = fields(), c = await post('/api/cat/seocheck', f);
+    $('#cs-title-n').textContent = `(${f.pageTitle.length} karakter, 20-60 olmalı)`;
+    $('#cs-meta-n').textContent = `(${f.metaDescription.length} karakter, 50-155 olmalı)`;
+    $('#cs-check').innerHTML = `<b>SEO kontrolü: %${c.pct}</b>
+      <ul style="margin:6px 0 0">${c.rules.map(x => `<li class="${x.ok?'ok-t':'bad-t'}" style="font-weight:400">${x.ok?'✓':'✗'} ${esc(x.t)}</li>`).join('')}</ul>`;
+  }, 250); };
+  [box, $('#c-newname')].forEach(el => el.addEventListener('input', check)); check();
+  box.querySelectorAll('#cs-imgs [data-img]').forEach(l => l.onclick = () => box.querySelectorAll('#cs-imgs [data-img]').forEach(x => x.style.borderColor = x === l ? 'var(--petrol)' : 'var(--cizgi)'));
+  $('#c-create').onclick = async () => {
+    const f = fields(); if(!f.name) return toast('Kategori adı yazın.');
+    const img = (box.querySelector('input[name="cs-img"]:checked') || {}).value || '';
+    if(!await ask(`“${g.parent} › ${f.name}” kategorisi SEO bilgileri${img ? ' ve resmiyle' : 'yle'} açılır; ${g.count} ürün “${g.parent.split(' › ').pop()}” kategorisinden yeni kategoriye taşınır.`, {title:'Kategori açılsın mı?', ok:`Aç ve ${g.count} ürünü taşı`, go:true})) return;
+    const b = $('#c-create'); b.disabled = true; b.textContent = 'Açılıyor…';
+    const r2 = await post('/api/cat/create?i='+i, Object.assign(f, {image: img}));
+    if(r2.error){ b.disabled = false; b.textContent = `Kategoriyi aç ve ${g.count} ürünü taşı`; return; }
+    toast(r2.msg); b.textContent = 'Kategori açılıyor, ürünler taşınıyor';
+    $('#cs-result').dataset.watch = '1';  // ilerleme cTick ile burada da gösterilir
+    cTick();
+  };
+}
+let cqh; $('#cq').oninput = () => { clearTimeout(cqh); cqh = setTimeout(() => { cpage = 0; CSEL.clear(); cRows(); }, 250); };
+$('#c-min').onchange = $('#c-pending').onchange = () => { cpage = 0; CSEL.clear(); cRows(); };
+$('#cprev').onclick = () => { if(cpage>0){ cpage--; cRows(); } };
+$('#cnext').onclick = () => { cpage++; cRows(); };
+$('#c-start').onclick = async () => { const r = await post('/api/cat/start'); if(r.msg) toast(r.msg); cTick(); };
+$('#c-recalc').onclick = async () => { const r = await post('/api/cat/start?fetch=0'); if(r.msg) toast(r.msg); cTick(); };
+$('#c-stop').onclick = async () => { const r = await post('/api/cat/stop'); if(r.msg) toast(r.msg); cTick(); };
+$('#c-apply-sel').onclick = async () => {
+  if(!await ask('Her değişiklik sonradan geri alınabilir.', {title:`${CSEL.size} ürünün kategorisi değiştirilsin mi?`, ok:'Uygula', go:true})) return;
+  const r = await post('/api/cat/apply_many', {kind: ckind, pids: [...CSEL]}); if(r.msg) toast(r.msg); CSEL.clear(); cTick();
+};
+$('#c-apply-all').onclick = async () => {
+  const r0 = await api(`/api/cat/list?${cQuery().replace(/pending=\d/, 'pending=1')}&page=0`);
+  const n = r0.total || 0; if(!n) return toast('Listede uygulanmamış öneri yok.');
+  const min = +$('#c-min').value;
+  if(!await ask(`Listedeki uygulanmamış önerilerin hepsi Ideasoft'a yazılır${min ? ` (güveni %${min} ve üzeri olanlar)` : ''}. Önce birkaç ürünü tek tek uygulayıp kontrol etmenizi öneririz. Her değişiklik geri alınabilir.`, {title:`${n.toLocaleString('tr-TR')} öneri uygulansın mı?`, ok:'Hepsini uygula', go:true})) return;
+  const r = await post('/api/cat/apply_many', {kind: ckind, f: cf, q: $('#cq').value, min}); if(r.msg) toast(r.msg); cTick();
+};
+$('#c-jobstop').onclick = async () => {
+  if(!(CS && CS.jobs && CS.jobs.running)){ cProgHidden = true; $('#c-progress').style.display = 'none'; return; }
+  const r = await post('/api/cat/jobstop'); if(r.msg) toast(r.msg); cTick(); };
+$('#c-newpending').onchange = () => { cpage = 0; CNEW.clear(); cRows(); };
+$('#c-new-sel').onclick = async () => {
+  const items = [...CNEW], names = {};
+  items.forEach(k => { names[k] = (CNAMES[k] ?? ((CROWS.find(x => x.i === k) || {}).label || '')).trim(); });
+  if(items.some(k => !names[k])) return toast('Seçilen önerilerin hepsine kategori adı yazın.');
+  const prods = items.reduce((s, k) => s + ((CROWS.find(x => x.i === k) || {}).count || 0), 0);
+  if(!await ask(`SEO bilgileri ve resimleriyle açılır, ${prods} ürün yeni kategorilerine taşınır:\n\n` +
+    items.map(k => '• ' + names[k]).join('\n'), {title:`${items.length} kategori açılsın mı?`, ok:'Kategorileri aç', go:true})) return;
+  const r = await post('/api/cat/create_many', {items, names}); if(r.msg) toast(r.msg); CNEW.clear(); cTick();
+};
+$('#c-new-all').onclick = async () => {
+  const r0 = await api(`/api/cat/list?kind=newcats&f=alt&pending=1&page=0`);
+  const n = r0.total || 0; if(!n) return toast('Açılmamış alt kategori önerisi yok.');
+  const prods = (r0.items || []).reduce((s, x) => s + x.count, 0);
+  if(!await ask(`Hepsi SEO bilgileri ve resimleriyle açılır, ${prods} ürün taşınır. Listede değiştirdiğiniz adlar kullanılır, diğerleri önerilen adla açılır.`, {title:`${n} kategori açılsın mı?`, ok:'Hepsini aç', go:true})) return;
+  const r = await post('/api/cat/create_many', {names: CNAMES}); if(r.msg) toast(r.msg); cTick();
+};
+cSeg();
+setInterval(() => { if(document.querySelector('#v-kategori.on')) cTick(); }, 1500);
+/* ---------------- Genel bakış */
+// Aynı ürünler üç açıdan: her görünümde durum harfi -> renk ve açıklama
+const LENS = {
+  seo: {t: 'SEO', info: 'Ideasoft panelinde SEO yüzdesi %100 olan ürünler yeşil.', codes: {
+    y: ['var(--kirmizi)', 'SEO eksik'], v: ['var(--yesil)', 'SEO tamam'], u: ['var(--bekle)', 'Taranmadı']}},
+  img: {t: 'Görsel', info: 'Görseli olmayan ürünler kırmızı.', codes: {
+    y: ['var(--kirmizi)', 'Görseli yok'], v: ['var(--yesil)', 'Görseli var'], u: ['var(--bekle)', 'Taranmadı']}},
+  cat: {t: 'Kategori', info: 'Kategori analizine göre ürünlerin yeri.', codes: {
+    t: ['var(--kirmizi)', 'Taşınmalı'], s: ['var(--sari)', 'Şüpheli'], e: ['var(--isle)', 'Eklenebilir'],
+    k: ['var(--mor)', 'Kategorisiz'], v: ['var(--yesil)', 'Doğru yerde'], u: ['var(--bekle)', 'Analiz edilmedi']}},
+};
+let O = null, olens = 'seo', ogeo = null;
+const cssVar = v => v.startsWith('var(') ? getComputedStyle(document.documentElement).getPropertyValue(v.slice(4, -1)).trim() : v;
+const nf = n => (n || 0).toLocaleString('tr-TR');
+
+async function oTick(){
+  O = await api('/api/overview'); if(!O.maps) return;
+  const p = O.profil || {}, c = O.counts, sc = O.scans;
+  $('#o-title').textContent = p.magaza ? `${p.magaza} mağazası` : 'Genel bakış';
+  const busy = sc.seo || sc.cat;
+  $('#o-scan').disabled = busy || !O.connected;
+  $('#o-scan').textContent = busy ? 'Taranıyor…' : (c.seo_taranan ? 'Yeniden tara' : 'Mağazayı tara');
+  $('#o-progress').textContent = busy || sc.img ? `Tarama sürüyor: ${sc.phase || 'başlıyor'}` : '';
+  oSetup(); oHealth(); oLens(); oTodo();
+}
+
+function oSetup(){
+  const p = O.profil || {}, c = O.counts;
+  const steps = [
+    {ok: O.connected, t: 'Mağazanızı bağlayın', d: 'Ideasoft mağazanıza bir kez izin vermeniz yeterli.', b: ['Bağlantıya git', () => show('ayarlar')]},
+    {ok: !!p.magaza, t: 'Mağaza profilini doldurun', d: 'Mağaza adı ve sektör, yazılan açıklama ve başlıklarda kullanılır.',
+     b: ['Profile git', () => { show('ayarlar'); setTimeout(() => $('#p-magaza').focus(), 50); }]},
+    {ok: c.seo_taranan > 0 && O.cat_ready, t: 'Mağazayı tarayın', d: 'Ürünlerin SEO durumu ve kategorileri okunur. Mağazada hiçbir şey değişmez.',
+     b: ['Mağazayı tara', oScan]},
+  ];
+  const box = $('#o-setup'), done = steps.every(s => s.ok);
+  $('#o-scan').style.display = done ? '' : 'none';   // kurulum sürerken tarama tuşu adımların içinde
+  if(done){ box.innerHTML = ''; return; }
+  box.innerHTML = `<h2 class="ov-h2">Başlarken</h2><ol class="todo">${steps.map((s, i) => `<li class="${s.ok ? 'ok' : ''}">
+    <div><strong>${s.t}</strong><p>${s.ok ? 'Tamamlandı.' : s.d}</p></div>
+    <div class="acts">${s.ok ? '' : `<button class="btn${steps.findIndex(x => !x.ok) === i ? '' : ' ghost'}" data-s="${i}">${s.b[0]}</button>`}</div></li>`).join('')}</ol>`;
+  box.querySelectorAll('[data-s]').forEach(b => b.onclick = steps[+b.dataset.s].b[1]);
+}
+
+function oHealth(){
+  const notes = {seo: ['SEO\'su tamam', 'Taranmadı'], img: ['görseli var', 'Taranmadı'], cat: ['doğru yerde', 'Analiz edilmedi']};
+  for(const k of ['seo', 'img', 'cat']){
+    const s = O.maps[k]; let ok = 0, seen = 0;
+    for(const ch of s){ if(ch !== 'u'){ seen++; if(ch === 'v') ok++; } }
+    const p = seen ? Math.round(ok / seen * 100) : null;
+    $('#h-' + k).textContent = p == null ? '–' : '%' + p;
+    $('#hn-' + k).textContent = p == null ? notes[k][1] : `${nf(ok)} / ${nf(seen)} ürün ${notes[k][0]}`;
+    $('#hb-' + k).style.width = (p || 0) + '%';
+    $('#hb-' + k).style.background = p == null ? 'var(--idle)' : p >= 90 ? 'var(--ok)' : p >= 70 ? 'var(--warn)' : 'var(--bad)';
+  }
+}
+
+function oLens(){
+  const L = LENS[olens], s = O.maps[olens], n = O.pids.length;
+  $('#o-lenstitle').textContent = {seo: 'SEO durumu', img: 'Görsel durumu', cat: 'Kategori durumu'}[olens];
+  document.querySelectorAll('#o-lens button').forEach(b => { b.classList.toggle('on', b.dataset.l === olens); b.setAttribute('aria-selected', b.dataset.l === olens); });
+  $('#o-lensinfo').textContent = n ? `${nf(n)} ürün, her kare bir ürün. Sayılara tıklayınca o ürünler listelenir.` : 'Mağazayı taradığınızda ürünleriniz burada görünür.';
+  const cnt = {}; for(const ch of s) cnt[ch] = (cnt[ch] || 0) + 1;
+  $('#o-legend').innerHTML = Object.entries(L.codes).filter(([k]) => cnt[k]).map(([k, [col, t]]) =>
+    `<button data-k="${k}" title="${t} ürünleri listele"><i style="background:${col}"></i><span class="num">${nf(cnt[k])}</span><span class="lab">${t}</span></button>`).join('');
+  $('#o-legend').querySelectorAll('button').forEach(b => b.onclick = () => oGo(olens, b.dataset.k));
+  const cv = $('#o-map'), W = cv.parentElement.clientWidth;
+  if(!W) return;
+  if(!n){ cv.style.height = '0px'; ogeo = null; return; }
+  // bütün mağaza yaklaşık 280 piksel yüksekliğe sığsın: ürün çoğaldıkça kareler küçülür
+  const fit = Math.floor(Math.sqrt(W * 280 / n)), gap = fit >= 8 ? 2 : 1, cell = Math.max(3, Math.min(14, fit - gap));
+  const step = cell + gap, cols = Math.max(20, Math.floor((W + gap) / step)), rows = Math.ceil(n / cols), dpr = devicePixelRatio || 1;
+  cv.style.height = rows * step + 'px'; cv.width = W * dpr; cv.height = rows * step * dpr;
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, rows * step);
+  const col = {}; for(const [k, [v]] of Object.entries(L.codes)) col[k] = cssVar(v);
+  for(let i = 0; i < n; i++){ g.fillStyle = col[s[i]] || col.u; g.fillRect((i % cols) * step, Math.floor(i / cols) * step, cell, cell); }
+  ogeo = {cols, step, n};
+}
+
+function oHit(ev){ if(!ogeo) return -1; const r = $('#o-map').getBoundingClientRect();
+  const x = Math.floor((ev.clientX - r.left) / ogeo.step), y = Math.floor((ev.clientY - r.top) / ogeo.step), i = y * ogeo.cols + x;
+  return (x >= 0 && x < ogeo.cols && i < ogeo.n) ? i : -1; }
+$('#o-map').onmousemove = ev => { const i = oHit(ev), t = $('#o-tip'); if(i < 0){ t.style.display = 'none'; return; }
+  const [, label] = LENS[olens].codes[O.maps[olens][i]] || LENS[olens].codes.u;
+  t.style.display = 'block'; t.textContent = `Ürün ${O.pids[i]}: ${label}`;
+  const r = $('#o-map').getBoundingClientRect(); t.style.left = (ev.clientX - r.left + 14) + 'px'; t.style.top = (ev.clientY - r.top + 10) + 'px'; };
+$('#o-map').onmouseleave = () => $('#o-tip').style.display = 'none';
+$('#o-map').onclick = async ev => {
+  const i = oHit(ev); if(i < 0) return;
+  const pid = O.pids[i], code = O.maps[olens][i];
+  if(olens === 'seo' && code !== 'u') return sOpen(pid);
+  if(olens === 'img' && code !== 'u') return gOpen(pid);
+  if(olens === 'cat' && 'tsek'.includes(code)){
+    const kind = code === 'k' ? 'uncat' : 'wrong', r = await api(`/api/cat/list?kind=${kind}&q=${pid}`);
+    const it = (r.items || []).find(x => x.pid === pid);
+    if(it) return cOpen(it);
+  }
+  toast(`Ürün ${pid}: ${(LENS[olens].codes[code] || LENS[olens].codes.u)[1]}.`);
+};
+document.querySelectorAll('#o-lens button').forEach(b => b.onclick = () => { olens = b.dataset.l; if(O) oLens(); });
+
+// Bir duruma tıklayınca o durumdaki ürünlerin listelendiği sayfa
+function oGo(lens, code){
+  if(lens === 'seo'){ sfilt = code === 'y' ? '0' : code === 'v' ? '1' : ''; spage = 0; show('seo'); sSeg(); sRows(); return; }
+  if(lens === 'img'){ gfilt = code === 'y' ? '0' : code === 'v' ? '1' : ''; gpage = 0; show('gorsel'); gSeg(); gRows(); return; }
+  ckind = code === 'k' ? 'uncat' : 'wrong'; cf = {t: 'tasi', s: 'supheli', e: 'ekle'}[code] || ''; cpage = 0;
+  show('kategori'); cSeg();
+}
+
+function oTodo(){
+  const c = O.counts, items = [];
+  const add = (n, color, title, detail, label, go) => { if(n > 0) items.push({n, color, title, detail, label, go}); };
+  add(c.seo_eksik, 'var(--kirmizi)', `ürünün SEO'su eksik`,
+    c.seo_hazir ? `${nf(c.seo_hazir)} ürünün açıklaması hazır; kontrol edip toplu gönderebilirsiniz.` : 'Açıklamalar hazırlanınca kontrol edip toplu gönderebilirsiniz.',
+    'Ürün SEO\'suna git', () => oGo('seo', 'y'));
+  add(c.tasi, 'var(--kirmizi)', 'ürün yanlış kategoride', 'Her öneriyi tek tuşla uygulayıp gerekirse geri alabilirsiniz.', 'Kategorileri düzelt', () => oGo('cat', 't'));
+  add(c.kategorisiz, 'var(--mor)', 'ürün hiçbir kategoride değil', 'Adına uyan kategori önerildi.', 'Kategorisizleri gör', () => oGo('cat', 'k'));
+  add(c.img_yok, 'var(--kirmizi)', 'ürünün görseli yok', 'Görselsiz ürünler satışta geri planda kalır.', 'Görsellere git', () => oGo('img', 'y'));
+  add(c.yeni_kategori, 'var(--isle)', 'yeni kategori önerisi', 'SEO bilgileri ve resmiyle tek seferde açılabilir.', 'Önerileri gör',
+    () => { ckind = 'newcats'; cf = 'alt'; cpage = 0; show('kategori'); cSeg(); });
+  add(c.supheli, 'var(--sari)', 'ürünün kategorisi şüpheli', 'Bulunduğu kategoriye uymuyor; bir göz atmanızı öneririz.', 'İncele', () => oGo('cat', 's'));
+  add(c.ekle, 'var(--isle)', 'ürün başka bir kategoriye de eklenebilir', 'Mevcut kategorisi doğru; ikinci bir uygun kategori bulundu.', 'İncele', () => oGo('cat', 'e'));
+  const box = $('#o-todo');
+  if(!items.length){
+    box.innerHTML = c.seo_taranan || O.cat_ready ? '<div class="calm">Bekleyen iş yok. Taranan bütün ürünlerin SEO\'su, kategorisi ve görseli yerinde.</div>'
+      : '<p class="muted">Mağazayı taradığınızda yapılacaklar burada önem sırasıyla listelenir.</p>';
+    return;
+  }
+  box.innerHTML = `<ol class="todo">${items.map((x, i) => `<li style="--c:${x.color}">
+    <div><strong><span class="n">${nf(x.n)}</span> ${x.title}</strong><p>${x.detail}</p></div>
+    <div class="acts"><button class="btn ${i ? 'ghost' : ''}" data-t="${i}">${x.label}</button></div></li>`).join('')}</ol>`;
+  box.querySelectorAll('[data-t]').forEach(b => b.onclick = items[+b.dataset.t].go);
+}
+
+async function oScan(){
+  if(!O || !O.connected){ toast('Önce mağazanızı bağlayın.'); return show('ayarlar'); }
+  const r = await post('/api/overview/scan'); if(r.msg) toast(r.msg); oTick();
+}
+$('#o-scan').onclick = oScan;
+window.addEventListener('resize', () => { if(O && document.querySelector('#v-genel.on')) oLens(); });
+setInterval(() => { if(document.querySelector('#v-genel.on')) oTick(); }, 3000);
+oTick();
+/* ---------------- uygulama geneli */
+// menüdeki bekleyen iş sayıları ve sol alttaki arka plan işleri (her sayfada)
+async function jTick(){
+  const r = await api('/api/jobs'); if(!r.jobs) return;
+  for(const k of ['seo', 'gorsel', 'kategori']){ const n = r.badges[k]; $('#nb-' + k).textContent = n ? nf(n) : ''; }
+  $('#dock').innerHTML = r.jobs.map((j, i) => `<div class="job" data-j="${i}" title="${esc(j.t)}"><b>${esc(j.t)}${j.paused ? ' (duraklatıldı)' : ''}</b>
+    <span>${esc(j.d || 'Sürüyor')}${j.pct != null ? ' · %' + j.pct : ''}</span>
+    <div class="jb${j.pct == null ? ' ind' : ''}"><i style="${j.pct != null ? 'width:' + j.pct + '%' : ''}"></i></div></div>`).join('');
+  $('#dock').querySelectorAll('[data-j]').forEach(el => el.onclick = () => show(r.jobs[+el.dataset.j].v));
+}
+setInterval(jTick, 2000); jTick();
+
+// ayar sekmeleri
+document.querySelectorAll('#settabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#settabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.setpane').forEach(x => x.classList.toggle('on', x.id === 'sp-' + b.dataset.p));
+});
+
+// katlanır ürün haritaları açılınca çizilir; menü dışına tıklayınca "Diğer işlemler" kapanır
+document.querySelectorAll('details.mapbox').forEach(d => d.addEventListener('toggle', () => {
+  if(d.open) (d.dataset.draw === 's' ? sDraw : gDraw)();
+}));
+document.addEventListener('click', e => document.querySelectorAll('details.more[open]').forEach(d => { if(!d.contains(e.target) || e.target.closest('.menu button')) d.open = false; }));
+
+tick(); setInterval(tick, 3000);
+</script>
+</body>
+</html>

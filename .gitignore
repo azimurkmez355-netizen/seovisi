@@ -1,0 +1,10 @@
+# gizli bilgiler ve çalışma verisi (mağaza anahtarları, durum veritabanı, kayıtlar)
+data/ayarlar.json
+data/sunucu.json
+data/magazalar/
+data/durum.db*
+data/islem.log
+data/*_index.json
+rapor/
+__pycache__/
+*.pyc
