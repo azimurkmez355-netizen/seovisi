@@ -44,6 +44,7 @@ import uyari as UY  # noqa: E402
 import kopya as KP  # noqa: E402
 import baglanti as BG  # noqa: E402
 import rapor as RP  # noqa: E402
+import yedek as YD  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -3097,6 +3098,19 @@ CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline'; "
 _HOST_RX = re.compile(r"(https://)?(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)+(:\d{1,5})?")
 
 
+def guvenilir_vekil(ip):
+    """X-Forwarded-For başlığına güvenilen ters vekil mi: aynı makine ya da SEOVISI_VEKIL ortam değişkenindeki ağlar
+    (virgülle, ör. Docker ağı "172.16.0.0/12")."""
+    try:
+        a = ipaddress.ip_address(ip)
+        if a.is_loopback:
+            return True
+        return any(a in ipaddress.ip_network(n.strip(), strict=False)
+                   for n in os.environ.get("SEOVISI_VEKIL", "").split(",") if n.strip())
+    except ValueError:
+        return False
+
+
 class TooLarge(Exception):
     pass
 
@@ -3394,11 +3408,12 @@ class H(BaseHTTPRequestHandler):
         return self.rfile.read(n) if n else b""
 
     def client_ip(self):
-        """İsteği gönderenin adresi. Önündeki ters vekil (Caddy) aynı makinedeyse onun eklediği son adres."""
+        """İsteği gönderenin adresi. İstek güvenilen bir ters vekilden (aynı makinedeki ya da SEOVISI_VEKIL ağlarındaki
+        Caddy) geldiyse onun eklediği son adres; yoksa bütün müşteriler vekilin tek adresinden geliyor görünürdü."""
         ip = self.client_address[0]
         fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
         try:
-            if fwd and ipaddress.ip_address(ip).is_loopback:
+            if fwd and guvenilir_vekil(ip):
                 ipaddress.ip_address(fwd)
                 return fwd
         except ValueError:
@@ -3499,6 +3514,10 @@ class H(BaseHTTPRequestHandler):
                 self._send(200, {"ok": True}, extra={"Set-Cookie": session_cookie(got, framed=True)})
             else:
                 self._send(404, {"error": "Giriş kodu geçersiz ya da süresi doldu; yeniden giriş yapın."})
+            return True
+        if p == "/saglik" and method == "GET":        # dışarıdan izleme: program ayakta ve veri klasörü yazılabilir mi
+            ok = os.access(DATA, os.W_OK)
+            self._send(200 if ok else 503, {"ok": ok})
             return True
         if p == "/cikis" and SERVER["on"]:
             self._redirect("/", {"Set-Cookie": clear_cookies()})
@@ -4044,6 +4063,12 @@ def main():
     global SRV
     if {"--abonelik", "--abonelikler"} & set(sys.argv[1:]):
         sys.exit(abonelik_komutu())
+    if "--yedek" in sys.argv[1:]:                      # python app.py --yedek /yedekler [--dongu]
+        hedef = arg("--yedek")
+        if "--dongu" in sys.argv[1:]:
+            YD.dongu(DATA, hedef, sakla=int(arg("--sakla", "14")))
+        print(f"Yedek alındı: {YD.yedekle(DATA, hedef, sakla=int(arg('--sakla', '14')))}")
+        return
     SERVER["on"] = "--sunucu" in sys.argv[1:]
     port = int(arg("--port", PORT))
     host = arg("--host", "127.0.0.1")

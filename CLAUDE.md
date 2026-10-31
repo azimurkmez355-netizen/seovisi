@@ -33,6 +33,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_uyari.py`, `test_kopya.py`, `test_baglanti.py`: uyarı, kopya ve kırık bağlantı kuralları.
   - `test_gecis.py`: toplu şablon geçişi ve SEO geri alma.
   - `test_rapor.py`: aylık rapor, olay kaydı, haftalık tarama.
+  - `test_yedek.py`: günlük yedek.
   - `test_panel.py`: panel betiğinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
@@ -41,6 +42,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
   - Commit öncesi kanca `.githooks/pre-commit`; bir kez `git config core.hooksPath .githooks` ile açılır.
     Yeni klonda kancanın çalıştırılabilir kalması için ilk eklemede `git add --chmod=+x .githooks/pre-commit`.
+
+- Sunucu kurulumu: `Dockerfile`, `docker-compose.yml` (canlı + test + Caddy + yedek), `Caddyfile`, `.env.ornek`; adımlar `KURULUM.md`.
+  Kap içinde `SEOVISI_VEKIL` Docker ağını güvenilen ters vekil yapar (`guvenilir_vekil`); `/saglik` dış izleme içindir.
+  `python app.py --yedek KLASOR [--dongu] [--sakla 14]`. GitHub'daki "docker" işi görüntüyü kurup çalıştırarak denetler.
 
 ## Mimari
 
@@ -57,6 +62,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `kopya.py` | Kopya ürün grupları (yalnızca okur): aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama. |
 | `baglanti.py` | Kırık bağlantı taraması: herkese açık siteyi gezer (ana sayfa, site haritası, robots.txt); ağ erişimi dışarıdan verilir. |
 | `rapor.py` | Aylık rapor hesabı: olay sayıları ve durum fotoğraflarının ay başı / ay sonu karşılaştırması. |
+| `yedek.py` | Günlük yedek: data klasörünün tutarlı zip kopyası (anahtar hariç), eski yedeklerin silinmesi. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/marka/` | Logo, simge ve renkler. |

@@ -189,10 +189,10 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 ## Faz 3 — Sunucu altyapısı (3–4 hafta)
 
 - [ ] (S) Türkiye'de bir sanal sunucu
-- [ ] (K) Çekirdek modüller kalır; web katmanı FastAPI, veritabanı PostgreSQL, ayrı iş kuyruğu
+- [x] (K) Bugünkü yapı kalır (standart kütüphane, mağaza başına SQLite); FastAPI / PostgreSQL mağaza sayısı büyüyünce yeniden değerlendirilir
 - [ ] (K) Ideasoft bağlantısı platform adaptörü arkasına
-- [ ] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam
-- [ ] (K) Günlük yedek, izleme ve alarmlar
+- [x] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam (KURULUM.md)
+- [x] (K) Günlük yedek (anahtarsız, 14 gün), sağlık adresi /saglik (dış izleme hizmetiyle alarm)
 - [ ] (K) Uygulama kaldırılınca veri silme
 - [ ] (K) Yönetici paneli: mağazalar, abonelikler, kullanım, hatalar
 

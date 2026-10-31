@@ -1,0 +1,12 @@
+.git
+.github
+.githooks
+data
+veri*
+yedek*
+testler
+__pycache__
+*.pyc
+*.md
+*.txt
+baslat.bat

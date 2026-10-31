@@ -1,0 +1,10 @@
+# HTTPS sertifikalarını Caddy kendisi alır ve yeniler (Let's Encrypt). Alan adları .env'deki ALAN_CANLI / ALAN_TEST.
+{$ALAN_CANLI} {
+	encode gzip
+	reverse_proxy app:8080
+}
+
+{$ALAN_TEST} {
+	encode gzip
+	reverse_proxy app-test:8080
+}

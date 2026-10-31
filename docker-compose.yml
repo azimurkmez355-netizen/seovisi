@@ -1,0 +1,47 @@
+# seovisi sunucusu: canlı (app.seovisi.com.tr) ve test (test.seovisi.com.tr) ortamı, HTTPS için Caddy, günlük yedek.
+# Kurulum adımları KURULUM.md içinde. Gizli değerler bu dosyada değil, aynı klasördeki .env dosyasındadır.
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      SEOVISI_ANAHTAR: ${SEOVISI_ANAHTAR:?.env dosyasinda SEOVISI_ANAHTAR yok}
+      SEOVISI_VEKIL: 172.16.0.0/12          # Caddy Docker ağından gelir; müşterinin gerçek adresi X-Forwarded-For'da
+    volumes:
+      - ./veri/canli:/app/data
+    expose: ["8080"]
+
+  app-test:
+    build: .
+    restart: unless-stopped
+    environment:
+      SEOVISI_ANAHTAR: ${SEOVISI_ANAHTAR_TEST:?.env dosyasinda SEOVISI_ANAHTAR_TEST yok}
+      SEOVISI_VEKIL: 172.16.0.0/12
+    volumes:
+      - ./veri/test:/app/data
+    expose: ["8080"]
+
+  caddy:
+    image: caddy:2.8
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      ALAN_CANLI: ${ALAN_CANLI:-app.seovisi.com.tr}
+      ALAN_TEST: ${ALAN_TEST:-test.seovisi.com.tr}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [app, app-test]
+
+  yedek:                                     # her gece 03:00'te canlı verinin yedeği; son 14 gün tutulur
+    build: .
+    restart: unless-stopped
+    command: ["python", "app.py", "--yedek", "/yedek", "--dongu", "--sakla", "14"]
+    volumes:
+      - ./veri/canli:/app/data
+      - ./yedekler:/yedek
+
+volumes:
+  caddy_data:
+  caddy_config:

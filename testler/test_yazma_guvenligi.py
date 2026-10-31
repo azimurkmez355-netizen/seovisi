@@ -308,6 +308,15 @@ class Oturum(unittest.TestCase):
         self.assertEqual(app.frame_ancestors("kotu.com; script-src *"),
                          "'self' https://*.myideasoft.com https://*.ideasoft.com.tr https://panel.ornek.com")
 
+    def test_guvenilir_vekil(self):
+        self.assertTrue(app.guvenilir_vekil("127.0.0.1"))
+        self.assertFalse(app.guvenilir_vekil("172.18.0.5"))                       # ayar yokken Docker ağı güvenilmez
+        with mock.patch.dict(os.environ, {"SEOVISI_VEKIL": "172.16.0.0/12, 10.1.0.0/16"}):
+            self.assertTrue(app.guvenilir_vekil("172.18.0.5"))
+            self.assertTrue(app.guvenilir_vekil("10.1.2.3"))
+            self.assertFalse(app.guvenilir_vekil("203.0.113.9"))                  # internetten gelen başlığa güvenilmez
+            self.assertFalse(app.guvenilir_vekil("bozuk"))
+
     def test_deneme_siniri(self):
         rl = app.RateLimit(3, 60)
         self.assertEqual([rl.hit("1.1.1.1") for _ in range(3)], [0, 0, 0])

@@ -11,3 +11,8 @@ __pycache__/
 
 # şifreleme ana anahtarı: kaybolursa mağazalar yeniden bağlanır; verilerden ayrı yedekleyin
 data/anahtar.key
+
+# sunucu: gizli ortam değişkenleri, veri ve yedekler (KURULUM.md)
+.env
+veri/
+yedekler/

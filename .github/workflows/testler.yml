@@ -24,3 +24,29 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: Testler
         run: python -X utf8 testler/hepsi.py
+
+  docker:                                    # sunucu görüntüsü kurulur, çalışır, sağlık adresi ve yedek komutu denenir
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: docker-compose.yml geçerli mi
+        run: SEOVISI_ANAHTAR=x SEOVISI_ANAHTAR_TEST=y docker compose config --quiet
+      - name: Görüntü
+        run: docker build -t seovisi .
+      - name: Çalıştır ve sağlık adresini dene
+        run: |
+          mkdir -p veri && sudo chown 1000:1000 veri
+          docker run -d --name sv -e SEOVISI_ANAHTAR=test -v "$PWD/veri:/app/data" -p 8080:8080 seovisi
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8080/saglik && break; sleep 1; done
+          curl -fs http://127.0.0.1:8080/saglik | grep -q '"ok": true'
+          curl -fs http://127.0.0.1:8080/ | grep -q "Mağazanızla giriş yapın"
+          test -f veri/sunucu.json && ! test -f veri/anahtar.key        # anahtar ortam değişkeninden; diskte yok
+      - name: Yedek komutu
+        run: |
+          mkdir -p yedekler && sudo chown 1000:1000 yedekler
+          docker run --rm -v "$PWD/veri:/app/data" -v "$PWD/yedekler:/yedek" seovisi python app.py --yedek /yedek
+          ls yedekler/seovisi-*.zip
+      - name: Kayıtlar
+        if: failure()
+        run: docker logs sv || true
