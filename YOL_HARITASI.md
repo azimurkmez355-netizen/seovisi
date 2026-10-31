@@ -57,7 +57,8 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 **Eklenecekler:**
 - [x] Kurulum sihirbazı
 - [x] Yeni ürün otopilotu: yeni ürünler fark edilir, SEO'su ve kategorisi hazırlanır; onaylı ya da otomatik onaylı gönderim
-- [ ] Aylık e-posta raporu
+- [x] Aylık rapor (panelde, yazdırılabilir / PDF)
+  - [ ] (S+K) E-posta ile gönderimi: bir e-posta gönderim hizmeti seçilince
 - [ ] Yapay zekâ ile ürüne özel açıklama; marka sesi seçimi (samimi, kurumsal, genç)
 - [x] Açıklama şablonu ayarlama:
   - [x] hazır şablonlar: sade, bantlı, çizgili, kutulu
@@ -181,9 +182,9 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Kopya ürün tespiti (aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama; neredeyse aynılar v2 varyant önerisinde)
 - [ ] (K) Özellik doldurma
 - [x] (K) Kırık bağlantı taraması (ana sayfa + site haritası; sayfa, görsel ve dış bağlantılar; robots.txt'ye uyar)
-  - [ ] (K) Haftalık otomatik tarama (aboneliği taşıyan "haftalık taramalar" değeri; aylık raporla birlikte)
+  - [x] (K) Haftalık otomatik tarama (ücretli paketlerde; SEO, kategori, kırık bağlantı)
 - [x] (K) Fiyat ve satılamaz ürün uyarıları (fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat; yayında ama stokta yok)
-- [ ] (K) Aylık e-posta raporu
+- [x] (K) Aylık rapor: yapılanlar (olay kaydı) ve ay başına göre durum (tarama sonu durum fotoğrafı); e-posta gönderimi kaldı
 
 ## Faz 3 — Sunucu altyapısı (3–4 hafta)
 

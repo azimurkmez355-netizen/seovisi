@@ -265,6 +265,10 @@ def uyarilar(port, ca, cb):
     check("kopya: diğer mağazada stok kodu / barkod kopyası yok, mağazalar ayrı",
           not kb["sayilar"].get("ayni_sku") and not kb["sayilar"].get("ayni_barkod"), kb.get("sayilar"))
     check("genel bakış kopya grubu sayısını gösterir", c["kopya"] == ka["toplam"] > 0, (c["kopya"], ka["toplam"]))
+    r = req(port, "GET", "/api/rapor", cookie=ca)[2]
+    m = {x["k"]: x for x in r["rapor"]["metrikler"]}
+    check("tarama sonunda rapor için durum fotoğrafı alınır", r["rapor"]["sonra_zaman"] and m["fiyat_uyari"]["sonra"] == 4
+          and r["haftalik"]["gun"] == 7 and r["haftalik"]["acik"] is False, (r["rapor"].get("sonra_zaman"), r.get("haftalik")))
 
 
 def linkler(port, ca):

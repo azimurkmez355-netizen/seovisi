@@ -43,6 +43,7 @@ import sablon as TPL  # noqa: E402
 import uyari as UY  # noqa: E402
 import kopya as KP  # noqa: E402
 import baglanti as BG  # noqa: E402
+import rapor as RP  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -1181,6 +1182,8 @@ class SeoScanner:
                 DBI.x("DELETE FROM seo WHERE checked < ?", (scan_start,))  # mağazadan silinmiş ürünler
                 DBI.x("DELETE FROM urunbilgi WHERE guncellendi < ?", (scan_start,))
             c = seo_counts()
+            if not self.stop_flag:
+                anlik_al()                                      # aylık rapor için durum fotoğrafı
             log(f"SEO analizi {'durduruldu' if self.stop_flag else 'bitti'}: {c['ok']} ürün %100, "
                 f"{c['eksik']} ürün eksik" + (f", {c['bilinmiyor']} ürünün puanı okunamadı" if c['bilinmiyor'] else "") + ".",
                 "ok")
@@ -1649,6 +1652,7 @@ def cat_fix(pid, add, rem, sug="", undo=False):
     expect = json.loads(row["cats"]) if row else None
     state, msg, before, after = apply_categories(pid, add, rem, expect, bos_olabilir=undo)
     if state == "uygulandi":
+        olay("geri" if undo else "kategori", pid)
         DBI.x("UPDATE catprod SET cats=? WHERE pid=?", (json.dumps(after), pid))
         if undo:
             DBI.x("UPDATE catfix SET state='geri', msg=?, at=? WHERE pid=?",
@@ -1721,6 +1725,7 @@ class CatJobs:
         self.ok += 1
         DBI.x("INSERT OR REPLACE INTO catnew(key, cid, name, at) VALUES(?,?,?,?)",
               (newcat_key(g), cid, name, datetime.now().strftime("%Y-%m-%d %H:%M")))
+        olay("kategori_ac", cid)
         self.results.append({"name": name, "cid": cid, "notes": notes})
         move = (CATSCAN.report or {}).get("with_parents") is False
         pids = g["pids"]
@@ -2247,6 +2252,7 @@ def seo_geri_al(pid):
         return "hata", msg
     DBI.x("UPDATE seo SET pstate='geri', pmsg=?, plan=NULL, backup=NULL, onceki=NULL, gecis=NULL, ok=-1 WHERE pid=?",
           ("Özgün hâline döndürüldü.", pid))
+    olay("geri", pid)
     log(f"SEO geri alındı, ürün {pid}: özgün hâline döndürüldü.", "ok")
     return "uygulandi", "Ürünün SEO'su ve açıklaması seovisi'den önceki hâline döndü."
 
@@ -2305,6 +2311,8 @@ def send_plan(pid, edited=None):
     DBI.x("UPDATE seo SET pstate=?, pmsg=?, plan=?, ok=CASE WHEN ? IS NULL THEN ok ELSE ? END, "
           "pscore=COALESCE(?, pscore) WHERE pid=?",
           (state, msg, json.dumps(plan, ensure_ascii=False), pct, ok, None if pct is None else str(pct), pid))
+    if state == "gonderildi":
+        olay("seo", pid)
     log(f"SEO gönderimi ürün {pid}: {msg}", "ok" if state == "gonderildi" else "warn")
     return state, msg
 
@@ -2465,6 +2473,7 @@ def gecir(pid):
         DBI.x("UPDATE seo SET gecis='hata', pmsg=? WHERE pid=?", (msg, pid))
         return "hata"
     plan["details_html"] = yeni["details_html"]
+    olay("gecis", pid)
     DBI.x("UPDATE seo SET gecis='gecti', plan=?, pmsg=? WHERE pid=?",
           (json.dumps(plan, ensure_ascii=False), "Açıklama yeni şablona geçirildi.", pid))
     return "gecti"
@@ -2486,6 +2495,7 @@ def gecis_geri(pid):
         DBI.x("UPDATE seo SET pmsg=? WHERE pid=?", (msg, pid))
         return "hata"
     plan["details_html"] = onceki["details"]
+    olay("geri", pid)
     DBI.x("UPDATE seo SET gecis='geri', onceki=NULL, plan=?, pmsg=? WHERE pid=?",
           (json.dumps(plan, ensure_ascii=False), "Şablon geçişi geri alındı; önceki açıklama yazıldı.", pid))
     return "geri"
@@ -2581,6 +2591,38 @@ class LinkScanner:
     def state(self):
         r = DBI.q("SELECT v FROM kv WHERE k='link_tarama'", one=True)
         return {"running": self.running, "phase": self.phase, "note": self.note, "son": json.loads(r["v"]) if r else None}
+
+
+# ============================================================ aylık rapor: olaylar ve durum fotoğrafları
+
+class Raporlar:
+    """olay: seovisi'nin mağazada yaptığı her iş (rapor.OLAYLAR); anlik: tam taramaların sonundaki durum fotoğrafı."""
+
+    def __init__(self):
+        DBI.x("CREATE TABLE IF NOT EXISTS olay(id INTEGER PRIMARY KEY AUTOINCREMENT, zaman TEXT, tur TEXT, pid INTEGER)")
+        DBI.x("CREATE TABLE IF NOT EXISTS anlik(zaman TEXT PRIMARY KEY, veri TEXT)")
+
+
+def olay(tur, pid=None):
+    DBI.x("INSERT INTO olay(zaman, tur, pid) VALUES(?,?,?)", (datetime.now().strftime("%Y-%m-%d %H:%M"), tur, pid))
+
+
+def anlik_al():
+    """Mağazanın bugünkü durumunu rapor için kaydeder (tam SEO taramasının sonunda)."""
+    c, sc = overview()["counts"], seo_counts()
+    veri = {"taranan": sc["taranan"], "seo_tamam": sc["ok"], "seo_eksik": sc["eksik"],
+            "kategori_sorun": c["tasi"] + c["supheli"] + c["kategorisiz"], "gorselsiz": c["img_yok"],
+            "fiyat_uyari": c["uyari_fiyat"], "stok_uyari": c["uyari_satilamaz"], "kopya": c["kopya"], "kirik": c["kirik"]}
+    DBI.x("INSERT OR REPLACE INTO anlik(zaman, veri) VALUES(?,?)", (datetime.now().strftime("%Y-%m-%d %H:%M"), json.dumps(veri)))
+    return veri
+
+
+def rapor_al(ay=None):
+    an = [(r["zaman"], json.loads(r["veri"])) for r in DBI.q("SELECT zaman, veri FROM anlik ORDER BY zaman")]
+    ol = [(r["zaman"], r["tur"]) for r in DBI.q("SELECT zaman, tur FROM olay")]
+    aylar = RP.aylar([z for z, _ in an] + [z for z, _ in ol]) or [datetime.now().strftime("%Y-%m")]
+    ay = ay if ay in aylar else aylar[0]
+    return {"aylar": [{"ay": a, "ad": RP.ay_adi(a)} for a in aylar], "rapor": RP.hesapla(ay, an, ol)}
 
 
 LINK_BEKLE = 0.25                     # istekler arası bekleme (sn): mağazanın sitesini yormamak için
@@ -2884,11 +2926,47 @@ def oto_zamanlayici():
     while True:
         time.sleep(60)
         oto_tur()
+        haftalik_tur()
+
+
+def _magazalar():
+    return sorted(d for d in os.listdir(STORES) if known_tenant(d)) if SERVER["on"] else [LOCAL["id"]]
+
+
+HAFTALIK_GUN = 7
+
+
+def haftalik_tur():
+    """Haftalık otomatik tarama (yalnızca okur): bağlı ve ücretli paketteki her mağazada 7 günde bir SEO, kategori ve kırık
+    bağlantı taraması başlatır; SEO taramasının sonunda rapor için durum fotoğrafı alınır. Başka bir iş sürüyorsa sonraki tura kalır."""
+    prev = getattr(_cur, "t", None)
+    for tid in _magazalar():
+        try:
+            _cur.t = tenant(tid)
+            if not (CFG.get("access_token") or CFG.get("refresh_token")):
+                continue
+            a = abonelik_durumu()
+            if a and not a["ozellikler"]:
+                continue                                       # ücretsiz analizde otomatik tarama yok
+            r = DBI.q("SELECT v FROM kv WHERE k='haftalik_son'", one=True)
+            if r and r["v"] > (datetime.now() - timedelta(days=HAFTALIK_GUN)).strftime("%Y-%m-%d %H:%M"):
+                continue
+            if any(x.running for x in (SEOSCAN, CATSCAN, LINKS, SEOJOBS, CATJOBS, GECIS, OTO)):
+                continue
+            DBI.x("INSERT OR REPLACE INTO kv(k, v) VALUES('haftalik_son', ?)", (datetime.now().strftime("%Y-%m-%d %H:%M"),))
+            log("Haftalık otomatik tarama başladı (yalnızca okur).")
+            SEOSCAN.start()
+            CATSCAN.start()
+            LINKS.start()
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+        finally:
+            _cur.t = prev
 
 
 def oto_tur():
     """Zamanlayıcının bir turu: vakti gelen her açık otopilotu çalıştırır."""
-    tids = sorted(d for d in os.listdir(STORES) if known_tenant(d)) if SERVER["on"] else [LOCAL["id"]]
+    tids = _magazalar()
     prev = getattr(_cur, "t", None)
     for tid in tids:
         try:
@@ -2927,6 +3005,7 @@ class Tenant:
             self.oto = Otopilot()
             self.links = LinkScanner()
             self.gecis = SablonGecisi()
+            self.rapor = Raporlar()
         finally:
             _cur.t = prev
 
@@ -3490,6 +3569,13 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, OTO.state())
         if p == "/api/sablon/gecis":
             return self._send(200, GECIS.state())
+        if p == "/api/rapor":
+            r = rapor_al(q.get("ay"))
+            son = DBI.q("SELECT v FROM kv WHERE k='haftalik_son'", one=True)
+            ab = abonelik_durumu()
+            r["haftalik"] = {"son": son["v"] if son else None, "gun": HAFTALIK_GUN, "acik": not ab or bool(ab["ozellikler"])}
+            r["magaza"] = PROFILE()["magaza"] or store_host(CFG.get("store"))
+            return self._send(200, r)
         if p == "/api/linkler":
             tur = q.get("tur") or ""
             rows = [dict(r, kaynaklar=json.loads(r["kaynaklar"] or "[]"), harita=bool(r["harita"]))

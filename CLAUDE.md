@@ -32,6 +32,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
   - `test_uyari.py`, `test_kopya.py`, `test_baglanti.py`: uyarı, kopya ve kırık bağlantı kuralları.
   - `test_gecis.py`: toplu şablon geçişi ve SEO geri alma.
+  - `test_rapor.py`: aylık rapor, olay kaydı, haftalık tarama.
   - `test_panel.py`: panel betiğinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
@@ -55,6 +56,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `uyari.py` | Ürün uyarıları (yalnızca okur): fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat, yayında ama stokta yok. |
 | `kopya.py` | Kopya ürün grupları (yalnızca okur): aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama. |
 | `baglanti.py` | Kırık bağlantı taraması: herkese açık siteyi gezer (ana sayfa, site haritası, robots.txt); ağ erişimi dışarıdan verilir. |
+| `rapor.py` | Aylık rapor hesabı: olay sayıları ve durum fotoğraflarının ay başı / ay sonu karşılaştırması. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/marka/` | Logo, simge ve renkler. |
@@ -171,6 +173,14 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - `seo_geri_al` (`/api/seo/undo`): ürünü seovisi'den önceki hâline (açıklama, başlık, meta, anahtar kelimeler, hedef kelime) döndürür;
   geri almalar abonelikten bağımsızdır (WRITE_ROUTES'ta yok).
 
+### Aylık rapor ve haftalık tarama
+
+- `olay(tur, pid)`: seovisi'nin yaptığı her iş `olay` tablosuna (seo, kategori, kategori_ac, gecis, geri). Mağazaya yazan yeni bir
+  özellik eklersen başarılı yazmadan sonra olay da kaydet; rapor ona bakar.
+- `anlik_al()`: tam SEO taramasının sonunda durum fotoğrafı (`anlik`). `rapor_al(ay)` → `rapor.hesapla`.
+- `haftalik_tur()` (zamanlayıcıda, otopilotla birlikte): bağlı ve ücretli paketteki mağazada 7 günde bir SEO, kategori ve kırık bağlantı
+  taraması; başka bir iş sürüyorsa sonraki tura kalır. E-posta gönderimi henüz yok.
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -189,5 +199,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti, kırık bağlantı taraması ve toplu şablon
-  geçişi bitti. Kalan: özellik doldurma, aylık e-posta raporu (haftalık otomatik taramalarla). Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti, kırık bağlantı taraması toplu şablon
+  geçişi, aylık rapor ve haftalık tarama bitti. Kalan: özellik doldurma, raporun e-postayla gönderimi. Ayrıntılar `YOL_HARITASI.md` içinde.
