@@ -34,7 +34,25 @@ def build(tree, words, prefix, n_each, seed):
         cid = rnd.choice(list(words))
         prods[pid] = {"id": pid, "name": f"{rnd.choice(words[cid][0])} {rnd.choice(words[cid][1])}", "sku": f"{prefix}-{pid}",
                       "status": 1, "categories": []}
+    fiyat = random.Random(seed + 100)                    # ad ve kategori sırası değişmesin diye ayrı rastgele kaynak
+    for p in prods.values():
+        cid = (p["categories"] or [{"id": 0}])[0]["id"]
+        p.update(price1=round(fiyat.uniform(0.8, 1.2) * (200 + 50 * (cid % 10)), 2), stockAmount=fiyat.randint(1, 20),
+                 currency={"id": 1, "abbr": "TL"}, discount=0, discountType=0)
+        p["buyingPrice"] = round(p["price1"] * 0.6, 2)
     return cats, prods
+
+
+def fiyat_hatalari(prods):
+    """Uyarı testi için A mağazasında bilerek bırakılan hatalar: fiyatı 0, %100 indirim, 100 kat fiyat,
+    alış fiyatının altında satış, stokta yok."""
+    p = [prods[i] for i in sorted(prods)[:5]]
+    p[0]["price1"] = 0
+    p[1].update(discount=100, discountType=1)
+    p[2]["price1"] *= 100
+    p[3]["buyingPrice"] = p[3]["price1"] * 2
+    p[4]["stockAmount"] = 0
+    return prods
 
 
 def hirdavat():
@@ -63,6 +81,7 @@ def giyim():
 
 
 STORES = {"a-magaza.com": hirdavat(), "b-moda.com": giyim()}
+fiyat_hatalari(STORES["a-magaza.com"][1])
 
 
 def fake_call(self, method, path, params=None, body=None, tries=6):

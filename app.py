@@ -28,7 +28,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
-from collections import deque
+from collections import Counter, deque
 from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -40,6 +40,7 @@ import profil as PR  # noqa: E402
 import sifre  # noqa: E402
 import abonelik as AB  # noqa: E402
 import sablon as TPL  # noqa: E402
+import uyari as UY  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -1036,6 +1037,10 @@ class SeoScanner:
                  top INTEGER, bottom INTEGER, ok INTEGER, codes TEXT, fails TEXT, words INTEGER,
                  density REAL, checked TEXT)""")
         DBI.x("CREATE INDEX IF NOT EXISTS i_seo_ok ON seo(ok)")
+        # uyarılar için fiyat ve stok bilgileri (uyari.py); SEO taramasında aynı ürün kayıtlarından, ek istek olmadan
+        DBI.x("""CREATE TABLE IF NOT EXISTS urunbilgi(pid INTEGER PRIMARY KEY, sku TEXT, name TEXT, fiyat REAL, satis REAL,
+                 alis REAL, indirim REAL, indirim_tip INTEGER, stok REAL, aktif INTEGER, secenekli INTEGER, para TEXT,
+                 kats TEXT, guncellendi TEXT)""")
         for col in ("pscore TEXT", "src TEXT", "plan TEXT", "pstate TEXT", "pmsg TEXT", "backup TEXT",
                     "price REAL", "cur TEXT"):
             try:
@@ -1120,7 +1125,7 @@ class SeoScanner:
                 page = [p for p in (API.call("GET", "products", prm) or []) if p.get("id", 0) > last]
                 if not page:
                     break
-                rows, now = [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                rows, bilgi, now = [], [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if self.single:
                     page = pmap(lambda q: API.call("GET", f"products/{q['id']}") or q, page, 4)
                 for p in page:
@@ -1136,11 +1141,16 @@ class SeoScanner:
                     rows.append((p["id"], p.get("sku"), p.get("name"), "", None, None,
                                  -1 if ok is None else ok, "", "[]", None, None, now,
                                  None if pct is None else str(pct), info, price, cur))
+                    bilgi.append((p["id"], p.get("sku"), p.get("name"), _num(p.get("price1")), price,
+                                  _num(p.get("buyingPrice")), _num(p.get("discount")), int(_num(p.get("discountType")) or 0),
+                                  _num(p.get("stockAmount")), None if p.get("status") is None else (0 if _pasif(p) else 1),
+                                  1 if p.get("hasOption") else 0, cur, json.dumps(_cat_ids(p)), now))
                 DBI.xm("""INSERT INTO seo(pid, sku, name, kw, top, bottom, ok, codes, fails, words,
                           density, checked, pscore, src, price, cur) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                           ON CONFLICT(pid) DO UPDATE SET sku=excluded.sku, name=excluded.name, ok=excluded.ok,
                           checked=excluded.checked, pscore=excluded.pscore, src=excluded.src,
                           price=excluded.price, cur=excluded.cur""", rows)
+                DBI.xm("INSERT OR REPLACE INTO urunbilgi VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)", bilgi)
                 self.done_session += len(rows)
                 last = max(p["id"] for p in page)
                 if CFG.get("seo_prepare", True):
@@ -1158,6 +1168,7 @@ class SeoScanner:
                         pmap(prep, todo, 3)
             if not self.stop_flag:
                 DBI.x("DELETE FROM seo WHERE checked < ?", (scan_start,))  # mağazadan silinmiş ürünler
+                DBI.x("DELETE FROM urunbilgi WHERE guncellendi < ?", (scan_start,))
             c = seo_counts()
             log(f"SEO analizi {'durduruldu' if self.stop_flag else 'bitti'}: {c['ok']} ürün %100, "
                 f"{c['eksik']} ürün eksik" + (f", {c['bilinmiyor']} ürünün puanı okunamadı" if c['bilinmiyor'] else "") + ".",
@@ -1798,12 +1809,13 @@ def overview():
             "cat": "".join(cat_code(p) for p in pids)}
     made = {r["key"] for r in DBI.q("SELECT key FROM catnew")}
     jobs = SEOJOBS.state()
+    uy = Counter(u["grup"] for u in uyarilar()[0])
     return {
         "pids": pids, "maps": maps,
         "counts": {"seo_eksik": maps["seo"].count("y"), "seo_hazir": jobs["hazir"],
                    "seo_taranan": len(seo), "img_yok": maps["img"].count("y"), "img_taranan": len(img),
                    "tasi": maps["cat"].count("t"), "supheli": maps["cat"].count("s"), "ekle": maps["cat"].count("e"),
-                   "kategorisiz": maps["cat"].count("k"),
+                   "kategorisiz": maps["cat"].count("k"), "uyari_fiyat": uy["fiyat"], "uyari_satilamaz": uy["satilamaz"],
                    "yeni_kategori": sum(1 for g in rep.get("newcats") or [] if g["kind"] == "alt" and newcat_key(g) not in made)},
         "scans": {"seo": SEOSCAN.running, "cat": CATSCAN.running, "img": IMG.running,
                   "phase": SEOSCAN.phase or CATSCAN.phase or IMG.phase or "",
@@ -1811,6 +1823,12 @@ def overview():
         "cat_ready": bool(rep), "connected": bool(CFG.get("access_token") or CFG.get("refresh_token")),
         "profil": PROFILE(),
     }
+
+
+def uyarilar():
+    """Taranan ürünlerin uyarıları (uyari.py); her istekte kayıtlı bilgilerden hesaplanır."""
+    rows = DBI.q("SELECT * FROM urunbilgi")
+    return UY.hesapla([dict(r, kats=json.loads(r["kats"] or "[]")) for r in rows]), len(rows)
 
 
 def category_paths():
@@ -3192,6 +3210,16 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/otopilot":
             return self._send(200, OTO.state())
+        if p == "/api/uyarilar":
+            items, taranan = uyarilar()
+            say = Counter(u["tur"] for u in items)
+            tur, aranan = q.get("tur") or "", ST.tr_lower(q.get("q") or "")
+            sec = [u for u in items if (not tur or u["tur"] == tur or u["grup"] == tur)
+                   and (not aranan or aranan in ST.tr_lower(f"{u['name']} {u['sku']} {u['pid']}"))]
+            page = max(0, int(q.get("page") or 0))
+            return self._send(200, {"taranan": taranan, "sayilar": say, "toplam": len(sec), "items": sec[page * 50:(page + 1) * 50],
+                                    "turler": UY.TURLER, "gruplar": UY.GRUPLAR,
+                                    "panel": API.base() if CFG.get("store") else ""})
         if p == "/api/seo/state":
             st = SEOSCAN.state()
             st["jobs"] = SEOJOBS.state()

@@ -69,7 +69,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 - [ ] Kopya ürün tespiti
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [ ] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
-- [ ] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)
+- [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)
 - [ ] Paketler, kota ve abonelik durumu
 
 **v2 (yayından sonraki ilk büyük güncelleme):**
@@ -181,7 +181,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [ ] (K) Kopya ürün tespiti
 - [ ] (K) Özellik doldurma
 - [ ] (K) Kırık bağlantı taraması
-- [ ] (K) Fiyat ve satılamaz ürün uyarıları
+- [x] (K) Fiyat ve satılamaz ürün uyarıları (fiyatı 0, hatalı indirim, alış fiyatı altı, kategorisine göre aşırı fiyat; yayında ama stokta yok)
 - [ ] (K) Aylık e-posta raporu
 
 ## Faz 3 — Sunucu altyapısı (3–4 hafta)

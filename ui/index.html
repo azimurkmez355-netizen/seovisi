@@ -330,6 +330,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <a data-v="seo"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>Ürün SEO'su<b class="badge" id="nb-seo"></b></a>
     <a data-v="kategori"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Kategoriler<b class="badge" id="nb-kategori"></b></a>
     <a data-v="gorsel"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>Görseller<b class="badge" id="nb-gorsel"></b></a>
+    <a data-v="uyari"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>Uyarılar<b class="badge" id="nb-uyari"></b></a>
     <a data-v="otopilot"><svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>Otopilot<b class="badge" id="nb-otopilot"></b></a>
     <div class="grow"></div>
     <div class="dock" id="dock" aria-live="polite"></div>
@@ -506,6 +507,20 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <tbody id="grows"></tbody>
   </table></div>
   <div class="pager"><span id="gpinfo"></span><button class="btn ghost sm" id="gprev">Önceki</button><button class="btn ghost sm" id="gnext">Sonraki</button></div>
+</section>
+
+<!-- ============================ UYARILAR -->
+<section class="view" id="v-uyari">
+  <header class="ph">
+    <div><h1>Uyarılar</h1><p class="lede" id="u-info">Fiyatı hatalı görünen ve yayında olup satılamayan ürünler. Mağazada hiçbir şey değiştirilmez; düzeltmeyi Ideasoft panelinde yaparsınız.</p></div>
+    <div class="ph-act"><button class="btn" id="u-scan">Mağazayı yeniden tara</button></div>
+  </header>
+  <div class="tools"><input type="search" id="uq" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><div class="seg" id="useg"></div></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Ürün</th><th>Uyarı</th><th>Satış fiyatı</th><th></th></tr></thead>
+    <tbody id="urows"></tbody>
+  </table></div>
+  <div class="pager"><span id="upinfo"></span><button class="btn ghost sm" id="uprev">Önceki</button><button class="btn ghost sm" id="unext">Sonraki</button></div>
 </section>
 
 <!-- ============================ YENİ ÜRÜN OTOPİLOTU -->
@@ -711,6 +726,7 @@ function show(v){
   if(v==='seo'){ sTick(); sRows(); }
   if(v==='kategori'){ cTick(); cRows(); }
   if(v==='otopilot') aTick();
+  if(v==='uyari'){ uSeg(); uRows(); }
 }
 
 /* durum: bağlantı, mağaza adı ve ayarlar */
@@ -1523,6 +1539,7 @@ async function oTick(){
   $('#o-scan').textContent = busy ? 'Taranıyor…' : (c.seo_taranan ? 'Yeniden tara' : 'Mağazayı tara');
   $('#o-progress').textContent = busy || sc.img ? `Tarama sürüyor: ${sc.phase || 'başlıyor'}` : '';
   oSetup(); oHealth(); oLens(); oTodo();
+  $('#nb-uyari').textContent = c.uyari_fiyat || '';
 }
 
 function oSetup(){
@@ -1611,6 +1628,9 @@ function oGo(lens, code){
 function oTodo(){
   const c = O.counts, items = [];
   const add = (n, color, title, detail, label, go) => { if(n > 0) items.push({n, color, title, detail, label, go}); };
+  // fiyat hatası doğrudan para kaybıdır; en üstte
+  add(c.uyari_fiyat, 'var(--kirmizi)', 'ürünün fiyatında hata olabilir', 'Fiyatı 0, hatalı indirim, alış fiyatının altında ya da benzerlerine göre aşırı fiyat.',
+    'Uyarılara git', () => { ufilt = 'fiyat'; show('uyari'); });
   add(c.seo_eksik, 'var(--kirmizi)', `ürünün SEO'su eksik`,
     c.seo_hazir ? `${nf(c.seo_hazir)} ürünün açıklaması hazır; kontrol edip toplu gönderebilirsiniz.` : 'Açıklamalar hazırlanınca kontrol edip toplu gönderebilirsiniz.',
     'Ürün SEO\'suna git', () => oGo('seo', 'y'));
@@ -1620,6 +1640,8 @@ function oTodo(){
   add(c.yeni_kategori, 'var(--isle)', 'yeni kategori önerisi', 'SEO bilgileri ve resmiyle tek seferde açılabilir.', 'Önerileri gör',
     () => { ckind = 'newcats'; cf = 'alt'; cpage = 0; show('kategori'); cSeg(); });
   add(c.supheli, 'var(--sari)', 'ürünün kategorisi şüpheli', 'Bulunduğu kategoriye uymuyor; bir göz atmanızı öneririz.', 'İncele', () => oGo('cat', 's'));
+  add(c.uyari_satilamaz, 'var(--sari)', 'ürün yayında ama stokta yok', 'Sitede görünüyorlar ama satın alınamıyorlar.',
+    'Uyarılara git', () => { ufilt = 'satilamaz'; show('uyari'); });
   add(c.ekle, 'var(--isle)', 'ürün başka bir kategoriye de eklenebilir', 'Mevcut kategorisi doğru; ikinci bir uygun kategori bulundu.', 'İncele', () => oGo('cat', 'e'));
   const box = $('#o-todo');
   if(!items.length){
@@ -1640,6 +1662,39 @@ async function oScan(){
 $('#o-scan').onclick = oScan;
 window.addEventListener('resize', () => { if(O && document.querySelector('#v-genel.on')) oLens(); });
 setInterval(() => { if(document.querySelector('#v-genel.on')) oTick(); }, 3000);
+
+/* ---------------- uyarılar (yalnızca okur) */
+let ufilt = '', upage = 0, U = null;
+function uSeg(){
+  const say = (U && U.sayilar) || {}, tur = (U && U.turler) || {};
+  const grup = g => Object.entries(say).filter(([k]) => (tur[k] || [])[0] === g).reduce((a, [, n]) => a + n, 0);
+  const opts = [['', 'Tümü'], ['fiyat', `Fiyat hataları (${grup('fiyat')})`], ['satilamaz', `Stokta yok (${grup('satilamaz')})`]];
+  $('#useg').innerHTML = opts.map(([k, t]) => `<button data-k="${k}" class="${k === ufilt ? 'on' : ''}">${t}</button>`).join('');
+  document.querySelectorAll('#useg button').forEach(b => b.onclick = () => { ufilt = b.dataset.k; upage = 0; uSeg(); uRows(); });
+}
+let uqh; $('#uq').oninput = () => { clearTimeout(uqh); uqh = setTimeout(() => { upage = 0; uRows(); }, 250); };
+$('#uprev').onclick = () => { if(upage > 0){ upage--; uRows(); } };
+$('#unext').onclick = () => { upage++; uRows(); };
+$('#u-scan').onclick = async () => { const r = await post('/api/overview/scan'); if(r.msg) toast(r.msg); };
+async function uRows(){
+  const r = await api(`/api/uyarilar?tur=${ufilt}&q=${encodeURIComponent($('#uq').value)}&page=${upage}`);
+  if(!r.items) return;
+  const ilk = !U; U = r; if(ilk) uSeg();
+  $('#u-info').textContent = r.taranan
+    ? `Taranan ${nf(r.taranan)} üründe fiyatı hatalı görünen ve yayında olup satılamayan ürünler. Mağazada hiçbir şey değiştirilmez; düzeltmeyi Ideasoft panelinde yaparsınız.`
+    : 'Uyarılar mağaza taramasında okunan fiyat ve stok bilgilerinden çıkar. Önce mağazayı tarayın.';
+  const renk = {fiyat: 'var(--kirmizi)', satilamaz: 'var(--sari)'};
+  const para = (v, c) => v == null ? '–' : `${Number(v).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2})} ${esc(c || '')}`;
+  $('#urows').innerHTML = r.items.length ? r.items.map(x => `<tr>
+      <td><b>${esc(x.name)}</b><br><small class="muted">${esc(x.sku)} · no ${x.pid}</small></td>
+      <td><span class="pill"><i style="background:${renk[x.grup]}"></i>${esc(x.baslik)}</span><br><small>${esc(x.mesaj)}</small></td>
+      <td style="white-space:nowrap">${para(x.satis, x.para)}</td>
+      <td>${r.panel ? `<a class="btn ghost sm" href="${esc(r.panel)}/panel/products/edit/${x.pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : ''}</td></tr>`).join('')
+    : `<tr><td colspan="4" class="muted">${r.taranan ? 'Bu süzgece uyan uyarı yok.' : 'Henüz taranmadı.'}</td></tr>`;
+  $('#upinfo').textContent = r.toplam ? `${nf(upage * 50 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 50))} / ${nf(r.toplam)}` : '';
+  $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 50 >= r.toplam;
+}
+setInterval(() => { if(document.querySelector('#v-uyari.on')) uRows(); }, 5000);
 
 /* ---------------- yeni ürün otopilotu */
 let A = null;

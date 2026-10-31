@@ -141,6 +141,7 @@ def sunucu_kipi():
             ("magazalar", "a-magaza-com", "ayarlar.json"), ("magazalar", "b-moda-com", "ayarlar.json"), ("sunucu.json",)))
         check("erişim anahtarları ve client secret diskte şifreli",
               not any(s in disk for s in ("tok-a-magaza.com", "r-b-moda.com", '"sec"')) and "sifreli:v1:" in disk)
+        uyarilar(8770, ca, cb)
 
         st, h, j = req(8770, "POST", "/api/disconnect", {}, cookie=cb)
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
@@ -233,6 +234,28 @@ def abonelik(port, appdir, ca, cb_state):
     check("geçersiz paket komutla yazılmaz", code == 1 and "Kaydedilmedi" in out, out)
     code, out = komut("--abonelikler")
     check("abonelikler listelenir", code == 0 and "a-magaza-com" in out and "b-moda-com" in out, out)
+
+
+def uyarilar(port, ca, cb):
+    """SEO taraması fiyat ve stok bilgilerini de kaydeder; uyarılar bunlardan hesaplanır, mağazaya yazılmaz."""
+    for c in (ca, cb):
+        req(port, "POST", "/api/seo/start", {}, cookie=c)
+    for c in (ca, cb):
+        for _ in range(150):
+            if not req(port, "GET", "/api/seo/state", cookie=c)[2].get("running"):
+                break
+            time.sleep(0.2)
+    a = req(port, "GET", "/api/uyarilar", cookie=ca)[2]
+    check("uyarılar bırakılan beş hatayı bulur", a["taranan"] == 425 and a["sayilar"] == {
+        "fiyat_yok": 1, "indirim": 1, "uc_fiyat": 1, "zarar": 1, "stok_yok": 1}, (a.get("taranan"), a.get("sayilar")))
+    check("uyarı satırı açıklama ve panel bağlantısı taşır",
+          all(x["mesaj"] and x["sku"] for x in a["items"]) and a["panel"] == "https://a-magaza.com", a["items"][:1])
+    f = req(port, "GET", "/api/uyarilar?tur=fiyat", cookie=ca)[2]
+    check("uyarılar gruba göre süzülür", f["toplam"] == 4 and all(x["grup"] == "fiyat" for x in f["items"]), f.get("toplam"))
+    b = req(port, "GET", "/api/uyarilar", cookie=cb)[2]
+    check("temiz mağazada uyarı yok, mağazalar ayrı", b["taranan"] == 275 and b["sayilar"] == {}, b.get("sayilar"))
+    c = req(port, "GET", "/api/overview", cookie=ca)[2]["counts"]
+    check("genel bakış uyarı sayılarını gösterir", (c["uyari_fiyat"], c["uyari_satilamaz"]) == (4, 1), c)
 
 
 def otopilot(port, appdir, ca):
