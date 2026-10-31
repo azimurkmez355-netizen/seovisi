@@ -199,6 +199,20 @@ class Oturum(unittest.TestCase):
         c = app.session_cookie("deneme-com")
         self.assertRegex(c, r"^sv=deneme-com\.\d+\.[0-9a-f]{64}; Path=/; HttpOnly")
 
+    def test_https_cerezi_cercevede_calisir(self):
+        app.SRV.update(public_url="https://app.seovisi.com.tr")
+        c, f = app.session_cookie("deneme-com"), app.session_cookie("deneme-com", framed=True)
+        self.assertIn("SameSite=None; Secure", c)
+        self.assertNotIn("Partitioned", c)
+        self.assertIn("SameSite=None; Secure; Partitioned", f)
+        self.assertEqual([("Partitioned" in x, "Max-Age=0" in x) for x in app.clear_cookies()], [(False, True), (True, True)])
+        app.SRV.update(public_url="http://localhost:8770")
+        self.assertIn("SameSite=Lax", app.session_cookie("deneme-com"))
+        self.assertNotIn("Secure", app.session_cookie("deneme-com"))
+
+    def test_ideasoft_acilis_bilgisine_henuz_guvenilmez(self):
+        self.assertIsNone(app.ideasoft_launch({"store": "magaza.com", "sig": "x", "shop": "magaza.com"}))
+
     def test_klasor_adi_temiz(self):
         self.assertEqual(app.tenant_id(app.store_host("https://Magaza.MyIdeasoft.com/")), "magaza-myideasoft-com")
         self.assertEqual(app.tenant_id("mağaza.com"), "ma-aza-com")

@@ -2355,14 +2355,79 @@ def _sign(v):
     return hmac.new(SRV.get("secret").encode(), v.encode(), hashlib.sha256).hexdigest()
 
 
-def session_cookie(tid, clear=False):
+def session_cookie(tid, clear=False, framed=False):
+    """HTTPS'te SameSite=None: panel Ideasoft'un içinde (başka sitenin çerçevesinde) açılırken de çerez gider.
+    framed: çerçevenin içinde verilen çerez; Partitioned olduğu için yalnızca o üst sitenin içinde geçerli (CHIPS)
+    ve üçüncü taraf çerezleri kapatan tarayıcılarda da çalışır. Başka sitelerden gelen sahte istekleri X-Seovisi başlığı keser."""
     if clear:
         val, age = "", 0
     else:
         v = f"{tid}.{int(time.time()) + SESSION_DAYS * 86400}"
         val, age = f"{v}.{_sign(v)}", SESSION_DAYS * 86400
-    secure = "; Secure" if SRV.get("public_url", "").startswith("https://") else ""
-    return f"sv={val}; Path=/; HttpOnly; SameSite=Lax; Max-Age={age}{secure}"
+    if SRV.get("public_url", "").startswith("https://"):
+        site = "SameSite=None; Secure" + ("; Partitioned" if framed else "")
+    else:
+        site = "SameSite=Lax"
+    return f"sv={val}; Path=/; HttpOnly; {site}; Max-Age={age}"
+
+
+def clear_cookies():
+    """Çıkış: hem normal hem çerçeve içi (Partitioned) çerez silinir."""
+    return [session_cookie("", clear=True), session_cookie("", clear=True, framed=True)]
+
+
+# ============================================================ giriş kapısı
+#
+# Panel üç yoldan oturum açar:
+#   1. Ideasoft paneli uygulamayı açarken mağazayı imzalı bir bilgiyle bildirirse: ideasoft_launch() (Ideasoft'un cevabı bekleniyor).
+#   2. Çerçeve içinden giriş: Ideasoft'un izin sayfası çerçevede açılmadığı için giriş yeni sekmede yapılır. Çerçevedeki sayfa
+#      rastgele bir kapı kodu üretip girişe ekler; giriş bitince aynı kodla /kapi/al'dan kendi (Partitioned) çerezini alır.
+#      Kod tek kullanımlıktır, 5 dakika geçerlidir ve yalnızca girişi başlatan internet adresine verilir: başkasına
+#      gönderilen bir giriş bağlantısıyla oturum çalınamaz.
+#   3. Tam ekran: uygulama kendi sekmesinde normal çerezle çalışır.
+
+KAPI_SECONDS = 300
+_KAPI_RX = re.compile(r"[A-Za-z0-9_-]{22,64}")
+_kapi, _kapi_lock = {}, threading.Lock()
+
+
+def kapi_open(code, ip):
+    if not _KAPI_RX.fullmatch(code or ""):
+        return None
+    with _kapi_lock:
+        now = time.time()
+        for k in [k for k, v in _kapi.items() if now - v["at"] > KAPI_SECONDS]:
+            del _kapi[k]
+        if len(_kapi) >= MAX_PENDING:
+            del _kapi[min(_kapi, key=lambda k: _kapi[k]["at"])]
+        if code in _kapi:                 # aynı kod ikinci kez kullanılamaz
+            return None
+        _kapi[code] = {"ip": ip, "at": now, "tid": None}
+    return code
+
+
+def kapi_done(code, tid):
+    with _kapi_lock:
+        if code in _kapi:
+            _kapi[code]["tid"] = tid
+
+
+def kapi_take(code, ip):
+    """Dönüş: mağaza klasörü (giriş tamam), "bekle" (giriş sürüyor) ya da None (geçersiz)."""
+    with _kapi_lock:
+        v = _kapi.get(code or "")
+        if not v or v.get("used") or v["ip"] != ip or time.time() - v["at"] > KAPI_SECONDS:
+            return None
+        if not v["tid"]:
+            return "bekle"
+        v["used"] = True                  # süresi dolana kadar hatırlanır; aynı kod yeniden açılamaz
+        return v["tid"]
+
+
+def ideasoft_launch(q):
+    """Kapı 1: Ideasoft paneli uygulamayı açarken hangi mağazanın açtığını imzalı bir bilgiyle bildiriyorsa (Ideasoft'a
+    sorulan 1. soru) burada doğrulanıp mağaza klasörü döndürülür. Cevap gelene kadar kapalı: hiçbir parametreye güvenilmez."""
+    return None
 
 
 def session_tenant(cookie_header):
@@ -2432,14 +2497,47 @@ img{{height:34px;margin-bottom:22px}}h1{{font-size:22px;margin:0 0 6px}}p{{color
 label{{display:block;font-weight:600;font-size:14px;margin-bottom:6px}}
 input{{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink)}}
 button{{width:100%;margin-top:14px;font:inherit;font-weight:600;padding:12px;border:0;border-radius:9px;background:var(--blue);color:#fff;cursor:pointer}}
-.err{{color:var(--err);margin:0 0 16px}}small{{display:block;color:var(--muted);margin-top:16px;line-height:1.5}}
+.err{{color:var(--err);margin:0 0 16px}}.frame{{margin:16px 0 0;color:var(--ink)}}.frame a{{color:var(--blue)}}small{{display:block;color:var(--muted);margin-top:16px;line-height:1.5}}
 </style>
 <div class="card"><img src="/marka/seovisi-logo.svg" alt="seovisi">
 <h1>Mağazanızla giriş yapın</h1><p>Ideasoft mağazanızın adresini yazın. Ideasoft'un izin sayfasında onay verdiğinizde panel açılır.</p>
-{err}<form method="post" action="/giris"><label for="m">Mağaza adresi</label>
+{err}<form method="post" action="/giris" id="f"><label for="m">Mağaza adresi</label>
 <input id="m" name="store" placeholder="magazaniz.myideasoft.com" autocomplete="url" required autofocus>
+<input type="hidden" name="kapi" id="k">
 <button type="submit">Ideasoft ile giriş yap</button></form>
-<small>Şifreniz bize gelmez; giriş Ideasoft üzerinden yapılır. Tarama mağazanızda hiçbir şey değiştirmez.</small></div></html>"""
+<p class="frame" id="note" hidden></p>
+<small>Şifreniz bize gelmez; giriş Ideasoft üzerinden yapılır. Tarama mağazanızda hiçbir şey değiştirmez.</small></div>
+<script>
+// Ideasoft panelinin içinde (çerçevede) açıldıysa: Ideasoft'un izin sayfası çerçevede açılmaz; giriş yeni sekmede yapılır,
+// bu sayfa tek kullanımlık kapı koduyla oturumunu teslim alır.
+if (window.top !== window.self) {{
+  const f = document.getElementById('f'), note = document.getElementById('note');
+  const say = (t, full) => {{ note.hidden = false; note.innerHTML = t + (full ? ' <a href="/" target="_blank" rel="noopener">Tam ekranda aç</a>' : ''); }};
+  say('Giriş yeni bir sekmede açılır; izin verdikten sonra bu pencereye dönün.');
+  f.target = '_blank';
+  let timer = null;
+  f.addEventListener('submit', () => {{
+    const b = new Uint8Array(24); crypto.getRandomValues(b);
+    const code = btoa(String.fromCharCode(...b)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
+    document.getElementById('k').value = code;
+    say('Yeni sekmede Ideasoft izni bekleniyor…');
+    clearInterval(timer);
+    const started = Date.now();
+    timer = setInterval(async () => {{
+      if (Date.now() - started > 300000) {{ clearInterval(timer); say('Süre doldu; yeniden giriş yapın.'); return; }}
+      const r = await fetch('/kapi/al', {{method: 'POST', headers: {{'Content-Type': 'application/json', 'X-Seovisi': '1'}},
+                                          body: JSON.stringify({{kapi: code}})}}).catch(() => null);
+      const j = r ? await r.json().catch(() => ({{}})) : {{}};
+      if (j.bekle) return;
+      clearInterval(timer);
+      if (!j.ok) {{ say(j.error || 'Giriş tamamlanamadı.'); return; }}
+      const s = await fetch('/api/state').catch(() => null);
+      if (s && s.ok) location.reload();
+      else say('Tarayıcınız bu pencerede oturum açılmasına izin vermiyor. Paneli kendi sekmesinde kullanabilirsiniz:', true);
+    }}, 2000);
+  }});
+}}
+</script></html>"""
 
 
 # ======================================================================= web
@@ -2470,7 +2568,8 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         for k, v in dict(self._security_headers(), **(extra or {})).items():
-            self.send_header(k, v)
+            for one in (v if isinstance(v, list) else [v]):
+                self.send_header(k, one)
         self.end_headers()
         self.wfile.write(body)
 
@@ -2513,9 +2612,20 @@ class H(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         _cur.t = None
         try:
+            # Panelin kendi istekleri bu başlığı taşır. Başka bir site tarayıcıya başlık ekletemez; böylece çerez ya da
+            # localhost üzerinden sahte istek gönderilemez.
+            if method == "POST" and u.path != "/giris" and self.headers.get("X-Seovisi") != "1":
+                return self._send(403, {"error": "İstek panelden gelmedi."})
             if self.route_public(method, u.path, q):
                 return
             tid = session_tenant(self.headers.get("Cookie")) if SERVER["on"] else LOCAL["id"]
+            if not tid and SERVER["on"] and u.path in ("/", "/index.html"):
+                tid = ideasoft_launch(q)
+                if tid:
+                    _cur.t = tenant(tid)
+                    with open(UI, encoding="utf-8") as f:
+                        return self._send(200, f.read(), "text/html; charset=utf-8",
+                                          {"Set-Cookie": [session_cookie(tid), session_cookie(tid, framed=True)]})
             if not tid:
                 if u.path in ("/", "/index.html"):
                     return self._html(login_page())
@@ -2564,10 +2674,23 @@ class H(BaseHTTPRequestHandler):
                 self._html(login_page("Bu adres bulunamadı. Mağazanızın adresini magaza.myideasoft.com ya da "
                                       "magaza.com biçiminde yazın."))
             else:
-                self._redirect(auth_link(host, new_state({"store": host})))
+                info = {"store": host}
+                if form.get("kapi"):          # çerçevedeki giriş sayfasından yeni sekmede açıldı
+                    info["kapi"] = kapi_open(form["kapi"], self.client_ip())
+                self._redirect(auth_link(host, new_state(info)))
+            return True
+        if p == "/kapi/al" and method == "POST" and SERVER["on"]:
+            got = kapi_take(self._json().get("kapi"), self.client_ip())
+            if got == "bekle":
+                self._send(200, {"bekle": True})
+            elif got:
+                _cur.t = tenant(got)
+                self._send(200, {"ok": True}, extra={"Set-Cookie": session_cookie(got, framed=True)})
+            else:
+                self._send(404, {"error": "Giriş kodu geçersiz ya da süresi doldu; yeniden giriş yapın."})
             return True
         if p == "/cikis" and SERVER["on"]:
-            self._redirect("/", {"Set-Cookie": session_cookie("", clear=True)})
+            self._redirect("/", {"Set-Cookie": clear_cookies()})
             return True
         if p == "/callback" and method == "GET":
             self._callback(q)
@@ -2602,6 +2725,11 @@ class H(BaseHTTPRequestHandler):
         spawn(self._after_connect)
         name = PROFILE()["magaza"]
         extra = {"Set-Cookie": session_cookie(current().id)} if SERVER["on"] else None
+        if st.get("kapi"):
+            kapi_done(st["kapi"], current().id)
+            return self._html(page_msg("Giriş tamam", "Bu sekmeyi kapatıp Ideasoft panelindeki seovisi penceresine "
+                                       "dönebilirsiniz; panel orada kendiliğinden açılır.", ok=True, close=True),
+                              extra=extra)
         return self._html(page_msg("Bağlantı tamam", (f"{name} mağazasına" if name else "Mağazaya") + " bağlanıldı. "
                                    "Panel açılıyor.", ok=True), extra=extra)
 
@@ -2926,13 +3054,20 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/disconnect":
             CFG.update(access_token="", refresh_token="", expires_at=0)
             log("Bağlantı kaldırıldı.")
-            extra = {"Set-Cookie": session_cookie("", clear=True)} if SERVER["on"] else None
+            extra = {"Set-Cookie": clear_cookies()} if SERVER["on"] else None
             return self._send(200, {"ok": True, "login": SERVER["on"]}, extra=extra)
         return self._send(404, {"error": "Yok"})
 
 
-def page_msg(title, text, ok=False):
+def page_msg(title, text, ok=False, close=False):
+    """close: kapı girişinin açtığı sekme; panele dönmez, kendini kapatmayı dener."""
     col = "#1f8a4c" if ok else "#c0392b"
+    if close:
+        return f"""<!doctype html><meta charset="utf-8"><title>{html.escape(title)}</title>
+<body style="font-family:Segoe UI,sans-serif;background:#e8ebee;display:grid;place-items:center;height:100vh;margin:0">
+<div style="background:#fff;padding:36px 44px;border-left:8px solid {col};max-width:520px">
+<h2 style="margin:0 0 10px">{html.escape(title)}</h2><p style="color:#38424d;line-height:1.5">{html.escape(text)}</p></div>
+<script>setTimeout(()=>window.close(),1500)</script></body>"""
     return f"""<!doctype html><meta charset="utf-8"><title>{html.escape(title)}</title>
 <body style="font-family:Bahnschrift,Segoe UI,sans-serif;background:#e8ebee;display:grid;place-items:center;height:100vh;margin:0">
 <div style="background:#fff;padding:36px 44px;border-left:8px solid {col};max-width:520px">

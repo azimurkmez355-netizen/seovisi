@@ -142,7 +142,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 | Eksik kaynaklar (11, 12) | Bağlanınca hangi kaynakların çalıştığı denenir; olmayan özellik panelde görünmez, sonradan eklenirse kendiliğinden açılır. |
 | Tek anahtar (3) | Bugün de destekleniyor: ortak sunucu anahtarı, gerekirse mağazaya özel anahtar. |
 
-**Teknik not:** Panel Ideasoft'un içinde bir çerçevede açıldığı için bugünkü oturum çerezi (SameSite=Lax) bazı tarayıcılarda çerçeve içinde gönderilmeyebilir. Giriş kapısı bunu çözecek şekilde yapılacak.
+**Teknik not:** Panel Ideasoft'un içinde bir çerçevede açıldığı için oturum çerezi HTTPS'te `SameSite=None`; çerçevenin içinde verilen çerez ayrıca `Partitioned`. Üçüncü taraf çerezleri tamamen engelleyen tarayıcılarda (ör. Safari) panel "Tam ekran" ile kendi sekmesinde açılır.
 
 ---
 
@@ -162,7 +162,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Mağaza anahtarlarının diskte şifrelenmesi
 - [x] (K) Girişte deneme sınırı, güvenlik başlıkları, istek boyutu sınırı
 - [x] (K) Ideasoft hız sınırına uyan adil iş sırası
-- [ ] (K) Giriş kapısı: çerçeve içinde çalışan oturum
+- [x] (K) Giriş kapısı: çerçeve içinde çalışan oturum (çerçeve içi çerez, yeni sekmede giriş + kapı kodu, tam ekran)
+  - [ ] (?) Ideasoft'un imzalı açılış bilgisi: `ideasoft_launch()` Ideasoft'un 1. soruya cevabıyla doldurulacak
 - [ ] (K) Abonelik kaydı, paket ayar dosyası ve kota
 - [ ] (K) Açıklama şablonundaki Ustapazar renginin ve sabit düzenin kaldırılması (şablon sistemi gelene kadar sade görünüm)
 - [ ] (S+K) Gerçek bir Ideasoft test mağazasıyla uçtan uca deneme

@@ -33,9 +33,10 @@ def copy_app(dst):
     shutil.copytree(os.path.join(SRC, "ui"), os.path.join(dst, "ui"))
 
 
-def req(port, method, path, body=None, cookie=None, form=False, headers=None):
+def req(port, method, path, body=None, cookie=None, form=False, headers=None, panel=True):
+    """panel: istek panelin kendi JS'inden geliyormuş gibi X-Seovisi başlığını taşır."""
     c = http.client.HTTPConnection("127.0.0.1", port, timeout=30)
-    h = dict({"Cookie": cookie} if cookie else {}, **(headers or {}))
+    h = dict({"Cookie": cookie} if cookie else {}, **({"X-Seovisi": "1"} if panel else {}), **(headers or {}))
     if body is not None:
         body = urllib.parse.urlencode(body) if form else json.dumps(body)
         h["Content-Type"] = "application/x-www-form-urlencoded" if form else "application/json"
@@ -144,6 +145,7 @@ def sunucu_kipi():
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
         st, h, _ = req(8770, "GET", "/cikis", cookie=ca)
         check("çıkış çerezi siler", st == 302 and "Max-Age=0" in h.get("Set-Cookie", ""))
+        kapi(8770)
         guvenlik(8770, ca)
     finally:
         proc.terminate()
@@ -155,9 +157,36 @@ def sunucu_kipi():
 def raw_post(port, path, length, cookie=""):
     """Gövdesini göndermeden büyük bir Content-Length bildirir; sunucunun okumadan reddetmesi beklenir."""
     with socket.create_connection(("127.0.0.1", port), timeout=10) as s:
-        s.sendall(f"POST {path} HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nContent-Length: {length}\r\n"
+        s.sendall(f"POST {path} HTTP/1.1\r\nHost: x\r\nContent-Type: application/json\r\nX-Seovisi: 1\r\n"
+                  f"Content-Length: {length}\r\n"
                   f"{'Cookie: ' + cookie + chr(13) + chr(10) if cookie else ''}\r\n".encode())
         return s.recv(4096).decode("utf-8", "replace").split(" ", 2)[1]
+
+
+def kapi(port):
+    """Çerçeve içinden giriş: giriş yeni sekmede yapılır, çerçeve tek kullanımlık kodla oturumunu alır."""
+    code = "K" * 10 + "abcdefghij-_12"
+    al = lambda c=code, **kw: req(port, "POST", "/kapi/al", {"kapi": c}, **kw)
+    st, h, _ = req(port, "POST", "/giris", {"store": "a-magaza.com", "kapi": code}, form=True)
+    q = dict(urllib.parse.parse_qsl(urllib.parse.urlparse(h.get("Location", "")).query))
+    check("kapı kodu giriş bitmeden oturum vermez", al()[2] == {"bekle": True}, al()[2])
+    st, _, page = req(port, "GET", f"/callback?code=kod&state={q.get('state', '')}")
+    check("yeni sekmedeki giriş kendini kapatmayı önerir", st == 200 and "Bu sekmeyi kapatıp" in page)
+    st, h, _ = al(headers={"X-Forwarded-For": "203.0.113.50"})
+    check("kapı kodu başka internet adresine verilmez", st == 404, st)
+    st, h, j = al()
+    ck = h.get("Set-Cookie", "").split(";")[0]
+    check("kapı kodu çerçeveye oturum verir", st == 200 and j.get("ok") and ck.startswith("sv="), (st, j))
+    s = req(port, "GET", "/api/state", cookie=ck)[2]
+    check("çerçeve oturumu doğru mağazayı açar", s.get("cfg", {}).get("store") == "a-magaza.com")
+    check("kapı kodu ikinci kez kullanılamaz", al()[0] == 404)
+    st, _, _ = req(port, "POST", "/giris", {"store": "a-magaza.com", "kapi": code}, form=True)
+    check("kullanılmış kod yeniden açılamaz", al()[0] == 404)
+    check("kısa / bozuk kod kabul edilmez", al("kisa")[0] == 404)
+    st, _, j = req(port, "POST", "/api/settings", {"profil": {"magaza": "Saldırgan"}}, cookie=ck, panel=False)
+    check("panel işareti olmayan istek reddedilir (başka siteden sahte istek)", st == 403, (st, j))
+    st, _, _ = req(port, "POST", "/kapi/al", {"kapi": code}, panel=False)
+    check("kapı kodu da yalnızca panelden alınır", st == 403, st)
 
 
 def guvenlik(port, cookie):
@@ -215,6 +244,9 @@ def yerel_kip():
         check("yerel kipte analiz çalışır", s["stored"] == 425, s.get("stored"))
         st, _, _ = req(8771, "POST", "/giris", {"store": "b-moda.com"}, form=True)
         check("yerel kipte giriş yolu kapalı", st == 404, st)
+        st, _, _ = req(8771, "POST", "/api/disconnect", {}, panel=False)
+        check("yerel kipte de başka siteden sahte istek reddedilir", st == 403 and
+              req(8771, "GET", "/api/state")[2]["cfg"]["connected"], st)
     finally:
         proc.terminate()
         proc.wait()

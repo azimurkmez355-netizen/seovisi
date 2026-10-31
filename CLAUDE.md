@@ -72,6 +72,16 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   adreslerinde çerçevede açılır: mağazanın kendi adresi, `FRAME_HOSTS` ve `sunucu.json`daki `frame_hosts`. Giriş sayfası her HTTPS sayfasında açılabilir.
   Panel dışarıdan yeni bir kaynak (yazı tipi, betik) yüklerse CSP'ye eklenmeli.
 - `/giris` aynı adresten 10 dakikada en çok 20 deneme (`LOGIN_TRIES`). Adres, yerel ters vekil (Caddy) varsa `X-Forwarded-For`'un son değeri.
+- `/giris` dışındaki her POST `X-Seovisi: 1` başlığı ister (panelin `api()` işlevi ekler); başka sitelerden sahte isteği keser.
+  Oturum çerezi HTTPS'te `SameSite=None` olduğu için bu kontrol şart; hiçbir POST yolunu bundan muaf tutma.
+
+### Giriş kapısı (`app.py`, "giriş kapısı" bölümü)
+
+- Panel Ideasoft'un içinde (çerçevede) açılır. Ideasoft'un izin sayfası çerçevede açılmadığı için çerçevedeki giriş sayfası girişi
+  yeni sekmede yapar; rastgele bir kapı kodu gönderir ve giriş bitince `/kapi/al` ile çerçeveye özel (`Partitioned`) çerezi alır.
+  Kod tek kullanımlık, 5 dakika geçerli ve yalnızca girişi başlatan internet adresine verilir.
+- `ideasoft_launch()`: Ideasoft panel açılışında imzalı mağaza bilgisi gönderiyorsa doğrulanacak yer; cevap gelene kadar hep `None`.
+- Çerçevedeyken panelde "Tam ekran" bağlantısı görünür; çerez engelleyen tarayıcılarda panel kendi sekmesinde çalışır.
 
 ### Mağazaya yazma güvenliği
 
@@ -90,5 +100,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 ## Bilinen açık işler (v1'e girmeden)
 
 - `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
-- Panel Ideasoft'un içinde bir çerçevede açılacak. Bugünkü `SameSite=Lax` çerezi çerçeve içinde gönderilmeyebilir; giriş kapısı buna göre yapılmalı.
-- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği ve hız sınırı bitti. Sırada giriş kapısı, abonelik kaydı. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği, hız sınırı ve giriş kapısı bitti. Sırada abonelik kaydı ve
+  açıklama şablonundaki Ustapazar renginin kaldırılması. Ayrıntılar `YOL_HARITASI.md` içinde.

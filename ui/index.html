@@ -51,6 +51,7 @@ a{color:var(--brand)}
 .conn span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 .store .out{margin-left:auto;flex:none;color:var(--ink2);text-decoration:none;font-size:12px}
 .store .out:hover{color:var(--ink);text-decoration:underline}
+.store .out:not([hidden]) + .out{margin-left:10px}
 .sunucu [data-yerel]{display:none}
 nav{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0}
 nav a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--r-s);color:var(--ink2);text-decoration:none;cursor:pointer;font-weight:500}
@@ -282,7 +283,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
 <aside class="side">
   <a class="logo-slot" href="#" data-v="genel" aria-label="seovisi, genel bakışa dön"><img src="/marka/seovisi-logo.svg" alt="seovisi"></a>
   <img class="logo-mark" src="/marka/seovisi-isaret.svg" alt="seovisi">
-  <div class="store"><span class="conn" id="conn" title="Bağlantı durumu"><i></i><span>Bağlı değil</span></span><span id="brand-store">Mağaza bağlı değil</span><a class="out" id="b-logout" href="/cikis" hidden>Çıkış</a></div>
+  <div class="store"><span class="conn" id="conn" title="Bağlantı durumu"><i></i><span>Bağlı değil</span></span><span id="brand-store">Mağaza bağlı değil</span><a class="out" id="b-full" href="/" target="_blank" rel="noopener" title="Paneli kendi sekmesinde, tam ekranda aç" hidden>Tam ekran</a><a class="out" id="b-logout" href="/cikis" hidden>Çıkış</a></div>
   <nav aria-label="Ana menü">
     <a data-v="genel" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Genel bakış</a>
     <a data-v="seo"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>Ürün SEO'su<b class="badge" id="nb-seo"></b></a>
@@ -519,7 +520,8 @@ let S = null;
 
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200)}
 async function api(path, opt={}){
-  const r = await fetch(path, opt); let j = {};
+  // X-Seovisi: sunucu yalnızca bu başlığı taşıyan POST isteklerini kabul eder (başka sitelerden sahte istek gönderilemez)
+  const r = await fetch(path, {...opt, headers: {...(opt.headers || {}), 'X-Seovisi': '1'}}); let j = {};
   try{ j = await r.json() }catch(e){}
   if(r.status === 401 && j.login){ location.href = '/'; return {}; }   // sunucuda oturum kapandı: giriş sayfası
   if(j.error) toast(j.error);
@@ -562,6 +564,7 @@ async function tick(){
   if(!S.cfg) return;
   const cfg = S.cfg, prof = cfg.profil || {}, srv = S.mode === 'sunucu';
   document.body.classList.toggle('sunucu', srv); $('#b-logout').hidden = !srv;
+  $('#b-full').hidden = !srv || window.top === window.self;   // Ideasoft panelinin içinde açıldıysa
   $('#conn-h').textContent = srv ? 'Ideasoft bağlantısı' : '3. Mağazaya bağlanın';
   $('#brand-store').textContent = prof.magaza || (cfg.store ? cfg.store.replace('.myideasoft.com', '') : 'Mağaza bağlı değil');
   const conn = $('#conn'); conn.classList.toggle('ok', cfg.connected);
