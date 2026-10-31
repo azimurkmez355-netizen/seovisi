@@ -53,6 +53,7 @@ a{color:var(--brand)}
 .store .out:hover{color:var(--ink);text-decoration:underline}
 .store .out:not([hidden]) + .out{margin-left:10px}
 .sunucu [data-yerel]{display:none}
+body:not(.sunucu) [data-sunucu]{display:none}
 nav{display:flex;flex-direction:column;gap:2px;flex:1;min-height:0}
 nav a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:var(--r-s);color:var(--ink2);text-decoration:none;cursor:pointer;font-weight:500}
 nav a svg{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -119,6 +120,8 @@ details.more .menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
 .alert{display:none;background:var(--bad-soft);border:1px solid #f4c7bd;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#8f2716}
 .alert.show{display:block}
 .hint{background:var(--warn-soft);border:1px solid #f1dca0;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#6d4d00}
+.plan{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;margin:4px 0 14px}
+.plan dt{color:var(--ink3)} .plan dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 .callout{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--ok-soft);border:1px solid #bfe3cf;border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
 .callout p{margin:0;color:#14583a}
 .callout b{font-variant-numeric:tabular-nums}
@@ -296,6 +299,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
 </aside>
 
 <main>
+<div class="hint" id="plan-note" role="status" hidden></div>
 <!-- ============================ GENEL BAKIŞ -->
 <section class="view on" id="v-genel">
   <header class="ph">
@@ -433,8 +437,16 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
 <section class="view" id="v-ayarlar">
   <header class="ph"><div><h1>Ayarlar</h1><p class="lede">Mağaza bilgileri, Ideasoft bağlantısı ve çalışma tercihleri.</p></div></header>
   <div class="tabs" id="settabs" role="tablist">
-    <button data-p="magaza" class="on">Mağaza</button><button data-p="baglanti">Bağlantı</button><button data-p="seoay">SEO ayarları</button>
+    <button data-p="magaza" class="on">Mağaza</button><button data-p="baglanti">Bağlantı</button><button data-p="seoay">SEO ayarları</button><button data-p="paket" data-sunucu>Paket</button>
   </div>
+
+  <div class="setpane" id="sp-paket"><div class="steps">
+    <div class="step">
+      <h3>Paketiniz</h3>
+      <dl class="plan" id="pk"></dl>
+      <p class="muted" style="margin:0">Paket ve abonelik Ideasoft App Store üzerinden yönetilir. Mağazayı analiz etmek ve yapılan değişiklikleri geri almak her pakette, abonelik bitse de açıktır.</p>
+    </div>
+  </div></div>
 
   <div class="setpane on" id="sp-magaza"><div class="steps">
     <div class="step">
@@ -571,6 +583,22 @@ async function tick(){
   conn.querySelector('span').textContent = cfg.connected ? 'Mağazaya bağlı' : 'Bağlı değil';
   $('#connstate').innerHTML = cfg.connected ? `<span class="ok-t">Bağlı:</span> ${esc(cfg.store)}` : '<span class="bad-t">Henüz bağlanılmadı.</span>';
   if(!fillDone) fillSettings(cfg);
+  showPlan(S.abonelik);
+}
+
+/* abonelik: yalnızca sunucuda (yerel kurulumda sınır yok) */
+const trDate = iso => iso ? iso.split('-').reverse().join('.') : '';
+const trNum = n => Number(n).toLocaleString('tr-TR');
+function showPlan(ab){
+  const note = $('#plan-note');
+  if(!ab){ note.hidden = true; return; }
+  const soon = ab.kalan_gun !== null && ab.kalan_gun <= 14;
+  const t = ab.uyari || (soon ? `${ab.durum === 'deneme' ? 'Deneme süreniz' : 'Aboneliğiniz'} ${ab.kalan_gun === 0 ? 'bugün' : ab.kalan_gun + ' gün sonra'} bitiyor (${trDate(ab.bitis)}). Ideasoft App Store'dan yenileyebilirsiniz.` : '');
+  note.textContent = t; note.hidden = !t;
+  const rows = [['Paket', ab.ad], ['Durum', ab.durum_adi],
+    ['Bitiş', ab.bitis ? trDate(ab.bitis) + (ab.kalan_gun !== null ? ` (${ab.kalan_gun} gün)` : '') : '—'],
+    ['Ürün', `${ab.urun_sayisi ? trNum(ab.urun_sayisi) : 'Henüz taranmadı'} / ${ab.urun_siniri ? trNum(ab.urun_siniri) : 'sınırsız'}`]];
+  $('#pk').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('');
 }
 let fillDone = false;
 function fillSettings(c){

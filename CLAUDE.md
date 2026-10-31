@@ -26,6 +26,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_seo_metin.py`, `test_aciklama.py`: metin üreticileri ve SEO kuralları.
   - `test_sifre.py`: şifreleme ve ayar dosyalarındaki gizli bilgiler.
   - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
+  - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
   - `test_cok_magaza.py`: uygulamanın kendisini iki sahte mağazayla (`sahte_ideasoft.py`) çalıştıran betik.
   - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
@@ -41,6 +42,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `seo_text.py` | Başlık, meta açıklama, anahtar kelimeler, kelime sayımı, SEO puanı. `panel_factor()` mağaza ayarından okunur. |
 | `seo_machine.py` | Ürün açıklaması (HTML) üretimi. Hedef kelime yoğunluğunu %2–3 aralığına oturtur. |
 | `sifre.py` | Diskteki gizli bilgilerin şifrelenmesi (HMAC-SHA256 sayaç kipi + HMAC imza). Ana anahtar `SEOVISI_ANAHTAR` ortam değişkeninden, yoksa `data/anahtar.key` dosyasından. |
+| `abonelik.py` | Abonelik kaydı (mağaza klasöründe `abonelik.json`), geçerli paket ve yazma izni. Paketler `paketler.json` içinde. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). |
 | `ui/marka/` | Logo, simge ve renkler. |
@@ -83,6 +85,17 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - `ideasoft_launch()`: Ideasoft panel açılışında imzalı mağaza bilgisi gönderiyorsa doğrulanacak yer; cevap gelene kadar hep `None`.
 - Çerçevedeyken panelde "Tam ekran" bağlantısı görünür; çerez engelleyen tarayıcılarda panel kendi sekmesinde çalışır.
 
+### Abonelik ve paketler
+
+- Yalnızca sunucu kipinde geçerli; yerel kip (Ustapazar, geliştirme) sınırsızdır.
+- `paketler.json`: paketler (ad, ürün sınırı, özellikler) ve yeni mağazanın başlangıç kaydı (`yeni_magaza`: ücretsiz ya da N günlük deneme).
+  Dosya değişince yeniden başlatmadan okunur; düzenlerken bozulursa son geçerli hâli kullanılır. Fiyat burada yok (App Store'da).
+- Her mağazanın kaydı `abonelik.json`; her istekte diskten okunur. Bütün kaynaklar `AB.yaz()` ile yazar. Bugün:
+  `python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31 [--durum aktif|deneme|iptal|ucretsiz]`, liste: `--abonelikler`.
+- Süresi geçen, iptal edilen ya da tanınmayan kayıt ücretsiz analize düşer: analiz ve geri alma açık, mağazaya yazma kapalı.
+- Mağazaya yazan her POST yolu `WRITE_ROUTES` içinde bir özelliğe bağlıdır; `route_post` başında denetlenir. **Yeni bir yazma yolu
+  eklersen buraya da ekle.** Geri alma bilerek listede yok. Ürün sınırı taramalarda görülen ürün sayısıyla (`urun_sayisi()`) karşılaştırılır.
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -100,5 +113,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 ## Bilinen açık işler (v1'e girmeden)
 
 - `seo_machine.py` içindeki açıklama görünümü (`H` ve `BOX`), Ustapazar'ın rengi `#1b4f72` ve sabit bölüm düzeniyle yazılmış. v1'de bunun yerine ayarlanabilir "açıklama şablonu" gelecek.
-- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği, hız sınırı ve giriş kapısı bitti. Sırada abonelik kaydı ve
-  açıklama şablonundaki Ustapazar renginin kaldırılması. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 1 sürüyor; test paketi, anahtar şifreleme, istek güvenliği, hız sınırı, giriş kapısı ve abonelik kaydı bitti. Sırada
+  açıklama şablonundaki Ustapazar renginin kaldırılması ve test mağazasıyla uçtan uca deneme. Ayrıntılar `YOL_HARITASI.md` içinde.

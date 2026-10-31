@@ -38,6 +38,7 @@ import seo_machine as SM  # noqa: E402
 import kategori as KT  # noqa: E402
 import profil as PR  # noqa: E402
 import sifre  # noqa: E402
+import abonelik as AB  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -2257,6 +2258,37 @@ def known_tenant(tid):
     return bool(re.fullmatch(r"[a-z0-9-]{1,80}", tid or "")) and os.path.isfile(os.path.join(STORES, tid, "ayarlar.json"))
 
 
+# ================================================================== abonelik
+
+def urun_sayisi():
+    """Taramalarda görülen ürün sayısı (henüz taranmadıysa 0)."""
+    return max(DBI.q(f"SELECT COUNT(*) n FROM {t}", one=True)["n"] for t in ("seo", "catprod", "img"))
+
+
+def abonelik_durumu():
+    """Mağazanın bugün geçerli aboneliği ve ürün sayısı. Yerel kipte (satılmayan, Ustapazar sürümü) None: sınır yok."""
+    if not SERVER["on"]:
+        return None
+    a = AB.gecerli(AB.oku(current().dir))
+    a["urun_sayisi"] = urun_sayisi()
+    return a
+
+
+def yazma_engeli(ozellik):
+    """Mağazaya yazan istekten önce: paket izin vermiyorsa kullanıcıya gösterilecek mesaj, veriyorsa None."""
+    a = abonelik_durumu()
+    return AB.engel(a, ozellik, a["urun_sayisi"]) if a else None
+
+
+# Mağazaya yazan istekler ve gerektirdikleri paket özelliği (paketler.json). Yeni bir yazma yolu buraya eklenmeli.
+# Geri alma (/api/cat/undo) bilerek yok: abonelik bitse de yapılan değişiklikler geri alınabilir.
+WRITE_ROUTES = {
+    "/api/seo/send": "seo_gonder", "/api/seo/send_all": "seo_gonder",
+    "/api/cat/apply": "kategori_duzelt", "/api/cat/apply_many": "kategori_duzelt", "/api/cat/assign": "kategori_duzelt",
+    "/api/cat/create": "kategori_ac", "/api/cat/create_many": "kategori_ac",
+}
+
+
 # metin üreticisinin panel katsayısı o anki mağazanın ayarından gelir
 ST.panel_factor = lambda: float(CFG.get("panel_factor") or 1.30)
 
@@ -2745,7 +2777,11 @@ class H(BaseHTTPRequestHandler):
             cfg = CFG.public()
             if SERVER["on"]:
                 cfg["redirect_uri"] = redirect_uri()
-            return self._send(200, {"cfg": cfg, "rpm": API.rpm(), "log": lg,
+            ab = abonelik_durumu()
+            if ab:
+                # ücretli özellik yoksa ücretsiz / süresi doldu / iptal mesajı; varsa yalnızca ürün sınırı denetlenir
+                ab["uyari"] = AB.engel(ab, (ab["ozellikler"] or ["seo_gonder"])[0], ab["urun_sayisi"])
+            return self._send(200, {"cfg": cfg, "rpm": API.rpm(), "log": lg, "abonelik": ab,
                                     "mode": "sunucu" if SERVER["on"] else "yerel"})
         if p == "/api/seo/state":
             st = SEOSCAN.state()
@@ -2870,6 +2906,10 @@ class H(BaseHTTPRequestHandler):
 
     # --------------------------------------------------------------- POST
     def route_post(self, p, q):
+        if p in WRITE_ROUTES:
+            msg = yazma_engeli(WRITE_ROUTES[p])
+            if msg:
+                return self._send(200, {"error": msg, "abonelik": True})
         if p == "/api/settings":
             d = self._json()
             allowed = {"store", "client_id", "client_secret", "target_density", "kw_needle", "eur_rate",
@@ -3103,11 +3143,43 @@ def arg(name, default=""):
     return a[a.index(name) + 1] if name in a and a.index(name) + 1 < len(a) else default
 
 
+def abonelik_komutu():
+    """Elle abonelik (yönetici paneli gelene kadar; beta mağazaları ve Ustapazar için):
+      python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31 [--durum aktif|deneme|iptal|ucretsiz]
+      python app.py --abonelikler        bütün mağazaların kaydı"""
+    os.makedirs(STORES, exist_ok=True)
+    if "--abonelikler" in sys.argv[1:]:
+        for tid in sorted(os.listdir(STORES)):
+            d = os.path.join(STORES, tid)
+            if os.path.isfile(os.path.join(d, AB.FILE)):
+                a = AB.gecerli(AB.oku(d))
+                print(f"  {tid:40} {a['ad']:16} {a['durum_adi']:16} {a['bitis'] or '-'}")
+        return 0
+    host = store_host(arg("--abonelik"))
+    if not re.fullmatch(r"[a-z0-9-]+(\.[a-z0-9-]+)+", host):
+        print("Mağaza adresini yazın, örn. --abonelik magaza.myideasoft.com")
+        return 1
+    d = os.path.join(STORES, tenant_id(host))
+    yeni = not os.path.isdir(d)
+    try:
+        AB.yaz(d, paket=arg("--paket") or None, durum=arg("--durum") or "aktif", bitis=arg("--bitis") or None)
+    except ValueError as e:
+        print(f"Kaydedilmedi: {e}")
+        return 1
+    a = AB.gecerli(AB.oku(d))
+    print(f"{host}: {a['ad']}, {a['durum_adi']}" + (f", bitiş {a['bitis']}" if a["bitis"] else "")
+          + (" (mağaza henüz giriş yapmadı; ilk girişte bu kayıt geçerli olur)" if yeni else ""))
+    return 0
+
+
 def main():
     """Yerel kip (baslat.bat): tek kullanıcı, bu bilgisayardaki mağaza, giriş yok.
     Sunucu kipi (python app.py --sunucu [--port 8080] [--host 127.0.0.1]): her mağaza Ideasoft ile giriş yapar,
-    verisi data/magazalar altında kendi klasöründe durur. Önüne HTTPS sağlayan bir ters vekil (Caddy vb.) konur."""
+    verisi data/magazalar altında kendi klasöründe durur. Önüne HTTPS sağlayan bir ters vekil (Caddy vb.) konur.
+    Abonelik komutları için abonelik_komutu()."""
     global SRV
+    if {"--abonelik", "--abonelikler"} & set(sys.argv[1:]):
+        sys.exit(abonelik_komutu())
     SERVER["on"] = "--sunucu" in sys.argv[1:]
     port = int(arg("--port", PORT))
     host = arg("--host", "127.0.0.1")
@@ -3121,6 +3193,11 @@ def main():
     if not SRV.get("secret"):
         SRV.update(secret=secrets.token_hex(32))
     if SERVER["on"]:
+        try:
+            AB.paketler()
+        except (OSError, ValueError) as e:
+            print(f"Paket dosyası okunamadı ({AB.PAKET_PATH}): {e}")
+            sys.exit(1)
         missing = [k for k in ("client_id", "client_secret", "public_url") if not SRV.get(k)]
         if missing:
             print(f"Uyarı: {SERVER_PATH} içinde eksik: {', '.join(missing)}. Bunlar girilene kadar giriş yapılamaz.")

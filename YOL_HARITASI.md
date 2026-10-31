@@ -164,7 +164,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Ideasoft hız sınırına uyan adil iş sırası
 - [x] (K) Giriş kapısı: çerçeve içinde çalışan oturum (çerçeve içi çerez, yeni sekmede giriş + kapı kodu, tam ekran)
   - [ ] (?) Ideasoft'un imzalı açılış bilgisi: `ideasoft_launch()` Ideasoft'un 1. soruya cevabıyla doldurulacak
-- [ ] (K) Abonelik kaydı, paket ayar dosyası ve kota
+- [x] (K) Abonelik kaydı, paket ayar dosyası ve kota (ürün sınırı; yapay zekâ hakkı Faz 4'te)
+  - [ ] (?) Kaydı Ideasoft'un bildirimi / API'si besleyecek (5, 6, 8. sorular); o zamana kadar `python app.py --abonelik`
 - [ ] (K) Açıklama şablonundaki Ustapazar renginin ve sabit düzenin kaldırılması (şablon sistemi gelene kadar sade görünüm)
 - [ ] (S+K) Gerçek bir Ideasoft test mağazasıyla uçtan uca deneme
 

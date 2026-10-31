@@ -28,7 +28,7 @@ def check(name, cond, info=""):
 def copy_app(dst):
     os.makedirs(os.path.join(dst, "data"))
     for f in os.listdir(SRC):
-        if f.endswith(".py"):
+        if f.endswith((".py", ".json")):
             shutil.copy(os.path.join(SRC, f), dst)
     shutil.copytree(os.path.join(SRC, "ui"), os.path.join(dst, "ui"))
 
@@ -145,6 +145,7 @@ def sunucu_kipi():
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
         st, h, _ = req(8770, "GET", "/cikis", cookie=ca)
         check("çıkış çerezi siler", st == 302 and "Max-Age=0" in h.get("Set-Cookie", ""))
+        abonelik(8770, A, ca, cb_state=lambda: req(8770, "GET", "/api/state", cookie=login(8770, "b-moda.com")[4])[2])
         kapi(8770)
         guvenlik(8770, ca)
     finally:
@@ -161,6 +162,48 @@ def raw_post(port, path, length, cookie=""):
                   f"Content-Length: {length}\r\n"
                   f"{'Cookie: ' + cookie + chr(13) + chr(10) if cookie else ''}\r\n".encode())
         return s.recv(4096).decode("utf-8", "replace").split(" ", 2)[1]
+
+
+def abonelik(port, appdir, ca, cb_state):
+    sys.path.insert(0, SRC)
+    from app import WRITE_ROUTES
+
+    def komut(*a):
+        r = subprocess.run([sys.executable, "-X", "utf8", os.path.join(appdir, "app.py"), *a], cwd=appdir,
+                           capture_output=True, text=True, encoding="utf-8")
+        return r.returncode, r.stdout
+
+    ab = req(port, "GET", "/api/state", cookie=ca)[2]["abonelik"]
+    check("yeni mağaza ücretsiz analizle başlar", ab["paket"] == "ucretsiz" and "Ücretsiz analiz" in (ab["uyari"] or ""), ab)
+    blocked = {p: req(port, "POST", p, {}, cookie=ca)[2] for p in WRITE_ROUTES}
+    check("ücretsiz analizde mağazaya yazan her yol kapalı", all(j.get("abonelik") for j in blocked.values()),
+          [p for p, j in blocked.items() if not j.get("abonelik")])
+    j = req(port, "POST", "/api/cat/undo?pid=1", {}, cookie=ca)[2]
+    check("geri alma abonelikten bağımsız açık", not j.get("abonelik") and "geri alınacak" in j.get("msg", ""), j)
+
+    code, out = komut("--abonelik", "a-magaza.com", "--paket", "baslangic", "--bitis", "2099-12-31")
+    check("komutla abonelik açılır", code == 0 and "Başlangıç, Aktif" in out, out)
+    ab = req(port, "GET", "/api/state", cookie=ca)[2]["abonelik"]
+    check("abonelik sunucu yeniden başlatılmadan geçerli olur",
+          ab["paket"] == "baslangic" and ab["durum"] == "aktif" and not ab["uyari"] and ab["urun_sayisi"] == 425, ab)
+    j = req(port, "POST", "/api/cat/assign?pid=1&cid=999999", {}, cookie=ca)[2]
+    check("aktif abonelikte yazma yolu açık", not j.get("abonelik") and j.get("error") == "Kategori bulunamadı.", j)
+    check("başka mağazanın aboneliği değişmez", cb_state()["abonelik"]["paket"] == "ucretsiz")
+
+    path = os.path.join(appdir, "paketler.json")
+    with open(path, encoding="utf-8") as f:
+        pk = json.load(f)
+    pk["paketler"]["baslangic"]["urun"] = 100
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(pk, f)
+    os.utime(path, (time.time() + 5, time.time() + 5))
+    j = req(port, "POST", "/api/cat/assign?pid=1&cid=999999", {}, cookie=ca)[2]
+    check("ürün sınırı aşılınca yazılamaz (paket dosyası değişince hemen)", j.get("abonelik") and "425 ürün" in j["error"], j)
+
+    code, out = komut("--abonelik", "a-magaza.com", "--paket", "yok")
+    check("geçersiz paket komutla yazılmaz", code == 1 and "Kaydedilmedi" in out, out)
+    code, out = komut("--abonelikler")
+    check("abonelikler listelenir", code == 0 and "a-magaza-com" in out and "b-moda-com" in out, out)
 
 
 def kapi(port):
@@ -244,6 +287,9 @@ def yerel_kip():
         check("yerel kipte analiz çalışır", s["stored"] == 425, s.get("stored"))
         st, _, _ = req(8771, "POST", "/giris", {"store": "b-moda.com"}, form=True)
         check("yerel kipte giriş yolu kapalı", st == 404, st)
+        s = req(8771, "GET", "/api/state")[2]
+        j = req(8771, "POST", "/api/cat/assign?pid=1&cid=999999", {})[2]
+        check("yerel kipte abonelik sınırı yok", s["abonelik"] is None and not j.get("abonelik"), (s.get("abonelik"), j))
         st, _, _ = req(8771, "POST", "/api/disconnect", {}, panel=False)
         check("yerel kipte de başka siteden sahte istek reddedilir", st == 403 and
               req(8771, "GET", "/api/state")[2]["cfg"]["connected"], st)
