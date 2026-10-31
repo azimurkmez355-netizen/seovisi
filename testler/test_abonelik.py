@@ -114,6 +114,18 @@ class YazmaIzni(Ortam):
         self.assertIn("100 ürüne kadar", m)
 
 
+class PaketOnerisi(Ortam):
+    def test_urun_sayisina_yeten_en_kucuk_paket(self):
+        d = json.loads(json.dumps(PAKETLER))
+        d["paketler"]["buyuk"] = {"ad": "Büyük", "urun": 1000, "ozellikler": YAZ}
+        self.paket_yaz(d)
+        self.assertEqual(AB.oneri(80), "Küçük")
+        self.assertEqual(AB.oneri(100), "Küçük")
+        self.assertEqual(AB.oneri(101), "Büyük")
+        self.assertEqual(AB.oneri(50000), "Büyük")       # hiçbiri yetmezse en büyüğü
+        self.assertIsNone(AB.oneri(0))                   # taranmadı
+
+
 class KayitYazma(Ortam):
     def test_elle_kayit_ve_islem_kaydi(self):
         AB.yaz(self.magaza, paket="kucuk", bitis="2027-10-31")

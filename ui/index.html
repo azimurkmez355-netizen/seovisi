@@ -120,6 +120,32 @@ details.more .menu hr{border:0;border-top:1px solid var(--line);margin:6px 4px}
 .alert{display:none;background:var(--bad-soft);border:1px solid #f4c7bd;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#8f2716}
 .alert.show{display:block}
 .hint{background:var(--warn-soft);border:1px solid #f1dca0;border-radius:var(--r);padding:12px 16px;margin-bottom:18px;color:#6d4d00}
+/* kurulum sihirbazı (yalnızca sunucuda, ilk girişte) */
+.wiz{position:fixed;inset:0;z-index:50;background:var(--bg);overflow-y:auto;padding:28px 16px}
+.wz-box{max-width:760px;margin:0 auto}
+.wz-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+.wz-top img{height:28px}
+.wz-steps{display:flex;gap:6px;list-style:none;margin:0;padding:0;flex:1;justify-content:center;flex-wrap:wrap}
+.wz-steps li{font-size:13px;color:var(--ink3);padding:4px 10px;border-radius:999px;border:1px solid var(--line)}
+.wz-steps li.on{color:var(--brand2);border-color:var(--brand);background:var(--brand-soft);font-weight:600}
+.wz-steps li.ok{color:var(--ok);border-color:#bfe3cf}
+.wz-skip{background:none;border:0;color:var(--ink2);cursor:pointer;font-size:13px;text-decoration:underline}
+.wz-pane{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:26px 28px}
+.wz-pane h1{font:700 26px/1.15 var(--disp);letter-spacing:-.5px;margin:0 0 8px}
+.wz-pane>p{color:var(--ink2);margin:0 0 18px;max-width:62ch}
+.wz-nav{display:flex;justify-content:space-between;gap:10px;margin-top:16px}
+.wz-looks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.wz-look{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line2);border-radius:var(--r);padding:12px 14px;cursor:pointer}
+.wz-look:has(input:checked){border-color:var(--brand);background:var(--brand-soft)}
+.wz-look input{margin-top:4px;accent-color:var(--brand)}
+.wz-look small{display:block;color:var(--ink2)}
+.wz-prev{border:1px solid var(--line);border-radius:var(--r-s);padding:4px 18px 14px;max-height:340px;overflow:auto;background:#fff;color:#222;font:14px/1.5 Georgia,serif}
+.wz-sum{list-style:none;margin:0 0 6px;padding:0;display:grid;gap:8px}
+.wz-sum li{display:flex;gap:12px;align-items:baseline;padding:10px 14px;border:1px solid var(--line);border-radius:var(--r-s)}
+.wz-sum b{font:700 20px var(--disp);min-width:64px;text-align:right;font-variant-numeric:tabular-nums}
+.wz-bar{height:6px;background:var(--line);border-radius:6px;overflow:hidden;margin:6px 0 10px}
+.wz-bar i{display:block;width:35%;height:100%;background:var(--brand);border-radius:6px;animation:ind 1.4s ease-in-out infinite}
+@media (max-width:640px){.wz-pane{padding:20px 18px}.wz-looks{grid-template-columns:1fr}.wz-sum b{min-width:48px}}
 .plan{display:grid;grid-template-columns:140px 1fr;gap:8px 16px;margin:4px 0 14px}
 .plan dt{color:var(--ink3)} .plan dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
 .callout{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--ok-soft);border:1px solid #bfe3cf;border-radius:var(--r);padding:14px 18px;margin-bottom:18px}
@@ -298,6 +324,45 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
   </nav>
 </aside>
 
+<!-- ============================ KURULUM SİHİRBAZI (sunucu, ilk giriş) -->
+<div class="wiz" id="wiz" role="dialog" aria-modal="true" aria-labelledby="wz-h0" hidden>
+  <div class="wz-box">
+    <div class="wz-top"><img src="/marka/seovisi-logo.svg" alt="seovisi">
+      <ol class="wz-steps" id="wz-steps"><li>1 Mağaza</li><li>2 Görünüm</li><li>3 Tarama</li><li>4 Paket</li></ol>
+      <button class="wz-skip" id="wz-skip">Şimdilik geç</button></div>
+
+    <section class="wz-pane" data-w="0">
+      <h1 id="wz-h0">Hoş geldiniz</h1>
+      <p>seovisi mağazanızdaki her ürünü Google'ın önerdiği temel SEO kurallarına ve kategori düzenine göre inceler. Önce mağazanızı tanıyalım; bu bilgiler hazırlanan başlık ve açıklamalarda kullanılır.</p>
+      <div class="field"><label for="wz-magaza">Mağaza adı</label><input id="wz-magaza" placeholder="Sitenizde görünen ad, örn. Moda Evi"></div>
+      <div class="field"><label for="wz-marka">Varsayılan marka (isteğe bağlı)</label><input id="wz-marka" placeholder="Ürünlerinizin çoğu tek markaysa"></div>
+    </section>
+
+    <section class="wz-pane" data-w="1" hidden>
+      <h1>Açıklamalar nasıl görünsün?</h1>
+      <p>Eksik ürünlere hazırlanan açıklamalar bu görünümle yazılır. Yazı tipi ve renkler mağazanızın temasından gelir. Daha sonra Ayarlar'dan değiştirebilirsiniz.</p>
+      <div class="wz-looks">
+        <label class="wz-look"><input type="radio" name="wz-look" value="sade" checked><span><b>Sade</b><small>Başlıklar ve maddeler; her temaya uyar.</small></span></label>
+        <label class="wz-look"><input type="radio" name="wz-look" value="bantli"><span><b>Bantlı</b><small>Başlıklar lacivert bant içinde.</small></span></label>
+      </div>
+      <div class="wz-prev" id="wz-prev" aria-label="Örnek açıklama"></div>
+    </section>
+
+    <section class="wz-pane" data-w="2" hidden>
+      <h1 id="wz-scan-h">Mağazanızı tarıyoruz</h1>
+      <p>Ürünlerinizin SEO durumu ve kategorileri okunuyor. <b>Mağazanızda hiçbir şey değişmez.</b> Tarama sürerken devam edebilirsiniz; arka planda sürer.</p>
+      <div id="wz-scan"></div>
+    </section>
+
+    <section class="wz-pane" data-w="3" hidden>
+      <h1>Paketiniz</h1>
+      <div id="wz-plan"></div>
+    </section>
+
+    <div class="wz-nav"><button class="btn ghost" id="wz-back">Geri</button><button class="btn" id="wz-next">Devam</button></div>
+  </div>
+</div>
+
 <main>
 <div class="hint" id="plan-note" role="status" hidden></div>
 <!-- ============================ GENEL BAKIŞ -->
@@ -458,6 +523,16 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
       </div>
       <div class="acts" style="margin-top:8px"><button class="btn" id="b-saveprof">Profili kaydet</button></div>
     </div>
+    <div class="step">
+      <h3>Açıklama görünümü</h3>
+      <p>Eksik ürünlere hazırlanan açıklamalar bu görünümle yazılır. Değiştirince henüz gönderilmemiş açıklamalar yeni görünümle yeniden hazırlanır; gönderilmiş açıklamalar değişmez.</p>
+      <div class="wz-looks">
+        <label class="wz-look"><input type="radio" name="s-look" value="sade"><span><b>Sade</b><small>Başlıklar ve maddeler; her temaya uyar.</small></span></label>
+        <label class="wz-look"><input type="radio" name="s-look" value="bantli"><span><b>Bantlı</b><small>Başlıklar lacivert bant içinde.</small></span></label>
+      </div>
+      <div class="wz-prev" id="s-prev" aria-label="Örnek açıklama"></div>
+      <div class="acts"><button class="btn" id="b-savelook">Görünümü kaydet</button></div>
+    </div>
   </div></div>
 
   <div class="setpane" id="sp-baglanti"><div class="steps">
@@ -584,7 +659,89 @@ async function tick(){
   $('#connstate').innerHTML = cfg.connected ? `<span class="ok-t">Bağlı:</span> ${esc(cfg.store)}` : '<span class="bad-t">Henüz bağlanılmadı.</span>';
   if(!fillDone) fillSettings(cfg);
   showPlan(S.abonelik);
+  if(S.kurulum && !W.opened) wOpen();
 }
+
+/* kurulum sihirbazı: 0 mağaza, 1 görünüm, 2 tarama, 3 paket */
+const W = {opened: false, i: 0, timer: null, scanStarted: false};
+function wOpen(){
+  W.opened = true;
+  const p = S.cfg.profil || {};
+  $('#wz-magaza').value = p.magaza || ''; $('#wz-marka').value = p.marka || '';
+  const look = document.querySelector(`input[name="wz-look"][value="${S.cfg.gorunum || 'sade'}"]`); if(look) look.checked = true;
+  $('#wiz').hidden = false; wGo(0);
+}
+function wGo(i){
+  W.i = i; clearInterval(W.timer);
+  document.querySelectorAll('#wiz .wz-pane').forEach(s => s.hidden = +s.dataset.w !== i);
+  document.querySelectorAll('#wz-steps li').forEach((li, k) => { li.className = k === i ? 'on' : k < i ? 'ok' : ''; });
+  $('#wz-back').style.visibility = i ? 'visible' : 'hidden';
+  $('#wz-next').textContent = i === 3 ? 'Panele geç' : 'Devam';
+  if(i === 0) setTimeout(() => $('#wz-magaza').focus(), 30);
+  if(i === 1) wPreview();
+  if(i === 2){ wScan(); W.timer = setInterval(wScan, 2000); }
+  if(i === 3) wPlan();
+}
+async function wPreview(){
+  const ad = document.querySelector('input[name="wz-look"]:checked').value;
+  const r = await api('/api/gorunum/ornek?ad=' + ad);
+  if(r.html) $('#wz-prev').innerHTML = r.html;   // sunucunun ürettiği, kaçışlı örnek açıklama
+}
+document.querySelectorAll('input[name="wz-look"]').forEach(x => x.onchange = wPreview);
+async function wScan(){
+  const o = await api('/api/overview'); if(!o.counts) return;
+  const c = o.counts, busy = o.scans.seo || o.scans.cat, done = c.seo_taranan > 0 && o.cat_ready;
+  if(!busy && !done && !W.scanStarted){ W.scanStarted = true; W.scanAt = Date.now(); await post('/api/overview/scan'); return; }
+  if(!busy && !done && Date.now() - W.scanAt > 3000){   // tarama başladı ve bitmeden durdu: hata
+    clearInterval(W.timer);
+    $('#wz-scan').innerHTML = `<p class="bad-t" style="margin:0 0 12px">${esc(o.scans.note || 'Tarama tamamlanamadı.')}</p>
+      <button class="btn ghost" id="wz-retry">Yeniden dene</button>`;
+    $('#wz-retry').onclick = () => { W.scanStarted = false; wScan(); W.timer = setInterval(wScan, 2000); };
+    return;
+  }
+  if(busy || !done){
+    $('#wz-scan').innerHTML = `<div class="wz-bar"><i></i></div><p class="muted" style="margin:0">${esc(o.scans.phase || 'Tarama başlıyor…')}</p>`;
+    return;
+  }
+  clearInterval(W.timer);
+  $('#wz-scan-h').textContent = 'Tarama tamamlandı';
+  const rows = [[c.seo_taranan, 'ürün tarandı'], [c.seo_eksik, "ürünün SEO'su eksik; açıklama, başlık ve meta açıklama hazırlanabilir"],
+    [c.tasi + c.supheli, 'ürün yanlış kategoride olabilir'], [c.kategorisiz, 'ürün hiçbir kategoride değil']];
+  if(c.yeni_kategori) rows.push([c.yeni_kategori, 'yeni alt kategori öneriliyor']);
+  $('#wz-scan').innerHTML = `<ul class="wz-sum">${rows.map(([n, t]) => `<li><b>${nf(n)}</b><span>${t}</span></li>`).join('')}</ul>
+    <p class="muted" style="margin:10px 0 0">Ayrıntılar panelde, Ürün SEO'su ve Kategoriler sayfalarında.</p>`;
+}
+async function wPlan(){
+  S = await api('/api/state'); const ab = S.abonelik || {};
+  const box = $('#wz-plan');
+  if(ab.paket === 'ucretsiz'){
+    box.innerHTML = `<p>Şu an <b>Ücretsiz analiz</b> kullanıyorsunuz: sorunları ve önerileri görebilir, listeleri inceleyebilirsiniz.
+      Düzeltmeleri mağazanıza göndermek için Ideasoft App Store'daki seovisi sayfasından bir paket seçin.</p>
+      ${ab.oneri ? `<p>Mağazanızdaki ${nf(ab.urun_sayisi)} ürün için uygun paket: <b>${esc(ab.oneri)}</b>.</p>` : ''}`;
+  } else {
+    box.innerHTML = `<p><b>${esc(ab.ad)}</b> paketiniz ${ab.durum === 'deneme' ? 'deneme olarak açık' : 'aktif'}${ab.bitis ? ` (${trDate(ab.bitis)} tarihine kadar)` : ''}.
+      Hazırlanan düzeltmeleri kontrol edip mağazanıza gönderebilirsiniz.</p>`;
+  }
+  box.innerHTML += `<p class="muted" style="margin:0">Mağazanızı analiz etmek ve yapılan her değişikliği geri almak her pakette açıktır.</p>`;
+}
+async function wFinish(){
+  clearInterval(W.timer);
+  await post('/api/kurulum/bitti');
+  $('#wiz').hidden = true; S.kurulum = false; show('genel'); oTick();
+}
+$('#wz-next').onclick = async () => {
+  if(W.i === 0){
+    const magaza = $('#wz-magaza').value.trim();
+    if(!magaza){ toast('Mağaza adını yazın; başlık ve açıklamalarda kullanılır.'); $('#wz-magaza').focus(); return; }
+    await post('/api/settings', {profil: {magaza, marka: $('#wz-marka').value.trim()}});
+    fillDone = false;
+  }
+  if(W.i === 1) await post('/api/settings', {gorunum: document.querySelector('input[name="wz-look"]:checked').value});
+  if(W.i === 3) return wFinish();
+  wGo(W.i + 1);
+};
+$('#wz-back').onclick = () => wGo(Math.max(0, W.i - 1));
+$('#wz-skip').onclick = wFinish;
 
 /* abonelik: yalnızca sunucuda (yerel kurulumda sınır yok) */
 const trDate = iso => iso ? iso.split('-').reverse().join('.') : '';
@@ -611,7 +768,19 @@ function fillSettings(c){
   if(c.has_secret) $('#s-csec').placeholder = 'Kayıtlı (değiştirmek için yazın)';
   const pr = c.profil || {};
   $('#p-magaza').value = pr.magaza || ''; $('#p-marka').value = pr.marka || '';
+  const look = c.gorunum || (S.mode === 'sunucu' ? 'sade' : 'bantli');   // seçilmediyse kurulum türünün varsayılanı
+  document.querySelector(`input[name="s-look"][value="${look}"]`).checked = true;
+  sPreviewLook();
 }
+async function sPreviewLook(){
+  const r = await api('/api/gorunum/ornek?ad=' + document.querySelector('input[name="s-look"]:checked').value);
+  if(r.html) $('#s-prev').innerHTML = r.html;
+}
+document.querySelectorAll('input[name="s-look"]').forEach(x => x.onchange = sPreviewLook);
+$('#b-savelook').onclick = async () => {
+  const r = await post('/api/settings', {gorunum: document.querySelector('input[name="s-look"]:checked').value});
+  if(r.ok) toast('Görünüm kaydedildi.');
+};
 
 window.addEventListener('resize', () => { if(document.querySelector('#v-gorsel.on')) gDraw(); if(document.querySelector('#v-seo.on')) sDraw(); });
 

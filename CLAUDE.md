@@ -96,6 +96,16 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Mağazaya yazan her POST yolu `WRITE_ROUTES` içinde bir özelliğe bağlıdır; `route_post` başında denetlenir. **Yeni bir yazma yolu
   eklersen buraya da ekle.** Geri alma bilerek listede yok. Ürün sınırı taramalarda görülen ürün sayısıyla (`urun_sayisi()`) karşılaştırılır.
 
+### Kurulum sihirbazı ve hedef kelime yeri
+
+- Yalnızca sunucuda, ilk girişte tam ekran açılır (`kurulum_gerekli()`, `ui/index.html` içinde `wOpen`): 1 mağaza adı ve marka,
+  2 açıklama görünümü (`/api/gorunum/ornek` canlı önizleme), 3 ilk tarama ve özet, 4 paket bilgisi. Bitince ya da "Şimdilik geç"
+  ile `/api/kurulum/bitti`. `kurulum_bitti` hiç yazılmamış ve taranmış mağazaya (bu ayardan önce kurulmuş) gösterilmez.
+- Açıklama görünümü mağaza ayarı `gorunum` ("sade" | "bantli"); boşsa sunucuda sade, bilgisayarda bantlı. Ayarlar > Mağaza'dan da değişir;
+  değişince hazırlanıp gönderilmemiş açıklamalar yeniden hazırlanır.
+- Hedef kelime yeri `kw_loc()`: mağazanın keşfettiği, yoksa `sunucu.json`daki `kw_loc` (Ustapazar'da bulunan). Mağaza sahibi keşif yapmaz.
+  Doğrudan `CFG.get("kw_loc")` kullanma.
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -118,4 +128,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
   stilleri sayıyorsa farklı stil yoğunluğu kaydırır. `test_aciklama.py` bunu denetler. Şablon sistemi yapılmadan önce Ideasoft'un sayımı
   test mağazasında ölçülmeli (stilli ve stilsiz aynı açıklama gönderilip paneldeki yüzde karşılaştırılarak).
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
-  HTML kelime sayımı). Sonra Faz 2. Ayrıntılar `YOL_HARITASI.md` içinde.
+  HTML kelime sayımı).
+- Faz 2 sürüyor; kurulum sihirbazı bitti. Sırada açıklama şablonu ayarlama (sihirbazdaki görünüm adımı ve Ayarlar > Mağaza bunu kullanır). Ayrıntılar `YOL_HARITASI.md` içinde.

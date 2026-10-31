@@ -45,6 +45,10 @@ Sunucu kipi (seovisi.com.tr gibi, birden çok mağaza):
       client_id, client_secret : Ideasoft'taki seovisi uygulamasının anahtarları
       public_url               : dışarıdan açılan adres, örn. https://app.seovisi.com.tr
    Ideasoft'taki yönlendirme adresi: <public_url>/callback
+ - data/sunucu.json içine "kw_loc" yazılırsa (Ustapazar'da Ayarlar > SEO ayarları > Keşfet ile bulunan
+   hedef kelime yeri), mağazalar bu teknik adımı yapmadan açıklama gönderebilir.
+ - Yeni giren mağazayı 4 adımlı bir kurulum sihirbazı karşılar (mağaza adı, açıklama görünümü,
+   ilk tarama, paket bilgisi).
  - Abonelik: yeni giren mağaza ücretsiz analizle başlar (sorunları görür, düzeltme gönderemez).
    Paketler paketler.json dosyasındadır. Bir mağazaya elle abonelik açmak için:
       python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31

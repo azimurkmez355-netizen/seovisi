@@ -86,7 +86,8 @@ def sunucu_kipi():
     A = os.path.join(TMP, "sunucu")
     copy_app(A)
     with open(os.path.join(A, "data", "sunucu.json"), "w", encoding="utf-8") as f:
-        json.dump({"client_id": "cid", "client_secret": "sec", "public_url": "http://localhost:8770"}, f)
+        json.dump({"client_id": "cid", "client_secret": "sec", "public_url": "http://localhost:8770",
+                   "kw_loc": {"res": "product", "path": "targetKeyword"}}, f)
     proc = start(A, "--sunucu", "--port", "8770")
     try:
         st, _, page = req(8770, "GET", "/")
@@ -145,6 +146,7 @@ def sunucu_kipi():
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
         st, h, _ = req(8770, "GET", "/cikis", cookie=ca)
         check("çıkış çerezi siler", st == 302 and "Max-Age=0" in h.get("Set-Cookie", ""))
+        kurulum(8770, ca)       # ilk girişte (henüz taranmamışken) açılan sihirbaz, tarama bitse de sürer
         abonelik(8770, A, ca, cb_state=lambda: req(8770, "GET", "/api/state", cookie=login(8770, "b-moda.com")[4])[2])
         kapi(8770)
         guvenlik(8770, ca)
@@ -162,6 +164,25 @@ def raw_post(port, path, length, cookie=""):
                   f"Content-Length: {length}\r\n"
                   f"{'Cookie: ' + cookie + chr(13) + chr(10) if cookie else ''}\r\n".encode())
         return s.recv(4096).decode("utf-8", "replace").split(" ", 2)[1]
+
+
+def kurulum(port, ca):
+    s = req(port, "GET", "/api/state", cookie=ca)[2]
+    check("yeni mağazaya kurulum sihirbazı açılır", s["kurulum"] is True, s.get("kurulum"))
+    check("hedef kelime yeri sunucudaki varsayılandan gelir (keşif gerekmez)",
+          req(port, "GET", "/api/seo/state", cookie=ca)[2].get("has_loc") is True)
+    sade = req(port, "GET", "/api/gorunum/ornek?ad=sade", cookie=ca)[2].get("html", "")
+    bantli = req(port, "GET", "/api/gorunum/ornek?ad=bantli", cookie=ca)[2].get("html", "")
+    check("görünüm önizlemesi iki görünümü de gösterir", "Termos" in sade and "1b4f72" not in sade and "1b4f72" in bantli)
+    check("bilinmeyen görünüm istenemez", req(port, "GET", "/api/gorunum/ornek?ad=yok", cookie=ca)[0] == 400)
+    req(port, "POST", "/api/settings", {"gorunum": "<script>"}, cookie=ca)
+    g1 = req(port, "GET", "/api/state", cookie=ca)[2]["cfg"].get("gorunum")
+    req(port, "POST", "/api/settings", {"gorunum": "bantli"}, cookie=ca)
+    g2 = req(port, "GET", "/api/state", cookie=ca)[2]["cfg"].get("gorunum")
+    check("görünüm ayarı kaydedilir, geçersiz değer reddedilir", g1 == "" and g2 == "bantli", (g1, g2))
+    req(port, "POST", "/api/settings", {"gorunum": "sade"}, cookie=ca)
+    req(port, "POST", "/api/kurulum/bitti", {}, cookie=ca)
+    check("sihirbaz bitince bir daha açılmaz", req(port, "GET", "/api/state", cookie=ca)[2]["kurulum"] is False)
 
 
 def abonelik(port, appdir, ca, cb_state):
@@ -290,6 +311,7 @@ def yerel_kip():
         s = req(8771, "GET", "/api/state")[2]
         j = req(8771, "POST", "/api/cat/assign?pid=1&cid=999999", {})[2]
         check("yerel kipte abonelik sınırı yok", s["abonelik"] is None and not j.get("abonelik"), (s.get("abonelik"), j))
+        check("yerel kipte (Ustapazar) kurulum sihirbazı açılmaz", s["kurulum"] is False)
         st, _, _ = req(8771, "POST", "/api/disconnect", {}, panel=False)
         check("yerel kipte de başka siteden sahte istek reddedilir", st == 403 and
               req(8771, "GET", "/api/state")[2]["cfg"]["connected"], st)

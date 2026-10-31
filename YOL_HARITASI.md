@@ -55,7 +55,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 - [x] Her değişikliği geri alma
 
 **Eklenecekler:**
-- [ ] Kurulum sihirbazı
+- [x] Kurulum sihirbazı
 - [ ] Yeni ürün otopilotu: yeni ürünler fark edilir, SEO'su ve kategorisi hazırlanır; onaylı ya da otomatik onaylı gönderim
 - [ ] Aylık e-posta raporu
 - [ ] Yapay zekâ ile ürüne özel açıklama; marka sesi seçimi (samimi, kurumsal, genç)
@@ -173,7 +173,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 ## Faz 2 — v1 özellikleri (5–6 hafta)
 
-- [ ] (K) Kurulum sihirbazı
+- [x] (K) Kurulum sihirbazı: mağaza adı ve marka, açıklama görünümü (sade / bantlı, canlı önizleme), ilk tarama ve özet, paket bilgisi
+  - [ ] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
 - [ ] (K) Açıklama şablonu ayarlama
 - [ ] (K) Yeni ürün otopilotu ve iş sırası
 - [ ] (K) Kopya ürün tespiti
@@ -234,7 +235,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 ## Netleşmesi kalan konular
 
-1. Hasan Bey'in ilk göreceği ekran: kurulum sihirbazı ve genel bakış
+1. ~~Hasan Bey'in ilk göreceği ekran~~: kurulum sihirbazı yapıldı (4 adım)
 2. Paketlerin içeriği: hangi özellik hangi pakette, kaç yapay zekâ açıklaması
 3. Ustapazar Search Console erişimi ve ölçümün başlangıç tarihi
 4. Ideasoft e-postasının gönderilme tarihi

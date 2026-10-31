@@ -60,6 +60,8 @@ DEFAULT_CFG = {
     "sample_sku": "",
     "lookup_mode": "",
     "profil": {},                 # mağaza profili (profil.py): mağaza adı, varsayılan marka
+    "gorunum": "",                # açıklama görünümü: "sade" | "bantli"; boşsa sunucuda sade, bilgisayarda bantlı
+    "kurulum_bitti": None,        # kurulum sihirbazı (sunucu); None: bu ayardan önce kurulmuş mağaza
     "seo_prepare": True,
     "eur_rate": 55,
     "panel_factor": 1.30,         # Ideasoft oranı / ham HTML oranı (gönderilmiş ürünlerden ölçüldü)
@@ -72,7 +74,8 @@ SERVER_DEFAULT = {
     "public_url": "",             # sunucu kipinde dışarıdan açılan adres, örn. https://app.seovisi.com.tr
     "yerel": "",                  # yerel kipte açılan mağaza klasörü
     "frame_hosts": [],            # panelin çerçevede açılabileceği ek adresler (FRAME_HOSTS'a ek)
-    "hiz_magaza_dk": 300,         # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
+    "kw_loc": {},                 # hedef kelime yerinin varsayılanı (Ustapazar'da bulunan); mağaza keşif yaparsa onunki geçerli
+    "hiz_magaza_dk": 300,        # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
     "hiz_toplam_dk": 1200,        # bütün mağazalar toplamı (uygulama başına sınır varsa)
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
@@ -638,8 +641,17 @@ def find_record(res, pid, loc):
     return out[0] if out else None
 
 
+def kw_loc():
+    """Hedef kelimenin Ideasoft'ta saklandığı yer: mağazada keşfedilen, yoksa sunucu.json'daki varsayılan
+    (Ustapazar'da bulunan yer; Ideasoft'ta her mağazada aynı olduğu varsayılır, mağaza sahibi keşif yapmaz)."""
+    for loc in (CFG.get("kw_loc"), SRV.get("kw_loc") if SRV else None):
+        if isinstance(loc, dict) and loc.get("res") in ("product",) + RECORD_RES and loc.get("path"):
+            return loc
+    return {}
+
+
 def kw_read(prod):
-    loc = CFG.get("kw_loc") or {}
+    loc = kw_loc()
     if not loc:
         return "", None
     if loc["res"] == "product":
@@ -650,7 +662,7 @@ def kw_read(prod):
 
 def kw_write(pid, value, rec):
     """Ürün dışındaki kayıtlara hedef kelimeyi yazar (ürün içindeyse ürün PUT'unda yazılır)."""
-    loc = CFG.get("kw_loc") or {}
+    loc = kw_loc()
     res = loc.get("res")
     if res == "product":
         return
@@ -1188,7 +1200,7 @@ class SeoScanner:
         return {"running": self.running, "paused": self.paused, "note": self.note, "phase": self.phase,
                 "total": self.total, "rate": round(rate),
                 "eta_min": (round(left / rate) if rate and left else None), "counts": c,
-                "has_loc": bool(CFG.get("kw_loc"))}
+                "has_loc": bool(kw_loc())}
 
 
 def score_pct(v):
@@ -1783,7 +1795,8 @@ def overview():
                    "kategorisiz": maps["cat"].count("k"),
                    "yeni_kategori": sum(1 for g in rep.get("newcats") or [] if g["kind"] == "alt" and newcat_key(g) not in made)},
         "scans": {"seo": SEOSCAN.running, "cat": CATSCAN.running, "img": IMG.running,
-                  "phase": SEOSCAN.phase or CATSCAN.phase or IMG.phase or ""},
+                  "phase": SEOSCAN.phase or CATSCAN.phase or IMG.phase or "",
+                  "note": SEOSCAN.note or CATSCAN.note or ""},     # son taramanın hata / durum notu
         "cat_ready": bool(rep), "connected": bool(CFG.get("access_token") or CFG.get("refresh_token")),
         "profil": PROFILE(),
     }
@@ -1971,17 +1984,40 @@ SAFE_METHODS = "panel"
 PLAN_VERSION = 6   # açıklama üreticisi değiştikçe artar; eski hazırlıklar yeniden üretilir
 
 
-def description_style():
-    """Açıklama görünümü: bilgisayardaki kurulum (Ustapazar) sitedeki eski açıklamalarla aynı lacivert bantlı görünümü,
-    sunucuda satılan sürüm sade görünümü kullanır. Ayarlanabilir şablonlar gelince mağaza ayarından okunacak."""
-    return SM.STYLE if SERVER["on"] else SM.STYLE_BANTLI
+GORUNUMLER = {"sade": SM.STYLE, "bantli": SM.STYLE_BANTLI}
+
+
+def description_style(name=None):
+    """Açıklama görünümü: mağaza ayarı (gorunum); seçilmediyse bilgisayardaki kurulum (Ustapazar) sitedeki eski
+    açıklamalarla aynı lacivert bantlı görünümü, sunucuda satılan sürüm sade görünümü kullanır."""
+    return GORUNUMLER.get(name or CFG.get("gorunum")) or (SM.STYLE if SERVER["on"] else SM.STYLE_BANTLI)
+
+
+ORNEK_URUN = {"name": "Paslanmaz Çelik Termos 500 ml", "categories": [{"id": 0, "name": "Termoslar"}]}
+
+
+def description_sample(name):
+    """Kurulum sihirbazı ve ayarlar için görünüm önizlemesi: mağaza adıyla uydurma bir ürünün açıklaması."""
+    return SM.build_machine_seo(ORNEK_URUN, sku="ORNEK-1", method=SAFE_METHODS, prof=PROFILE(),
+                                style=description_style(name))["details_html"]
+
+
+def kurulum_gerekli():
+    """Kurulum sihirbazı gösterilsin mi (yalnızca sunucuda). Bu ayardan önce kurulup taranmış mağazaya gösterilmez."""
+    if not SERVER["on"]:
+        return False
+    done = CFG.get("kurulum_bitti")
+    if done is None:
+        done = urun_sayisi() > 0
+        CFG.update(kurulum_bitti=done)
+    return not done
 
 
 def prepare_plan(pid, variant=0):
     """Ürünü okuyup açıklama ve SEO alanlarını hazırlar; mağazaya hiçbir şey yazmaz."""
     prod = API.get_product(pid)
     detail = API.get_detail(prod)
-    cur_kw, _ = kw_read(prod) if CFG.get("kw_loc") else (prod.get("targetKeyword") or "", None)
+    cur_kw, _ = kw_read(prod) if kw_loc() else (prod.get("targetKeyword") or "", None)
     method = CFG.get("count_method") or SAFE_METHODS
     raw_name = prod.get("name") or ""
     fixed_name = clean_name(raw_name)
@@ -2019,7 +2055,7 @@ def repair_plan(pid):
     şekilde yeni içerik hazırlar. Mağazaya yazmaz; gönderimi kullanıcı yapar."""
     prod = API.get_product(pid)
     detail = API.get_detail(prod)
-    cur_kw, _ = kw_read(prod) if CFG.get("kw_loc") else (prod.get("targetKeyword") or "", None)
+    cur_kw, _ = kw_read(prod) if kw_loc() else (prod.get("targetKeyword") or "", None)
     raw_name = prod.get("name") or ""
     fixed_name = clean_name(raw_name)
     details = (detail or {}).get("details") or ""
@@ -2076,7 +2112,7 @@ def send_plan(pid, edited=None):
     r = DBI.q("SELECT plan, backup FROM seo WHERE pid=?", (pid,), one=True)
     if not r or not r["plan"]:
         return "hata", "Bu ürün için hazırlanmış açıklama yok."
-    if not CFG.get("kw_loc"):
+    if not kw_loc():
         return "hata", "Hedef kelimenin yeri bilinmiyor (Ayarlar > Keşfet)."
     plan = json.loads(r["plan"])
     for k in ("keyword", "details_html", "pageTitle", "metaDescription"):
@@ -2085,7 +2121,7 @@ def send_plan(pid, edited=None):
     prod = API.get_product(pid)
     detail = API.get_detail(prod)
     _, kw_rec = kw_read(prod)
-    loc = CFG.get("kw_loc")
+    loc = kw_loc()
     if not r["backup"]:
         DBI.x("UPDATE seo SET backup=? WHERE pid=?", (json.dumps({
             "pageTitle": prod.get("pageTitle"), "metaDescription": prod.get("metaDescription"),
@@ -2279,6 +2315,7 @@ def abonelik_durumu():
         return None
     a = AB.gecerli(AB.oku(current().dir))
     a["urun_sayisi"] = urun_sayisi()
+    a["oneri"] = AB.oneri(a["urun_sayisi"])
     return a
 
 
@@ -2790,7 +2827,11 @@ class H(BaseHTTPRequestHandler):
                 # ücretli özellik yoksa ücretsiz / süresi doldu / iptal mesajı; varsa yalnızca ürün sınırı denetlenir
                 ab["uyari"] = AB.engel(ab, (ab["ozellikler"] or ["seo_gonder"])[0], ab["urun_sayisi"])
             return self._send(200, {"cfg": cfg, "rpm": API.rpm(), "log": lg, "abonelik": ab,
-                                    "mode": "sunucu" if SERVER["on"] else "yerel"})
+                                    "kurulum": kurulum_gerekli(), "mode": "sunucu" if SERVER["on"] else "yerel"})
+        if p == "/api/gorunum/ornek":
+            if q.get("ad") not in GORUNUMLER:
+                return self._send(400, {"error": "Görünüm bulunamadı."})
+            return self._send(200, {"html": description_sample(q["ad"])})
         if p == "/api/seo/state":
             st = SEOSCAN.state()
             st["jobs"] = SEOJOBS.state()
@@ -2907,7 +2948,7 @@ class H(BaseHTTPRequestHandler):
             mode = API.detect_lookup()
             if mode == "index":
                 API.build_index()
-            if not CFG.get("kw_loc") and CFG.get("kw_needle"):
+            if not kw_loc() and CFG.get("kw_needle"):
                 discover()
         except Exception as e:  # noqa: BLE001
             log(f"Bağlantı sonrası kontrol: {e}", "warn")
@@ -2921,7 +2962,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/settings":
             d = self._json()
             allowed = {"store", "client_id", "client_secret", "target_density", "kw_needle", "eur_rate",
-                       "sample_sku", "redirect_uri", "profil"}
+                       "sample_sku", "redirect_uri", "profil", "gorunum"}
             if SERVER["on"]:
                 allowed -= {"store", "client_id", "client_secret", "redirect_uri"}
             upd = {k: v for k, v in d.items() if k in allowed}
@@ -2933,6 +2974,11 @@ class H(BaseHTTPRequestHandler):
                 upd["target_density"] = max(2.1, min(2.9, float(upd["target_density"])))
             if "profil" in upd:
                 upd["profil"] = PR.load(upd["profil"])
+            if "gorunum" in upd and upd["gorunum"] not in GORUNUMLER:
+                upd.pop("gorunum")
+            if "gorunum" in upd and upd["gorunum"] != CFG.get("gorunum"):
+                # hazırlanıp gönderilmemiş açıklamalar yeni görünümle yeniden hazırlanır
+                DBI.x("UPDATE seo SET pstate='', plan=NULL, pmsg=NULL WHERE ok=0 AND pstate='hazir'")
             if "store" in upd and upd["store"] != CFG.get("store"):
                 upd.update(access_token="", refresh_token="", expires_at=0, lookup_mode="")
             CFG.update(**upd)
@@ -3007,6 +3053,9 @@ class H(BaseHTTPRequestHandler):
             if act == "stop":
                 SEOSCAN.stop()
                 return self._send(200, {"msg": "Durduruluyor…"})
+        if p == "/api/kurulum/bitti":   # sihirbaz tamamlandı ya da geçildi
+            CFG.update(kurulum_bitti=True)
+            return self._send(200, {"ok": True})
         if p == "/api/overview/scan":   # genel bakıştan tarama: SEO ve kategori analizi (ikisi de sadece okur)
             return self._send(200, {"msg": " ".join(x for x in (SEOSCAN.start(), CATSCAN.start()) if x)})
         if p == "/api/cat/start":

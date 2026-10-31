@@ -82,7 +82,9 @@ def fake_call(self, method, path, params=None, body=None, tries=6):
     if method == "GET" and parts == ["products"]:
         since = int(params.get("sinceId", 0))
         return copy.deepcopy([p for _, p in sorted(prods.items()) if p["id"] > since][:lim])
-    if method == "GET" and parts[0] == "products" and len(parts) == 2:
+    if method == "GET" and parts == ["products", "count"]:
+        return {"total": len(prods)}
+    if method == "GET" and parts[0] == "products" and len(parts) == 2 and parts[1].isdigit() and int(parts[1]) in prods:
         return copy.deepcopy(prods[int(parts[1])])
     raise app.ApiError(404, f"sahte api: {method} {path}")
 

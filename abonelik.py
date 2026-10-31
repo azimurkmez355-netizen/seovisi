@@ -141,6 +141,15 @@ def gecerli(kayit, bugun=None):
             "kayitli_paket": kayit.get("paket")}
 
 
+def oneri(urun_sayisi):
+    """Ürün sayısına yeten en küçük ücretli paketin adı (ürün sınırı olmayan iç paketler önerilmez)."""
+    P = [p for p in paketler()["paketler"].values() if p.get("urun") and p.get("ozellikler")]
+    if not P or not urun_sayisi:
+        return None
+    yeten = [p for p in P if p["urun"] >= urun_sayisi]
+    return (min(yeten, key=lambda p: p["urun"]) if yeten else max(P, key=lambda p: p["urun"]))["ad"]
+
+
 def _sayi(n):
     return f"{n:,}".replace(",", ".")
 

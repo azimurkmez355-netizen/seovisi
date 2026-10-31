@@ -192,6 +192,51 @@ class AciklamaGonderme(Ortam):
         self.assertEqual(self.api.yazmalar(), [])
 
 
+class Kurulum(Ortam):
+    """Kurulum sihirbazının ihtiyaçları: hedef kelime yerinin varsayılanı, mağaza başına görünüm, sihirbazın kime çıkacağı."""
+
+    def srv(self, **d):
+        return mock.patch.object(app, "SRV", mock.Mock(get=lambda k, default=None: d.get(k, default)))
+
+    def test_hedef_kelime_yeri_sunucu_varsayilanindan(self):
+        app.CFG.update(kw_loc={})
+        with self.srv(kw_loc={"res": "seo_settings", "path": "keyword"}):
+            self.assertEqual(app.kw_loc(), {"res": "seo_settings", "path": "keyword"})
+            app.CFG.update(kw_loc={"res": "product", "path": "targetKeyword"})       # mağazanın kendi keşfi önce gelir
+            self.assertEqual(app.kw_loc()["res"], "product")
+        with self.srv(kw_loc={"res": "bilinmeyen", "path": "x"}):
+            app.CFG.update(kw_loc={})
+            self.assertEqual(app.kw_loc(), {})                                         # bozuk varsayılan kullanılmaz
+
+    def test_varsayilan_yerle_gonderim_calisir(self):
+        app.CFG.update(kw_loc={})
+        with self.srv(kw_loc={"res": "product", "path": "targetKeyword"}):
+            app.DBI.x("INSERT INTO seo(pid, sku, name) VALUES(7, 'HR-7', ?)", (URUN["name"],))
+            plan = app.prepare_plan(7)
+            self.assertEqual(app.send_plan(7)[0], "gonderildi")
+        self.assertEqual(self.api.urun["targetKeyword"], plan["keyword"])
+
+    def test_gorunum_magaza_ayarindan(self):
+        self.assertIs(app.description_style(), app.SM.STYLE_BANTLI)            # bilgisayar kurulumu varsayılanı
+        app.CFG.update(gorunum="sade")
+        self.assertIs(app.description_style(), app.SM.STYLE)
+        with mock.patch.dict(app.SERVER, {"on": True}):
+            app.CFG.update(gorunum="")
+            self.assertIs(app.description_style(), app.SM.STYLE)               # sunucu varsayılanı
+            app.CFG.update(gorunum="bantli")
+            self.assertIn("1b4f72", app.description_sample(None))
+
+    def test_sihirbaz_yalnizca_yeni_magazaya(self):
+        self.assertFalse(app.kurulum_gerekli())                                 # bilgisayar kurulumunda yok
+        with mock.patch.dict(app.SERVER, {"on": True}):
+            self.assertTrue(app.kurulum_gerekli())                              # yeni, taranmamış mağaza
+            app.DBI.x("INSERT INTO seo(pid, sku, name) VALUES(7, 'HR-7', 'x')")
+            self.assertTrue(app.kurulum_gerekli())                              # sihirbaz sırasında tarandı: sürer
+            app.CFG.update(kurulum_bitti=None)                                  # bu ayardan önce kurulmuş, taranmış mağaza
+            self.assertFalse(app.kurulum_gerekli())
+            self.assertIs(app.CFG.get("kurulum_bitti"), True)
+
+
 class Oturum(unittest.TestCase):
     def setUp(self):
         self._srv = app.SRV
