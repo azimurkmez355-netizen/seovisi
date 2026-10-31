@@ -2,8 +2,8 @@
 .github
 .githooks
 data
-veri*
-yedek*
+veri
+yedekler
 testler
 __pycache__
 *.pyc
