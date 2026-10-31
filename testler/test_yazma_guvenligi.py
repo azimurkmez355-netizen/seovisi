@@ -17,7 +17,21 @@ import seo_text as ST  # noqa: E402
 _pf = ST.panel_factor
 import app  # noqa: E402
 
+import sifre  # noqa: E402
+
 _app_pf, ST.panel_factor = ST.panel_factor, _pf    # app, katsayıyı mağaza ayarından okur; yalnızca bu testlerde
+_KEYDIR = tempfile.mkdtemp(prefix="seovisi-anahtar-")
+
+
+def setUpModule():
+    # şifreleme anahtarı projenin data klasöründe değil, geçici klasörde üretilir
+    sifre.KEY_PATH = os.path.join(_KEYDIR, "anahtar.key")
+    sifre.reset()
+
+
+def tearDownModule():
+    sifre.reset()
+    shutil.rmtree(_KEYDIR, ignore_errors=True)
 
 URUN = {"id": 7, "name": "Bosch Darbeli Matkap 750W", "sku": "HR-7", "barcode": "8690001", "price1": 1499.9,
         "stockAmount": 12, "status": 1, "currency": {"id": 1}, "brand": {"id": 3, "name": "Bosch"},

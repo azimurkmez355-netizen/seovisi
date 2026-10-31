@@ -34,6 +34,9 @@ Veriler:
  - Her mağazanın ayarları, veritabanı ve işlem kaydı data/magazalar/<mağaza adresi> klasöründedir.
  - Eski sürümden gelen data/ayarlar.json ve durum.db ilk açılışta bu klasöre kendiliğinden taşınır.
  - data/sunucu.json oturum anahtarını tutar. data klasörünü paylaşmayın.
+ - Mağaza erişim anahtarları ve Client Secret dosyalarda şifreli durur. Şifrenin anahtarı
+   data/anahtar.key dosyasıdır (ilk açılışta kendiliğinden oluşur). Bu dosya kaybolursa veriler
+   kaybolmaz ama mağazaya yeniden bağlanmak gerekir. Yedek alırken bu dosyayı ayrıca saklayın.
 
 Sunucu kipi (seovisi.com.tr gibi, birden çok mağaza):
  - Başlatma: python app.py --sunucu --port 8080   (varsayılan adres 127.0.0.1; önüne HTTPS veren
@@ -42,5 +45,7 @@ Sunucu kipi (seovisi.com.tr gibi, birden çok mağaza):
       client_id, client_secret : Ideasoft'taki seovisi uygulamasının anahtarları
       public_url               : dışarıdan açılan adres, örn. https://app.seovisi.com.tr
    Ideasoft'taki yönlendirme adresi: <public_url>/callback
+ - Şifreleme anahtarı sunucuda SEOVISI_ANAHTAR ortam değişkeniyle verilir (uzun, rastgele bir metin);
+   böylece anahtar verilerle aynı diskte durmaz. Verilmezse data/anahtar.key kullanılır.
  - Mağazalar giriş sayfasında mağaza adreslerini yazıp Ideasoft'ta izin verir. Şifre alınmaz;
    oturum 30 gün süren imzalı bir çerezle tutulur. Her mağaza yalnızca kendi verisini görür.

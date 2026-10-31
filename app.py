@@ -37,9 +37,11 @@ import seo_text as ST  # noqa: E402
 import seo_machine as SM  # noqa: E402
 import kategori as KT  # noqa: E402
 import profil as PR  # noqa: E402
+import sifre  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
+sifre.KEY_PATH = os.path.join(DATA, "anahtar.key")
 STORES = os.path.join(DATA, "magazalar")       # her mağazanın ayarları, veritabanı ve kaydı kendi klasöründe
 SERVER_PATH = os.path.join(DATA, "sunucu.json")
 UI = os.path.join(BASE, "ui", "index.html")
@@ -120,17 +122,28 @@ def log(msg, level="info"):
 
 
 class Config:
+    # diskte şifreli tutulur (sifre.py); bellekte ve programın geri kalanında düz metin
+    SECRET = ("access_token", "refresh_token", "client_secret", "secret")
+
     def __init__(self, path, defaults=DEFAULT_CFG):
         self.path = path
         self.lock = threading.Lock()
         self.d = dict(defaults)
+        self.locked = {}          # açılamayan şifreli değerler: silinmesin diye olduğu gibi geri yazılır
         if os.path.exists(path):
             try:
                 with open(path, encoding="utf-8") as f:
                     self.d.update(json.load(f))
             except (OSError, ValueError):
                 pass
-        self.save()
+        for k in self.SECRET:
+            if sifre.is_encrypted(self.d.get(k)):
+                try:
+                    self.d[k] = sifre.decrypt(self.d[k])
+                except sifre.SifreHatasi as e:
+                    self.locked[k], self.d[k] = self.d[k], ""
+                    print(f"Uyarı: {path} içindeki {k} açılamadı: {e}")
+        self.save()               # eski kurulumdaki düz metin anahtarlar burada şifrelenir
 
     def get(self, k, default=None):
         with self.lock:
@@ -140,13 +153,21 @@ class Config:
     def update(self, **kw):
         with self.lock:
             self.d.update(kw)
+            for k in kw:
+                self.locked.pop(k, None)
         self.save()
 
     def save(self):
         with self.lock:
+            disk = dict(self.d)
+            for k in self.SECRET:
+                if k in self.locked:
+                    disk[k] = self.locked[k]
+                elif disk.get(k):
+                    disk[k] = sifre.encrypt(str(disk[k]))
             tmp = self.path + ".tmp"
             with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(self.d, f, ensure_ascii=False, indent=2)
+                json.dump(disk, f, ensure_ascii=False, indent=2)
             os.replace(tmp, self.path)
 
     def public(self):

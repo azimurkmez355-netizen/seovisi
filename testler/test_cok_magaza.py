@@ -134,6 +134,10 @@ def sunucu_kipi():
         check("kayıtlar mağazaya özel", "Ayarlar kaydedildi" not in la and "Kategori analizi" in la, la[-300:])
         check("her mağazanın klasörü ayrı",
               sorted(os.listdir(os.path.join(A, "data", "magazalar"))) == ["a-magaza-com", "b-moda-com"])
+        disk = "".join(open(os.path.join(A, "data", *p), encoding="utf-8").read() for p in (
+            ("magazalar", "a-magaza-com", "ayarlar.json"), ("magazalar", "b-moda-com", "ayarlar.json"), ("sunucu.json",)))
+        check("erişim anahtarları ve client secret diskte şifreli",
+              not any(s in disk for s in ("tok-a-magaza.com", "r-b-moda.com", '"sec"')) and "sifreli:v1:" in disk)
 
         st, h, j = req(8770, "POST", "/api/disconnect", {}, cookie=cb)
         check("bağlantıyı kaldırınca oturum da kapanır", j.get("login") and "Max-Age=0" in h.get("Set-Cookie", ""))
@@ -162,6 +166,9 @@ def yerel_kip():
         check("eski dosyalar mağaza klasörüne taşındı",
               os.path.isfile(os.path.join(dest, "ayarlar.json")) and os.path.isfile(os.path.join(dest, "islem.log"))
               and not os.path.exists(os.path.join(L, "data", "ayarlar.json")), os.listdir(os.path.join(L, "data")))
+        disk = open(os.path.join(dest, "ayarlar.json"), encoding="utf-8").read()
+        check("eski kurulumdaki düz metin anahtarlar şifrelendi",
+              "tok-a-magaza.com" not in disk and '"gizli"' not in disk and "sifreli:v1:" in disk)
         st, _, s = req(8771, "GET", "/api/state")
         check("yerel kipte giriş istenmez, eski ayarlar korunur",
               st == 200 and s["mode"] == "yerel" and s["cfg"]["profil"]["magaza"] == "Deneme Hırdavat" and s["cfg"]["connected"])

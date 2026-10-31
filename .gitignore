@@ -8,3 +8,6 @@ data/*_index.json
 rapor/
 __pycache__/
 *.pyc
+
+# şifreleme ana anahtarı: kaybolursa mağazalar yeniden bağlanır; verilerden ayrı yedekleyin
+data/anahtar.key
