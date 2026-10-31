@@ -148,6 +148,7 @@ def sunucu_kipi():
         check("çıkış çerezi siler", st == 302 and "Max-Age=0" in h.get("Set-Cookie", ""))
         kurulum(8770, ca)       # ilk girişte (henüz taranmamışken) açılan sihirbaz, tarama bitse de sürer
         abonelik(8770, A, ca, cb_state=lambda: req(8770, "GET", "/api/state", cookie=login(8770, "b-moda.com")[4])[2])
+        otopilot(8770, A, ca)
         kapi(8770)
         guvenlik(8770, ca)
     finally:
@@ -232,6 +233,35 @@ def abonelik(port, appdir, ca, cb_state):
     check("geçersiz paket komutla yazılmaz", code == 1 and "Kaydedilmedi" in out, out)
     code, out = komut("--abonelikler")
     check("abonelikler listelenir", code == 0 and "a-magaza-com" in out and "b-moda-com" in out, out)
+
+
+def otopilot(port, appdir, ca):
+    """Otopilot HTTP üzerinden: ücretsizde açılmaz; abonelikle açılır, yalnızca açıldıktan sonra eklenen ürünü hazırlar,
+    onaylı kipte mağazaya yazmaz. (Abonelik testi mağazayı Başlangıç'a geçirdi; ürün sınırı orada 100'e düşürüldü.)"""
+    j = req(port, "GET", "/api/otopilot", cookie=ca)[2]
+    check("otopilot başta kapalı ve ayarları gelir", j["ayar"]["acik"] is False and j["items"] == [], j.get("ayar"))
+    once = req(port, "POST", "/__test/urun", {"store": "a-magaza.com", "name": "Bosch Darbeli Matkap 900W"})[2]["pid"]
+    j = req(port, "POST", "/api/otopilot/ayar", {"acik": True}, cookie=ca)[2]
+    check("otopilot ürün sınırı aşılan pakette açılmaz", "error" in j and "ürün" in j["error"], j)
+    subprocess.run([sys.executable, "-X", "utf8", os.path.join(appdir, "app.py"), "--abonelik", "a-magaza.com",
+                    "--paket", "sinirsiz"], cwd=appdir, capture_output=True)
+    j = req(port, "POST", "/api/otopilot/ayar", {"acik": True}, cookie=ca)[2]
+    check("abonelikle otopilot açılır", j.get("ok") and j["ayar"]["acik"] and j["ayar"]["mod"] == "onay", j)
+    yeni = req(port, "POST", "/__test/urun", {"store": "a-magaza.com", "name": "Makita Darbeli Matkap 650W"})[2]["pid"]
+    req(port, "POST", "/api/otopilot/kontrol", {}, cookie=ca)
+    for _ in range(100):
+        j = req(port, "GET", "/api/otopilot", cookie=ca)[2]
+        if not j["running"] and j["items"] and j["items"][0]["durum"] != "bekliyor":
+            break
+        time.sleep(0.2)
+    pids = {r["pid"]: r for r in j["items"]}
+    check("açılmadan önce eklenen ürüne dokunulmaz, sonra ekleneni bulur", once not in pids and yeni in pids, list(pids))
+    r = pids.get(yeni, {})
+    check("yeni ürünün SEO'su ve kategori önerisi hazırlanır, onaya kalır",
+          (r.get("durum"), r.get("seo"), r.get("kat")) == ("onay", "hazir", "oneri") and "Matkap" in (r.get("kat_sug") or ""), r)
+    check("panelde onay bekleyen sayısı görünür", req(port, "GET", "/api/state", cookie=ca)[2]["oto_onay"] == 1)
+    st, _, _ = req(port, "POST", "/api/otopilot/ayar", {"acik": False}, cookie=ca)
+    check("otopilot kapatılır", req(port, "GET", "/api/otopilot", cookie=ca)[2]["ayar"]["acik"] is False)
 
 
 def kapi(port):

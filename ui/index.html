@@ -330,6 +330,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <a data-v="seo"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21M7.5 10.5h6M10.5 7.5v6"/></svg>Ürün SEO'su<b class="badge" id="nb-seo"></b></a>
     <a data-v="kategori"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Kategoriler<b class="badge" id="nb-kategori"></b></a>
     <a data-v="gorsel"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>Görseller<b class="badge" id="nb-gorsel"></b></a>
+    <a data-v="otopilot"><svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>Otopilot<b class="badge" id="nb-otopilot"></b></a>
     <div class="grow"></div>
     <div class="dock" id="dock" aria-live="polite"></div>
     <a data-v="ayarlar"><svg viewBox="0 0 24 24"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ayarlar</a>
@@ -507,6 +508,41 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
   <div class="pager"><span id="gpinfo"></span><button class="btn ghost sm" id="gprev">Önceki</button><button class="btn ghost sm" id="gnext">Sonraki</button></div>
 </section>
 
+<!-- ============================ YENİ ÜRÜN OTOPİLOTU -->
+<section class="view" id="v-otopilot">
+  <header class="ph">
+    <div><h1>Yeni ürün otopilotu</h1><p class="lede">Mağazanıza eklenen yeni ürünlerin SEO açıklamasını ve kategorisini hazırlar. Yalnızca otopilot açıldıktan sonra eklenen ürünlere dokunur; eski ürünleriniz değişmez.</p></div>
+    <div class="ph-act">
+      <button class="btn ghost" id="a-check">Şimdi kontrol et</button>
+      <button class="btn" id="a-toggle">Otopilotu aç</button>
+    </div>
+  </header>
+  <div class="alert" id="a-alert"></div>
+  <div class="meta" id="a-meta"></div>
+  <div class="steps">
+    <div class="step">
+      <h3>Çalışma biçimi</h3>
+      <div class="wz-looks">
+        <label class="wz-look"><input type="radio" name="a-mod" value="onay"><span><b>Onayla gönder</b><small>Hazırlananlar aşağıdaki listeye düşer; siz onaylayınca mağazaya yazılır.</small></span></label>
+        <label class="wz-look"><input type="radio" name="a-mod" value="otomatik"><span><b>Otomatik gönder</b><small>Seçtiğiniz işler kendiliğinden yapılır; her değişiklik geri alınabilir.</small></span></label>
+      </div>
+      <div id="a-oto">
+        <label class="check"><input type="checkbox" id="a-seo"><span>SEO açıklaması, sayfa başlığı ve meta açıklama (açıklama şablonunuzla)</span></label>
+        <label class="check"><input type="checkbox" id="a-kategorisiz"><span>Kategorisiz ürüne kategori ekleme (yalnızca analiz emin olduğunda)</span></label>
+        <label class="check"><input type="checkbox" id="a-tasi"><span>Yanlış kategorideki ürünü taşıma (yalnızca analiz emin olduğunda)</span></label>
+        <p class="muted" style="margin:6px 0 0">Emin olunmayan ve şüpheli kategori önerileri her durumda onayınıza kalır.</p>
+      </div>
+      <p class="muted" style="margin:12px 0 0" id="a-kural"></p>
+    </div>
+  </div>
+  <div class="sheethead" style="margin-top:24px"><h2>Yeni ürünler</h2><p id="a-say"></p>
+    <button class="btn sm" id="a-approve-all" style="margin-left:auto">Onay bekleyenlerin hepsini onayla</button></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Ürün</th><th>Durum</th><th>SEO</th><th>Kategori</th><th></th></tr></thead>
+    <tbody id="arows"></tbody>
+  </table></div>
+</section>
+
 <!-- ============================ AYARLAR -->
 <section class="view" id="v-ayarlar">
   <header class="ph"><div><h1>Ayarlar</h1><p class="lede">Mağaza bilgileri, Ideasoft bağlantısı ve çalışma tercihleri.</p></div></header>
@@ -674,6 +710,7 @@ function show(v){
   if(v==='gorsel'){ gTick(); gRows(); }
   if(v==='seo'){ sTick(); sRows(); }
   if(v==='kategori'){ cTick(); cRows(); }
+  if(v==='otopilot') aTick();
 }
 
 /* durum: bağlantı, mağaza adı ve ayarlar */
@@ -690,6 +727,7 @@ async function tick(){
   $('#connstate').innerHTML = cfg.connected ? `<span class="ok-t">Bağlı:</span> ${esc(cfg.store)}` : '<span class="bad-t">Henüz bağlanılmadı.</span>';
   if(!fillDone) fillSettings(cfg);
   showPlan(S.abonelik);
+  $('#nb-otopilot').textContent = S.oto_onay || '';
   if(S.kurulum && !W.opened) wOpen();
 }
 
@@ -1602,6 +1640,60 @@ async function oScan(){
 $('#o-scan').onclick = oScan;
 window.addEventListener('resize', () => { if(O && document.querySelector('#v-genel.on')) oLens(); });
 setInterval(() => { if(document.querySelector('#v-genel.on')) oTick(); }, 3000);
+
+/* ---------------- yeni ürün otopilotu */
+let A = null;
+const A_DURUM = {bekliyor: ['var(--idle)', 'Bekliyor'], onay: ['var(--warn)', 'Onay bekliyor'], tamam: ['var(--ok)', 'Tamam'],
+                 hata: ['var(--bad)', 'Hata'], yoksay: ['var(--ink3)', 'Yok sayıldı']};
+const A_SEO = {gerekmez: 'Gerek yok (%100)', hazir: 'Hazır', gonderildi: 'Gönderildi', hata: 'Hata'};
+const A_KAT = {kategorisiz: 'Kategorisiz; eklenecek', tasi: 'Taşınacak', ekle: 'Ayrıca eklenecek', supheli: 'Şüpheli; kontrol edin'};
+function aKat(r){
+  if(r.kat === 'oneri') return `${esc(r.kat_sug)}<br><small class="muted">${A_KAT[r.kat_act] || ''}${r.kat_guclu ? '' : ' · analiz emin değil'}</small>`;
+  return {sec: 'Öneri yok; Kategoriler sayfasından elle seçin', uygulandi: 'Uygulandı', gerekmez: 'Doğru kategoride', hata: 'Hata'}[r.kat] || '–';
+}
+async function aTick(){
+  A = await api('/api/otopilot'); if(!A.ayar) return;
+  const a = A.ayar, say = A.sayilar || {};
+  $('#a-toggle').textContent = a.acik ? 'Otopilotu kapat' : 'Otopilotu aç';
+  $('#a-toggle').className = a.acik ? 'btn ghost' : 'btn';
+  $('#a-check').disabled = !a.acik || A.running;
+  const uyari = A.note || (!a.acik && A.izin) || '';
+  $('#a-alert').textContent = uyari; $('#a-alert').classList.toggle('show', !!uyari);
+  $('#a-meta').innerHTML = `<span>Durum: <b>${a.acik ? 'Açık' : 'Kapalı'}</b></span><span>Son kontrol: <b>${esc(A.son_kontrol || '–')}</b></span>`
+    + `<span>Her <b>${A.aralik_dk}</b> dakikada bir bakılır</span>` + (A.running ? `<span><b>${esc(A.phase || 'Çalışıyor…')}</b></span>` : '');
+  document.querySelector(`input[name="a-mod"][value="${a.mod}"]`).checked = true;
+  $('#a-oto').hidden = a.mod !== 'otomatik';
+  for(const k of ['seo', 'kategorisiz', 'tasi']) $('#a-' + k).checked = a[k];
+  $('#a-kural').textContent = `Yeni ürün, sitede yayına alındıktan (aktif) ve ${A.bekle_dk} dakika geçtikten sonra işlenir; böylece siz ürünü düzenlerken üstüne yazılmaz.`;
+  $('#a-say').textContent = ['onay', 'bekliyor', 'tamam', 'hata'].filter(k => say[k]).map(k => `${say[k]} ${A_DURUM[k][1].toLowerCase()}`).join(' · ');
+  $('#a-approve-all').disabled = !say.onay || A.running;
+  $('#arows').innerHTML = A.items.length ? A.items.map(r => {
+    const [c, t] = A_DURUM[r.durum] || ['var(--idle)', r.durum];
+    const act = (r.durum === 'onay' || r.durum === 'hata') && !A.running
+      ? `<div class="acts" style="margin:0;flex-wrap:nowrap"><button class="btn sm" data-ok="${r.pid}">Onayla</button><button class="btn ghost sm" data-skip="${r.pid}">Yok say</button></div>` : '';
+    return `<tr><td><b>${esc(r.name)}</b><br><small class="muted">${esc(r.sku || '')} · no ${r.pid} · ${esc(r.bulundu)}</small>${r.msg ? `<br><small>${esc(r.msg)}</small>` : ''}</td>
+      <td><span class="pill"><i style="background:${c}"></i>${t}</span></td><td>${A_SEO[r.seo] || '–'}</td><td>${aKat(r)}</td><td>${act}</td></tr>`;
+  }).join('') : `<tr><td colspan="5" class="muted">Henüz yeni ürün yok. Otopilot açıkken mağazanıza eklenen ürünler burada görünür.</td></tr>`;
+  $('#arows').querySelectorAll('[data-ok]').forEach(b => b.onclick = () => aApprove([+b.dataset.ok]));
+  $('#arows').querySelectorAll('[data-skip]').forEach(b => b.onclick = async () => { await post('/api/otopilot/yoksay?pid=' + b.dataset.skip); aTick(); });
+}
+async function aSave(d){ const r = await post('/api/otopilot/ayar', d); aTick(); return r; }
+async function aApprove(pids){
+  const n = pids ? pids.length : (A.sayilar || {}).onay || 0;
+  if(!await ask(`${n} ürün için hazırlanan SEO açıklaması ve kategori önerisi mağazanıza yazılacak. Her değişiklik geri alınabilir.`,
+                {title: 'Onaylanıp gönderilsin mi?', ok: 'Onayla ve gönder'})) return;
+  const r = await post('/api/otopilot/onayla', pids ? {pids} : {}); if(r.msg) toast(r.msg); aTick();
+}
+$('#a-toggle').onclick = async () => {
+  if(A.ayar.acik && !await ask('Yeni ürünler artık hazırlanmaz ve gönderilmez. Yapılmış değişiklikler olduğu gibi kalır.', {title: 'Otopilot kapatılsın mı?', ok: 'Kapat'})) return;
+  const r = await aSave({acik: !A.ayar.acik}); if(r.ok) toast(r.ayar.acik ? 'Otopilot açıldı.' : 'Otopilot kapatıldı.');
+};
+$('#a-check').onclick = async () => { const r = await post('/api/otopilot/kontrol'); if(r.msg) toast(r.msg); aTick(); };
+$('#a-approve-all').onclick = () => aApprove(null);
+document.querySelectorAll('input[name="a-mod"]').forEach(x => x.onchange = () => aSave({mod: x.value}));
+for(const k of ['seo', 'kategorisiz', 'tasi']) $('#a-' + k).onchange = () => aSave({[k]: $('#a-' + k).checked});
+setInterval(() => { if(document.querySelector('#v-otopilot.on')) aTick(); }, 3000);
+
 oTick();
 /* ---------------- uygulama geneli */
 // menüdeki bekleyen iş sayıları ve sol alttaki arka plan işleri (her sayfada)

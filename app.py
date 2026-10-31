@@ -29,7 +29,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 from collections import deque
-from datetime import datetime
+from datetime import datetime, timedelta
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -63,6 +63,7 @@ DEFAULT_CFG = {
     "profil": {},                 # mağaza profili (profil.py): mağaza adı, varsayılan marka
     "sablon": {},                 # açıklama şablonu (sablon.py); boşsa sunucuda sade, bilgisayarda bantlı
     "kurulum_bitti": None,        # kurulum sihirbazı (sunucu); None: bu ayardan önce kurulmuş mağaza
+    "otopilot": {},               # yeni ürün otopilotu ayarları (oto_ayar)
     "seo_prepare": True,
     "eur_rate": 55,
     "panel_factor": 1.30,         # Ideasoft oranı / ham HTML oranı (gönderilmiş ürünlerden ölçüldü)
@@ -77,6 +78,7 @@ SERVER_DEFAULT = {
     "frame_hosts": [],            # panelin çerçevede açılabileceği ek adresler (FRAME_HOSTS'a ek)
     "kw_loc": {},                 # hedef kelime yerinin varsayılanı (Ustapazar'da bulunan); mağaza keşif yaparsa onunki geçerli
     "hiz_magaza_dk": 300,        # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
+    "otopilot_dk": 60,            # otopilotun her mağazada yeni ürünlere bakma aralığı (dakika)
     "hiz_toplam_dk": 1200,        # bütün mağazalar toplamı (uygulama başına sınır varsa)
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
@@ -101,6 +103,13 @@ class _Ref:
 
     def __getattr__(self, k):
         return getattr(getattr(current(), self._attr), k)
+
+    def __setattr__(self, k, v):
+        # atama da o anki mağazanın nesnesine gider; vekilin üstünde kalsaydı bütün mağazalarda geçerli olurdu
+        if k == "_attr":
+            object.__setattr__(self, k, v)
+        else:
+            setattr(getattr(current(), self._attr), k, v)
 
 
 def spawn(target, *args):
@@ -1566,8 +1575,9 @@ def _write_cats(pid, prod, target, mode):
                 API.call("DELETE", f"product_to_categories/{link['id']}")
 
 
-def apply_categories(pid, add, rem, expect=None):
-    """Ürüne add kategorilerini ekler, rem kategorilerini çıkarır. Dönüş: (durum, mesaj, önceki, sonraki)"""
+def apply_categories(pid, add, rem, expect=None, bos_olabilir=False):
+    """Ürüne add kategorilerini ekler, rem kategorilerini çıkarır. Dönüş: (durum, mesaj, önceki, sonraki)
+    bos_olabilir: yalnızca geri alma; ürün düzeltmeden önce kategorisizdiyse yine kategorisiz kalabilir."""
     prod = API.get_product(pid)
     before = _cat_ids(prod)
     if expect is not None and set(before) != set(expect):
@@ -1575,7 +1585,7 @@ def apply_categories(pid, add, rem, expect=None):
     target = [c for c in before if c not in rem] + [a for a in dict.fromkeys(add) if a not in before]
     if set(target) == set(before):
         return "uygulandi", "Ürün zaten istenen kategorilerde.", before, before
-    if not target:
+    if not target and not bos_olabilir:
         return "hata", "Ürün hiçbir kategoride kalmayacaktı; uygulanmadı.", before, before
     fp_before = Ideasoft.fingerprint(prod)
     fp_before.pop("categories", None)
@@ -1615,7 +1625,7 @@ def cat_fix(pid, add, rem, sug="", undo=False):
     """Bir ürüne öneriyi uygular (ya da geri alır), sonucu kaydeder. Dönüş: (durum, mesaj)"""
     row = DBI.q("SELECT cats FROM catprod WHERE pid=?", (pid,), one=True)
     expect = json.loads(row["cats"]) if row else None
-    state, msg, before, after = apply_categories(pid, add, rem, expect)
+    state, msg, before, after = apply_categories(pid, add, rem, expect, bos_olabilir=undo)
     if state == "uygulandi":
         DBI.x("UPDATE catprod SET cats=? WHERE pid=?", (json.dumps(after), pid))
         if undo:
@@ -2284,6 +2294,320 @@ class SeoJobs:
 SEOJOBS = _Ref("seojobs")
 
 
+# ============================================================ yeni ürün otopilotu
+#
+# Otopilot açıldıktan SONRA mağazaya eklenen ürünleri bulur; SEO açıklamasını ve kategori önerisini hazırlar. Onaylı kipte
+# mağaza sahibinin onayını bekler, otomatik kipte seçilen işleri kendisi yazar; şüpheli kategori önerileri her durumda onaya
+# kalır. Mağazaya yazma bugünkü güvenlik kurallarıyla (send_plan, cat_fix) yapılır; eski ürünlere hiç dokunulmaz.
+# Yeni ürün, sitede yayına alındıktan (aktif) ve OTO_BEKLE_DK geçtikten sonra işlenir: mağaza sahibi ürünü hâlâ düzenlerken
+# üstüne yazılmasın. Bugün oto_zamanlayici() belirli aralıklarla kontrol() çağırır; Ideasoft yeni ürün bildirimi (webhook)
+# verirse bildirim de kontrol()'ü çağırabilir.
+#
+# oto tablosunda durum: bekliyor (yayına alınmadı ya da süre dolmadı), onay (onay bekliyor), tamam, hata, yoksay.
+# seo: gerekmez | hazir | gonderildi | hata.  kat: gerekmez | oneri | sec (öneri yok, elle seçilmeli) | uygulandi | hata.
+
+OTO_BEKLE_DK = 30
+OTO_PASIF_GUN = 30
+OTO_VARSAYILAN = {"acik": False, "mod": "onay", "seo": True, "kategorisiz": True, "tasi": True}
+
+
+def oto_ayar():
+    d = CFG.get("otopilot") or {}
+    a = dict(OTO_VARSAYILAN, **{k: v for k, v in d.items() if k in OTO_VARSAYILAN})
+    a["mod"] = a["mod"] if a["mod"] in ("onay", "otomatik") else "onay"
+    for k in ("acik", "seo", "kategorisiz", "tasi"):
+        a[k] = a[k] if isinstance(a[k], bool) else OTO_VARSAYILAN[k]
+    return a
+
+
+def _pasif(p):
+    return str(p.get("status")) in ("0", "False", "false")
+
+
+class Otopilot:
+    def __init__(self):
+        self.lock = threading.Lock()
+        self.running = False
+        self.phase = self.note = ""
+        DBI.x("""CREATE TABLE IF NOT EXISTS oto(pid INTEGER PRIMARY KEY, sku TEXT, name TEXT, bulundu TEXT, durum TEXT,
+                 seo TEXT, kat TEXT, kat_act TEXT, kat_sug TEXT, kat_add TEXT, kat_rem TEXT, kat_guclu INTEGER,
+                 msg TEXT, guncellendi TEXT)""")
+        DBI.x("CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT)")
+
+    @staticmethod
+    def _kv(k):
+        r = DBI.q("SELECT v FROM kv WHERE k=?", (k,), one=True)
+        return r["v"] if r else None
+
+    @staticmethod
+    def _kv_set(k, v):
+        DBI.x("INSERT OR REPLACE INTO kv(k, v) VALUES(?, ?)", (k, str(v)))
+
+    @staticmethod
+    def _set(pid, **f):
+        f["guncellendi"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        DBI.x(f"UPDATE oto SET {', '.join(k + '=?' for k in f)} WHERE pid=?", list(f.values()) + [pid])
+
+    @staticmethod
+    def _yeni_urunler(since):
+        """Numarası since'ten büyük bütün ürünler (Ideasoft ürün numaraları artarak verilir)."""
+        out, last = [], since
+        while True:
+            prm = {"limit": 100, "sort": "id"}
+            if last:
+                prm["sinceId"] = last
+            page = [p for p in (API.call("GET", "products", prm) or []) if p.get("id", 0) > last]
+            if not page:
+                return out
+            out += page
+            last = max(p["id"] for p in page)
+
+    def izin(self):
+        """Otopilot bu mağazada çalışabilir mi: None ya da sebep."""
+        a = abonelik_durumu()
+        msg = AB.engel(a, "otopilot", a["urun_sayisi"]) if a else None    # pakette var mı, ürün sınırı aşıldı mı
+        if msg:
+            return msg
+        if not (CFG.get("access_token") or CFG.get("refresh_token")):
+            return "Mağaza bağlı değil."
+        return None
+
+    def ayarla(self, d):
+        """Ayarları kaydeder. İlk kez açılırken o ana kadarki son ürün numarası kaydedilir: daha eski ürünlere dokunulmaz."""
+        eski = oto_ayar()
+        CFG.update(otopilot=dict(eski, **{k: d[k] for k in OTO_VARSAYILAN if k in d}))
+        a = oto_ayar()                                    # geçersiz değerler düzeltilmiş hâli
+        if a["acik"] and not eski["acik"]:
+            msg = self.izin()
+            if msg:
+                CFG.update(otopilot=eski)
+                return msg
+            if self._kv("oto_son_id") is None:
+                known = max([0] + [DBI.q(f"SELECT MAX(pid) m FROM {t}", one=True)["m"] or 0 for t in ("seo", "catprod", "idx")])
+                yeni = self._yeni_urunler(known)
+                self._kv_set("oto_son_id", max([known] + [p["id"] for p in yeni]))
+            log("Otopilot açıldı: bundan sonra eklenen ürünler " + ("onayınıza sunulacak." if a["mod"] == "onay"
+                                                                   else "kendiliğinden düzenlenecek."), "ok")
+        elif eski["acik"] and not a["acik"]:
+            log("Otopilot kapatıldı.")
+        CFG.update(otopilot=a)
+        return None
+
+    def kontrol(self):
+        """Yeni ürünleri bulur, bekleme süresi dolan ve yayındaki ürünleri işler. Aynı anda tek kez çalışır."""
+        if not self.lock.acquire(blocking=False):
+            return "Otopilot zaten çalışıyor."
+        self.running, self.note = True, ""
+        try:
+            if not oto_ayar()["acik"]:
+                return "Otopilot kapalı."
+            msg = self.izin()
+            if msg:
+                self.note = msg
+                return msg
+            self.phase = "yeni ürünler aranıyor"
+            yeni = self._yeni_urunler(int(self._kv("oto_son_id") or 0))
+            now = datetime.now()
+            if yeni:
+                ts = now.strftime("%Y-%m-%d %H:%M")
+                DBI.xm("INSERT OR IGNORE INTO oto(pid, sku, name, bulundu, durum, msg, guncellendi) VALUES(?,?,?,?,?,?,?)",
+                       [(p["id"], p.get("sku"), p.get("name"), ts, "bekliyor", "Yayına alınması ve kısa bir süre geçmesi bekleniyor.", ts)
+                        for p in yeni])
+                self._kv_set("oto_son_id", max(p["id"] for p in yeni))
+                log(f"Otopilot: {len(yeni)} yeni ürün bulundu.")
+            sinir = (now - timedelta(minutes=OTO_BEKLE_DK)).strftime("%Y-%m-%d %H:%M")
+            sira = [r["pid"] for r in DBI.q("SELECT pid FROM oto WHERE durum='bekliyor' AND bulundu<=? ORDER BY pid", (sinir,))]
+            if sira:
+                if CATSCAN.running or CATJOBS.running or SEOJOBS.running:
+                    self.note = "Başka bir işlem sürüyor; yeni ürünler bir sonraki kontrolde işlenecek."
+                else:
+                    self._isle(sira)
+            self._kv_set("oto_son_kontrol", now.strftime("%Y-%m-%d %H:%M"))
+            return "Kontrol edildi."
+        except Exception as e:  # noqa: BLE001
+            self.note = f"Otopilot hata ile durdu: {e}"
+            log(self.note, "err")
+            traceback.print_exc()
+            return self.note
+        finally:
+            self.running, self.phase = False, ""
+            self.lock.release()
+
+    def _isle(self, pids):
+        prods, eski = {}, (datetime.now() - timedelta(days=OTO_PASIF_GUN)).strftime("%Y-%m-%d %H:%M")
+        for pid in pids:
+            try:
+                p = API.get_product(pid)
+            except ApiError as e:
+                if e.status == 404:
+                    self._set(pid, durum="yoksay", msg="Ürün mağazadan silinmiş.")
+                    continue
+                raise
+            if _pasif(p):
+                r = DBI.q("SELECT bulundu FROM oto WHERE pid=?", (pid,), one=True)
+                if r and r["bulundu"] < eski:
+                    self._set(pid, durum="yoksay", msg=f"{OTO_PASIF_GUN} gün içinde yayına alınmadı; listeden çıkarıldı.")
+                else:
+                    self._set(pid, msg="Ürün henüz yayında değil (pasif); yayına alınınca işlenecek.")
+                continue
+            prods[pid] = p
+        if not prods:
+            return
+        self.phase = f"{len(prods)} yeni ürün için SEO hazırlanıyor"
+        for pid, p in prods.items():
+            pct = panel_pct(seo_fields(p))
+            price, cur = sale_price(p)
+            DBI.x("""INSERT INTO seo(pid, sku, name, kw, ok, codes, fails, checked, pscore, price, cur) VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                     ON CONFLICT(pid) DO UPDATE SET sku=excluded.sku, name=excluded.name, ok=excluded.ok,
+                     checked=excluded.checked, pscore=excluded.pscore, price=excluded.price, cur=excluded.cur""",
+                  (pid, p.get("sku"), p.get("name"), "", -1 if pct is None else (1 if pct >= 100 else 0), "", "[]",
+                   datetime.now().strftime("%Y-%m-%d %H:%M:%S"), None if pct is None else str(pct), price, cur))
+            if pct is not None and pct >= 100:
+                self._set(pid, seo="gerekmez")
+                continue
+            try:
+                prepare_plan(pid)
+                self._set(pid, seo="hazir")
+            except Exception as e:  # noqa: BLE001
+                self._set(pid, seo="hata", msg=f"Açıklama hazırlanamadı: {str(e)[:200]}")
+        self.phase = "kategoriler öneriliyor"
+        self._kategori(prods)
+        for pid in prods:
+            self._karar(pid)
+        if oto_ayar()["mod"] == "otomatik":
+            self._uygula(list(prods), otomatik=True)
+
+    def _kategori(self, prods):
+        """Yeni ürünler yerel kayda eklenir, kategori listesi tazelenir, analiz kayıtlı verilerle yeniden yapılır."""
+        cats = [(c["id"], (c.get("name") or "").strip(), _ref_id(c.get("parent")))
+                for c in CATSCAN._pages("categories", "Kategoriler") if c.get("id")]
+        with DBI.lock:
+            DBI.c.execute("DELETE FROM cat")
+            DBI.c.executemany("INSERT INTO cat(id, name, parent) VALUES(?,?,?)", cats)
+            DBI.c.executemany("INSERT OR REPLACE INTO catprod(pid, sku, name, cats, brand, status) VALUES(?,?,?,?,?,?)",
+                              [(pid, p.get("sku") or "", p.get("name") or "", json.dumps(_cat_ids(p)), PR.product_brand(p), 1)
+                               for pid, p in prods.items()])
+            DBI.c.commit()
+        CATSCAN.running = True                    # analiz sürerken panelden ikinci bir analiz başlatılmasın
+        CATSCAN._run(False)
+        rep = CATSCAN.report or {}
+        wrong = {w["pid"]: w for w in rep.get("wrong") or []}
+        uncat = {u["pid"]: u for u in rep.get("uncat") or []}
+        for pid in prods:
+            it = uncat.get(pid) or wrong.get(pid)
+            if not it:
+                self._set(pid, kat="gerekmez")
+            elif pid in uncat and not (it.get("add") and it.get("strength") in ("guclu", "olasi")):
+                self._set(pid, kat="sec", kat_act="kategorisiz", kat_sug="", msg=it.get("reason") or "")
+            else:
+                act = "kategorisiz" if pid in uncat else it["act"]
+                guclu = it.get("strength") == "guclu" if pid in uncat else it["act"] == "tasi"
+                self._set(pid, kat="oneri", kat_act=act, kat_sug=it.get("sug") or "", kat_add=json.dumps(it.get("add") or []),
+                          kat_rem=json.dumps(it.get("rem") or []), kat_guclu=1 if guclu else 0, msg=it.get("reason") or "")
+
+    def _karar(self, pid):
+        r = DBI.q("SELECT seo, kat FROM oto WHERE pid=?", (pid,), one=True)
+        if r["seo"] == "hata" or r["kat"] == "hata":
+            self._set(pid, durum="hata")
+        elif r["seo"] == "hazir" or r["kat"] in ("oneri", "sec"):
+            self._set(pid, durum="onay")
+        else:
+            self._set(pid, durum="tamam", msg="SEO'su ve kategorisi uygun; yapılacak bir şey yok.")
+
+    def _uygula(self, pids, otomatik=False):
+        """Hazırlanan SEO'yu gönderir, kategori önerisini uygular. Otomatik kipte yalnızca seçilen işler ve emin olunan
+        kategori önerileri; onayda hepsi. Paket izni her yazmadan önce denetlenir."""
+        a = oto_ayar()
+        for pid in pids:
+            r = DBI.q("SELECT * FROM oto WHERE pid=?", (pid,), one=True)
+            if not r or (not otomatik and r["durum"] not in ("onay", "hata")):
+                continue
+            msgs = []
+            if r["seo"] == "hazir" and (not otomatik or a["seo"]):
+                engel = yazma_engeli("seo_gonder")
+                if engel:
+                    msgs.append(engel)
+                else:
+                    self.phase = f"ürün {pid}: SEO gönderiliyor"
+                    state, msg = send_plan(pid)
+                    self._set(pid, seo="gonderildi" if state == "gonderildi" else "hata")
+                    msgs.append(msg)
+            auto_kat = r["kat_guclu"] and ((r["kat_act"] == "kategorisiz" and a["kategorisiz"]) or (r["kat_act"] == "tasi" and a["tasi"]))
+            if r["kat"] == "oneri" and (not otomatik or auto_kat):
+                engel = yazma_engeli("kategori_duzelt")
+                if engel:
+                    msgs.append(engel)
+                else:
+                    self.phase = f"ürün {pid}: kategori yazılıyor"
+                    state, msg = cat_fix(pid, json.loads(r["kat_add"] or "[]"), json.loads(r["kat_rem"] or "[]"), r["kat_sug"] or "")
+                    self._set(pid, kat="uygulandi" if state == "uygulandi" else "hata")
+                    msgs.append(msg)
+            if msgs:
+                self._set(pid, msg=" ".join(msgs))
+            self._karar(pid)
+            if otomatik and msgs:
+                log(f"Otopilot ürün {pid}: {' '.join(msgs)}")
+
+    def onayla(self, pids):
+        """Mağaza sahibinin onayı: seçilen (ya da onay bekleyen bütün) ürünlerde hazırlananlar yazılır."""
+        if not self.lock.acquire(blocking=False):
+            return "Otopilot çalışıyor; birazdan yeniden deneyin."
+        self.running = True
+
+        def run():
+            try:
+                todo = pids or [r["pid"] for r in DBI.q("SELECT pid FROM oto WHERE durum='onay' ORDER BY pid")]
+                self._uygula(todo)
+                log(f"Otopilot: {len(todo)} ürün onaylandı.", "ok")
+            except Exception as e:  # noqa: BLE001
+                self.note = f"Onay işlenirken hata: {e}"
+                log(self.note, "err")
+            finally:
+                self.running, self.phase = False, ""
+                self.lock.release()
+        spawn(run)
+        return "Onaylananlar mağazaya yazılıyor."
+
+    def state(self):
+        rows = [dict(r) for r in DBI.q("""SELECT pid, sku, name, bulundu, durum, seo, kat, kat_act, kat_sug, kat_guclu, msg,
+                                           guncellendi FROM oto ORDER BY CASE durum WHEN 'onay' THEN 0 WHEN 'hata' THEN 1
+                                           WHEN 'bekliyor' THEN 2 ELSE 3 END, pid DESC LIMIT 300""")]
+        say = {r["durum"]: r["n"] for r in DBI.q("SELECT durum, COUNT(*) n FROM oto GROUP BY durum")}
+        return {"ayar": oto_ayar(), "running": self.running, "phase": self.phase, "note": self.note,
+                "izin": self.izin(), "son_kontrol": self._kv("oto_son_kontrol"), "aralik_dk": oto_aralik(),
+                "bekle_dk": OTO_BEKLE_DK, "sayilar": say, "items": rows}
+
+
+OTO = _Ref("oto")
+
+
+def oto_aralik():
+    return max(5, int(_num(SRV.get("otopilot_dk")) or 60)) if SRV else 60
+
+
+def oto_zamanlayici():
+    """Açık otopilotları sırayla çalıştırır; her mağaza en çok otopilot_dk dakikada bir (sunucu.json, varsayılan 60).
+    Her mağaza kendi bağlamında çalışır (spawn gibi); bir mağazanın hatası diğerlerini durdurmaz."""
+    while True:
+        time.sleep(60)
+        oto_tur()
+
+
+def oto_tur():
+    """Zamanlayıcının bir turu: vakti gelen her açık otopilotu çalıştırır."""
+    tids = sorted(d for d in os.listdir(STORES) if known_tenant(d)) if SERVER["on"] else [LOCAL["id"]]
+    prev = getattr(_cur, "t", None)
+    for tid in tids:
+        try:
+            _cur.t = tenant(tid)
+            son = OTO._kv("oto_son_kontrol")
+            vakit = not son or son <= (datetime.now() - timedelta(minutes=oto_aralik())).strftime("%Y-%m-%d %H:%M")
+            if oto_ayar()["acik"] and vakit and not OTO.running:
+                OTO.kontrol()
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+        finally:
+            _cur.t = prev
 
 
 # ================================================================== mağazalar
@@ -2307,6 +2631,7 @@ class Tenant:
             self.seojobs = SeoJobs()
             self.catscan = CatScanner()
             self.catjobs = CatJobs()
+            self.oto = Otopilot()
         finally:
             _cur.t = prev
 
@@ -2364,6 +2689,7 @@ WRITE_ROUTES = {
     "/api/seo/send": "seo_gonder", "/api/seo/send_all": "seo_gonder",
     "/api/cat/apply": "kategori_duzelt", "/api/cat/apply_many": "kategori_duzelt", "/api/cat/assign": "kategori_duzelt",
     "/api/cat/create": "kategori_ac", "/api/cat/create_many": "kategori_ac",
+    "/api/otopilot/onayla": "otopilot",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
 }
 
 
@@ -2860,9 +3186,12 @@ class H(BaseHTTPRequestHandler):
                 # ücretli özellik yoksa ücretsiz / süresi doldu / iptal mesajı; varsa yalnızca ürün sınırı denetlenir
                 ab["uyari"] = AB.engel(ab, (ab["ozellikler"] or ["seo_gonder"])[0], ab["urun_sayisi"])
             return self._send(200, {"cfg": cfg, "rpm": API.rpm(), "log": lg, "abonelik": ab,
-                                    "kurulum": kurulum_gerekli(), "mode": "sunucu" if SERVER["on"] else "yerel"})
+                                    "kurulum": kurulum_gerekli(), "mode": "sunucu" if SERVER["on"] else "yerel",
+                                    "oto_onay": DBI.q("SELECT COUNT(*) n FROM oto WHERE durum='onay'", one=True)["n"]})
         if p == "/api/sablon":
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
+        if p == "/api/otopilot":
+            return self._send(200, OTO.state())
         if p == "/api/seo/state":
             st = SEOSCAN.state()
             st["jobs"] = SEOJOBS.state()
@@ -3091,6 +3420,20 @@ class H(BaseHTTPRequestHandler):
             renk = tema_rengi_oner()
             return self._send(200, {"renk": renk} if renk else
                               {"error": "Sitenizde tema rengi bulunamadı; rengi kendiniz seçin."})
+        if p == "/api/otopilot/ayar":
+            msg = OTO.ayarla(self._json())
+            return self._send(200, {"error": msg} if msg else {"ok": True, "ayar": oto_ayar()})
+        if p == "/api/otopilot/kontrol":
+            if OTO.running:
+                return self._send(200, {"msg": "Otopilot zaten çalışıyor."})
+            spawn(OTO.kontrol)
+            return self._send(200, {"msg": "Yeni ürünler kontrol ediliyor."})
+        if p == "/api/otopilot/onayla":   # seçilenler ya da onay bekleyen bütün ürünler
+            d = self._json()
+            return self._send(200, {"msg": OTO.onayla([int(x) for x in d["pids"]] if d.get("pids") else None)})
+        if p == "/api/otopilot/yoksay":
+            Otopilot._set(int(q.get("pid") or 0), durum="yoksay", msg="Yok sayıldı; otopilot bu ürüne dokunmaz.")
+            return self._send(200, {"ok": True})
         if p == "/api/kurulum/bitti":   # sihirbaz tamamlandı ya da geçildi
             CFG.update(kurulum_bitti=True)
             return self._send(200, {"ok": True})
@@ -3306,6 +3649,7 @@ def main():
         _cur.t = None
         threading.Timer(0.8, open_panel, args=(url,)).start()
         print("\n  seovisi çalışıyor. Bu pencereyi kapatırsanız program durur.\n")
+    threading.Thread(target=oto_zamanlayici, daemon=True).start()   # mağaza bağlamını kendisi kurar
     srv = ThreadingHTTPServer((host, port), H)
     srv.daemon_threads = True
     try:

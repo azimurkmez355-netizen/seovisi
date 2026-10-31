@@ -86,10 +86,31 @@ def fake_call(self, method, path, params=None, body=None, tries=6):
         return {"total": len(prods)}
     if method == "GET" and parts[0] == "products" and len(parts) == 2 and parts[1].isdigit() and int(parts[1]) in prods:
         return copy.deepcopy(prods[int(parts[1])])
+    if method == "GET" and parts == ["product_details"]:
+        return []
     raise app.ApiError(404, f"sahte api: {method} {path}")
 
 
+_route_public = app.H.route_public
+
+
+def route_public(self, method, p, q):
+    """Yalnızca testler için: POST /__test/urun {store, name, cats} mağazaya (sahte) yeni ürün ekler."""
+    if p == "/__test/urun" and method == "POST":
+        d = self._json()
+        _, prods = STORES[d["store"]]
+        pid = max(prods) + 1
+        with lock:
+            prods[pid] = {"id": pid, "name": d["name"], "sku": f"YN-{pid}", "status": 1,
+                          "categories": [{"id": c} for c in d.get("cats") or []]}
+        self._send(200, {"pid": pid})
+        return True
+    return _route_public(self, method, p, q)
+
+
 app.Ideasoft.call = fake_call
+app.H.route_public = route_public
+app.OTO_BEKLE_DK = 0                     # testte yeni ürün beklemeden işlenir
 app.public_host = lambda h: h in STORES
 app.token_request = lambda host, data: {"access_token": "tok-" + host, "refresh_token": "r-" + host, "expires_in": 3600}
 app.open_panel = lambda u: None

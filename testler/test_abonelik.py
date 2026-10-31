@@ -14,7 +14,7 @@ from unittest import mock
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import abonelik as AB  # noqa: E402
 
-YAZ = ["seo_gonder", "kategori_duzelt", "kategori_ac"]
+YAZ = ["seo_gonder", "kategori_duzelt", "kategori_ac", "otopilot"]
 PAKETLER = {"paketler": {"ucretsiz": {"ad": "Ücretsiz analiz", "urun": None, "ozellikler": []},
                          "kucuk": {"ad": "Küçük", "urun": 100, "ozellikler": YAZ},
                          "yalniz_seo": {"ad": "Yalnız SEO", "urun": None, "ozellikler": ["seo_gonder"]}},

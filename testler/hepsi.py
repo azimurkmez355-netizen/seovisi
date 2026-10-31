@@ -32,9 +32,13 @@ def uygulama():
 if __name__ == "__main__":
     os.chdir(SRC)
     t0 = time.time()
+    data = os.path.join(SRC, "data")
+    data_vardi = os.path.exists(data)          # gerçek kurulumun verisi olabilir; yoksa testler oluşturmamalı
     sonuc = {"birim testleri": birim()}
     if "--hizli" not in sys.argv:
         sonuc["çok mağaza testi"] = uygulama()
+    if not data_vardi:
+        sonuc["testler projenin data klasörüne yazmadı"] = not os.path.exists(data)
     print(f"\n{'=' * 40}  ({time.time() - t0:.0f} sn)")
     for ad, ok in sonuc.items():
         print(f"  {'✓' if ok else '✗'} {ad}")

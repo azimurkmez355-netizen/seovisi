@@ -1,16 +1,16 @@
 {
   "_aciklama": [
     "seovisi paketleri. Ürün sınırı, paket adı ya da özellikler değişince yalnızca bu dosya değişir; çalışan program bir sonraki istekte okur.",
-    "urun: paketin izin verdiği en çok ürün (null = sınırsız). ozellikler: mağazaya yazan işler (seo_gonder, kategori_duzelt, kategori_ac).",
+    "urun: paketin izin verdiği en çok ürün (null = sınırsız). ozellikler: mağazaya yazan işler (seo_gonder, kategori_duzelt, kategori_ac) ve yeni ürün otopilotu (otopilot).",
     "Analiz ve geri alma her pakette, abonelik bitse de açıktır. Fiyatlar burada değil, Ideasoft App Store'dadır.",
     "yeni_magaza: ilk kez giren mağazanın kaydı. Ideasoft deneme süresi veriyorsa durum 'deneme', gun deneme süresi; vermiyorsa durum 'ucretsiz'."
   ],
   "paketler": {
     "ucretsiz": {"ad": "Ücretsiz analiz", "urun": null, "ozellikler": []},
-    "baslangic": {"ad": "Başlangıç", "urun": 1000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac"]},
-    "isletme": {"ad": "İşletme", "urun": 5000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac"]},
-    "uzman": {"ad": "Uzman", "urun": 10000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac"]},
-    "sinirsiz": {"ad": "Sınırsız", "urun": null, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac"]}
+    "baslangic": {"ad": "Başlangıç", "urun": 1000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac", "otopilot"]},
+    "isletme": {"ad": "İşletme", "urun": 5000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac", "otopilot"]},
+    "uzman": {"ad": "Uzman", "urun": 10000, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac", "otopilot"]},
+    "sinirsiz": {"ad": "Sınırsız", "urun": null, "ozellikler": ["seo_gonder", "kategori_duzelt", "kategori_ac", "otopilot"]}
   },
   "yeni_magaza": {"durum": "ucretsiz", "paket": "baslangic", "gun": 0}
 }

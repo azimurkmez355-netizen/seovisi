@@ -28,6 +28,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_hiz.py`: hız sınırı, adil sıra, 429 ve paralel işlerde mağaza bağlamı.
   - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
   - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
+  - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
+  - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
   - `test_cok_magaza.py`: uygulamanın kendisini iki sahte mağazayla (`sahte_ideasoft.py`) çalıştıran betik.
   - GitHub'da her push'ta `.github/workflows/testler.yml` çalışır (Python 3.8 ve 3.13, Linux ve Windows).
@@ -52,7 +54,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 ### Çok mağaza yapısı
 
 - Her mağazanın ayarları (`ayarlar.json`), veritabanı (`durum.db`, SQLite) ve kaydı (`islem.log`) `data/magazalar/<mağaza-alan-adı>/` klasöründe durur.
-- Kodun geneli `CFG`, `DBI`, `API`, `SEOSCAN`, `CATSCAN`, `CATJOBS`, `SEOJOBS`, `IMG` adlarını tek mağaza varmış gibi kullanır. Bunlar `_Ref` vekilleridir ve o anki iş parçacığının mağazasına (`_cur.t`, bir `Tenant`) yönlenir.
+- Kodun geneli `CFG`, `DBI`, `API`, `SEOSCAN`, `CATSCAN`, `CATJOBS`, `SEOJOBS`, `IMG`, `OTO` adlarını tek mağaza varmış gibi kullanır. Bunlar `_Ref` vekilleridir ve o anki iş parçacığının mağazasına (`_cur.t`, bir `Tenant`) yönlenir; okuma da atama da (`CATSCAN.running = True`) o mağazanın nesnesine gider.
 - İstek işleyicisi (`H._dispatch`) mağazayı oturumdan ya da yerel kipte `LOCAL["id"]` değerinden seçer.
 - Arka plan işleri `spawn()` ile başlatılır ve başlatan mağazanın bağlamını taşır. **Yeni arka plan işlerinde `threading.Thread` yerine mutlaka `spawn()` kullan.**
   Paralel işler için de `ThreadPoolExecutor` yerine `pmap()`; yoksa iş parçacıkları "Mağaza seçilmedi" hatası verir.
@@ -119,6 +121,18 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   Ideasoft'un sayımı test mağazasında ölçülünce (stilli ve stilsiz aynı açıklama gönderilip paneldeki yüzde karşılaştırılarak) sınır kalkabilir.
 - Tema rengi önerisi mağazanın ana sayfasını okur; yalnızca internetteki adreslere (`public_host`) ve yönlendirmelere izin verilir.
 
+### Yeni ürün otopilotu (`app.py`, "yeni ürün otopilotu" bölümü)
+
+- Mağaza ayarı `otopilot` (`oto_ayar()`): açık / kapalı, mod (onay | otomatik), otomatikte yapılacak işler (seo, kategorisiz, tasi).
+  Paketlerde `otopilot` özelliği; ürün sınırı aşılınca da açılmaz (`Otopilot.izin`).
+- Açılırken o ana kadarki son ürün numarası kaydedilir (`oto_son_id`); yalnızca daha yeni ürünler işlenir, eski ürünlere dokunulmaz.
+- `oto_zamanlayici` / `oto_tur`: her mağazada en çok `otopilot_dk` (sunucu.json, 60) dakikada bir `kontrol()`. Yeni ürün `oto` tablosuna
+  "bekliyor" girer; yayında (aktif) ve `OTO_BEKLE_DK` (30) dakika geçmişse işlenir; `OTO_PASIF_GUN` gün pasif kalan düşer.
+- İşleme: SEO %100 değilse `prepare_plan`; kategori listesi tazelenir, yeni ürünler `catprod`a eklenir, analiz kayıtlı verilerle
+  yeniden yapılır. Otomatikte yalnızca emin olunan öneriler (kategorisizde "güçlü", yanlış kategoride "taşı") yazılır; şüpheli,
+  "olası" ve "ekle" önerileri onaya kalır. Yazma `send_plan` / `cat_fix` ile, her yazmadan önce `yazma_engeli` denetlenir.
+- Kategori geri alması, ürün düzeltmeden önce kategorisizse onu yine kategorisiz bırakabilir (`apply_categories(bos_olabilir=True)`).
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -137,5 +151,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı ve açıklama şablonu ayarları bitti. Şablondan kalan: eski açıklamaları yeni şablona yedekli toplu
-  geçirme. Sonra yeni ürün otopilotu. Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları ve yeni ürün otopilotu bitti. Kalan: eski açıklamaları yeni şablona
+  yedekli toplu geçirme, kopya ürün tespiti, özellik doldurma, kırık bağlantı taraması, uyarılar, aylık e-posta raporu. Ayrıntılar `YOL_HARITASI.md` içinde.

@@ -56,7 +56,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 
 **Eklenecekler:**
 - [x] Kurulum sihirbazı
-- [ ] Yeni ürün otopilotu: yeni ürünler fark edilir, SEO'su ve kategorisi hazırlanır; onaylı ya da otomatik onaylı gönderim
+- [x] Yeni ürün otopilotu: yeni ürünler fark edilir, SEO'su ve kategorisi hazırlanır; onaylı ya da otomatik onaylı gönderim
 - [ ] Aylık e-posta raporu
 - [ ] Yapay zekâ ile ürüne özel açıklama; marka sesi seçimi (samimi, kurumsal, genç)
 - [ ] Açıklama şablonu ayarlama:
@@ -176,7 +176,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Kurulum sihirbazı: mağaza adı ve marka, açıklama görünümü (sade / bantlı, canlı önizleme), ilk tarama ve özet, paket bilgisi
   - [ ] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
 - [ ] (K) Açıklama şablonu ayarlama — ayarlar ekranı, 4 görünüm, renk, bölümler, önizleme bitti; eski açıklamaların toplu geçirilmesi kaldı
-- [ ] (K) Yeni ürün otopilotu ve iş sırası
+- [x] (K) Yeni ürün otopilotu ve iş sırası (saatlik kontrol; yayına alınıp 30 dk geçen ürün; onaylı / otomatik; şüpheli öneri her zaman onaya)
+  - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
 - [ ] (K) Kopya ürün tespiti
 - [ ] (K) Özellik doldurma
 - [ ] (K) Kırık bağlantı taraması
