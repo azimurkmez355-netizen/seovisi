@@ -115,9 +115,30 @@ def fake_call(self, method, path, params=None, body=None, tries=6):
         return {"total": len(prods)}
     if method == "GET" and parts[0] == "products" and len(parts) == 2 and parts[1].isdigit() and int(parts[1]) in prods:
         return copy.deepcopy(prods[int(parts[1])])
+    det = DETAILS.setdefault(host, {})
+    if method == "GET" and parts == ["products"] and params.get("ids"):
+        return [dict(copy.deepcopy(prods[int(params["ids"])]), solvedCount=13, seoTotalRuleCount=13)]
+    if method == "PUT" and parts[0] == "products" and len(parts) == 2:
+        with lock:
+            prods[int(parts[1])].update(copy.deepcopy({k: v for k, v in body.items() if k != "id"}))
+        return copy.deepcopy(prods[int(parts[1])])
     if method == "GET" and parts == ["product_details"]:
-        return []
+        return copy.deepcopy([d for d in det.values() if d["product"]["id"] == int(params.get("product", 0))])
+    if method == "POST" and parts == ["product_details"]:
+        with lock:
+            d = dict(copy.deepcopy(body), id=len(det) + 1)
+            det[d["id"]] = d
+            prods[body["product"]["id"]]["detail"] = {"id": d["id"]}
+        return copy.deepcopy(d)
+    if parts[0] == "product_details" and len(parts) == 2 and int(parts[1]) in det:
+        if method == "PUT":
+            with lock:
+                det[int(parts[1])].update(copy.deepcopy(body))
+        return copy.deepcopy(det[int(parts[1])])
     raise app.ApiError(404, f"sahte api: {method} {path}")
+
+
+DETAILS = {}                                             # mağaza -> ürün açıklamaları (product_details)
 
 
 _route_public = app.H.route_public

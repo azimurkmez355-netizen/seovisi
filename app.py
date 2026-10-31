@@ -1049,7 +1049,8 @@ class SeoScanner:
                 DBI.x(f"ALTER TABLE urunbilgi ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass
-        for col in ("pscore TEXT", "src TEXT", "plan TEXT", "pstate TEXT", "pmsg TEXT", "backup TEXT",
+        for col in ("gecis TEXT", "onceki TEXT",       # şablon geçişi: durum ve bir önceki gönderilen açıklama
+                    "pscore TEXT", "src TEXT", "plan TEXT", "pstate TEXT", "pmsg TEXT", "backup TEXT",
                     "price REAL", "cur TEXT"):
             try:
                 DBI.x(f"ALTER TABLE seo ADD COLUMN {col}")
@@ -2185,6 +2186,71 @@ def clean_name(name):
     return re.sub(r"[\s\u00a0\u200b]+", " ", name or "").strip()
 
 
+def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
+    """Ürünün SEO alanlarını ve açıklamasını yazar (gönderim, şablon geçişi ve geri almanın ortak yolu).
+    alanlar: pageTitle, metaDescription, metaKeywords, details_html, keyword. prod / detail / kw_rec yazmadan hemen önce
+    okunmuş olmalı. Yazdıktan sonra korunan alanlar karşılaştırılır; biri değiştiyse ürün eski hâline yazılır ve toplu
+    işler durur. Dönüş: (yazmadan sonraki ürün, None) ya da (None, hata mesajı)."""
+    loc = kw_loc()
+    fp_before = Ideasoft.fingerprint(prod)
+    payload = {k: v for k, v in copy.deepcopy(prod).items() if k not in READONLY}
+    if yeni_ad:
+        payload["name"] = yeni_ad
+        fp_before = dict(fp_before, name=yeni_ad)        # beklenen tek değişiklik
+    payload.update(pageTitle=alanlar["pageTitle"], metaDescription=alanlar["metaDescription"],
+                   metaKeywords=alanlar["metaKeywords"])
+    if isinstance(payload.get("detail"), dict) and detail:
+        payload["detail"] = dict(payload["detail"], details=alanlar["details_html"])
+    if loc["res"] == "product":
+        jset(payload, loc["path"], alanlar["keyword"])
+    API.call("PUT", f"products/{pid}", body=payload)
+    if detail and detail.get("id"):
+        d = {k: v for k, v in detail.items() if k != "product"}
+        d.update(details=alanlar["details_html"], product={"id": pid}, sku=detail.get("sku") or prod.get("sku"))
+        API.call("PUT", f"product_details/{detail['id']}", body=d)
+    else:
+        API.call("POST", "product_details", body={"sku": prod.get("sku"), "details": alanlar["details_html"],
+                                                  "extraDetails": "", "product": {"id": pid}})
+    kw_write(pid, alanlar["keyword"], kw_rec)
+    after = API.get_product(pid)
+    if Ideasoft.fingerprint(after) != fp_before:
+        diff = [k for k, v in fp_before.items() if Ideasoft.fingerprint(after).get(k) != v]
+        try:
+            API.call("PUT", f"products/{pid}", body={k: v for k, v in prod.items() if k not in READONLY})
+        except ApiError:
+            pass
+        SEOJOBS.stop()
+        GECIS.stop()
+        msg = f"Korunan alan değişti ({', '.join(diff)}); eski hâline geri yazıldı, toplu işlem durduruldu."
+        log(f"Ürün {pid}: {msg}", "err")
+        return None, msg
+    return after, None
+
+
+def seo_geri_al(pid):
+    """Gönderilen SEO'yu ürünün seovisi'den önceki (özgün) hâline döndürür: açıklama, sayfa başlığı, meta açıklama,
+    anahtar kelimeler ve hedef kelime. Abonelikten bağımsız her zaman yapılabilir. Dönüş: (durum, mesaj)"""
+    r = DBI.q("SELECT backup FROM seo WHERE pid=?", (pid,), one=True)
+    if not r or not r["backup"]:
+        return "hata", "Bu ürün için özgün hâlin yedeği yok."
+    if not kw_loc():
+        return "hata", "Hedef kelimenin yeri bilinmiyor (Ayarlar > Keşfet)."
+    b = json.loads(r["backup"])
+    prod = API.get_product(pid)
+    detail = API.get_detail(prod)
+    _, kw_rec = kw_read(prod)
+    _, msg = _seo_yaz(pid, prod, detail, kw_rec, {
+        "pageTitle": b.get("pageTitle") or "", "metaDescription": b.get("metaDescription") or "",
+        "metaKeywords": b.get("metaKeywords") or "", "details_html": (b.get("detail") or {}).get("details") or "",
+        "keyword": b.get("kw") or ""})
+    if msg:
+        return "hata", msg
+    DBI.x("UPDATE seo SET pstate='geri', pmsg=?, plan=NULL, backup=NULL, onceki=NULL, gecis=NULL, ok=-1 WHERE pid=?",
+          ("Özgün hâline döndürüldü.", pid))
+    log(f"SEO geri alındı, ürün {pid}: özgün hâline döndürüldü.", "ok")
+    return "uygulandi", "Ürünün SEO'su ve açıklaması seovisi'den önceki hâline döndü."
+
+
 def send_plan(pid, edited=None):
     """Hazırlanan (ya da kullanıcının düzenlediği) içeriği Ideasoft'a gönderir ve sonucu doğrular."""
     r = DBI.q("SELECT plan, backup FROM seo WHERE pid=?", (pid,), one=True)
@@ -2199,44 +2265,18 @@ def send_plan(pid, edited=None):
     prod = API.get_product(pid)
     detail = API.get_detail(prod)
     _, kw_rec = kw_read(prod)
-    loc = kw_loc()
     if not r["backup"]:
         DBI.x("UPDATE seo SET backup=? WHERE pid=?", (json.dumps({
             "pageTitle": prod.get("pageTitle"), "metaDescription": prod.get("metaDescription"),
             "metaKeywords": prod.get("metaKeywords"), "detail": detail, "kw_rec": kw_rec,
             "kw": kw_read(prod)[0], "time": datetime.now().isoformat(timespec="seconds")}, ensure_ascii=False), pid))
-    fp_before = Ideasoft.fingerprint(prod)
-    payload = {k: v for k, v in copy.deepcopy(prod).items() if k not in READONLY}
-    if plan.get("name_fix") and clean_name(prod.get("name") or "") == plan["name_fix"] != prod.get("name"):
-        payload["name"] = plan["name_fix"]
-        fp_before = dict(fp_before, name=plan["name_fix"])   # beklenen tek değişiklik
-    payload.update(pageTitle=plan["pageTitle"], metaDescription=plan["metaDescription"],
-                   metaKeywords=plan.get("metaKeywords") or prod.get("metaKeywords"))
-    if isinstance(payload.get("detail"), dict) and detail:
-        payload["detail"] = dict(payload["detail"], details=plan["details_html"])
-    if loc["res"] == "product":
-        jset(payload, loc["path"], plan["keyword"])
-    API.call("PUT", f"products/{pid}", body=payload)
-    if detail and detail.get("id"):
-        d = {k: v for k, v in detail.items() if k != "product"}
-        d.update(details=plan["details_html"], product={"id": pid}, sku=detail.get("sku") or prod.get("sku"))
-        API.call("PUT", f"product_details/{detail['id']}", body=d)
-    else:
-        API.call("POST", "product_details", body={"sku": prod.get("sku"), "details": plan["details_html"],
-                                                  "extraDetails": "", "product": {"id": pid}})
-    kw_write(pid, plan["keyword"], kw_rec)
-
-    after = API.get_product(pid)
-    if Ideasoft.fingerprint(after) != fp_before:
-        diff = [k for k, v in fp_before.items() if Ideasoft.fingerprint(after).get(k) != v]
-        try:
-            API.call("PUT", f"products/{pid}", body={k: v for k, v in prod.items() if k not in READONLY})
-        except ApiError:
-            pass
-        SEOJOBS.stop()
-        msg = f"Korunan alan değişti ({', '.join(diff)}); eski hâline geri yazıldı, toplu gönderim durduruldu."
+    ad = plan.get("name_fix") if plan.get("name_fix") and clean_name(prod.get("name") or "") == plan["name_fix"] != prod.get("name") else None
+    after, msg = _seo_yaz(pid, prod, detail, kw_rec, {
+        "pageTitle": plan["pageTitle"], "metaDescription": plan["metaDescription"],
+        "metaKeywords": plan.get("metaKeywords") or prod.get("metaKeywords"), "details_html": plan["details_html"],
+        "keyword": plan["keyword"]}, yeni_ad=ad)
+    if msg:
         DBI.x("UPDATE seo SET pstate='hata', pmsg=? WHERE pid=?", (msg, pid))
-        log(msg, "err")
         return "hata", msg
     problems = []
     if ST.strip_tags((API.get_detail(after) or {}).get("details")) != ST.strip_tags(plan["details_html"]):
@@ -2327,6 +2367,131 @@ class SeoJobs:
 
 
 SEOJOBS = _Ref("seojobs")
+
+
+# ============================================================ toplu şablon geçişi
+#
+# seovisi'nin daha önce gönderdiği açıklamaları mağazanın bugünkü şablonuyla yeniden yazar. İçerik aynı kalır: açıklama
+# ürünün özgün (seovisi'den önceki) açıklamasından, aynı hedef kelime ve aynı varyantla yeniden kurulur; yalnızca görünüm,
+# renk ve bölümler değişir. Sayfa başlığı, meta açıklama ve hedef kelimeye dokunulmaz.
+# Atlananlar: gönderildikten sonra panelde elle değiştirilen (açıklama, başlık, meta ya da hedef kelime), zaten bu şablonda
+# olan ve yeni hâli SEO kurallarını tutmayacak olan ürünler. Her ürünün bir önceki açıklaması `onceki`de saklanır;
+# geçiş ürün ürün ya da toplu geri alınabilir. gecis: gecti | atlandi | hata | geri.
+
+class SablonGecisi:
+    def __init__(self):
+        self.running, self.kind, self.done, self.todo, self.stop_flag = False, "", 0, 0, False
+        self.phase = ""
+
+    def adaylar(self):
+        return [r["pid"] for r in DBI.q("""SELECT pid FROM seo WHERE pstate='gonderildi' AND plan IS NOT NULL
+                                           AND backup IS NOT NULL ORDER BY pid""")]
+
+    def start(self, kind="gecir"):
+        if self.running or SEOJOBS.running:
+            return "Başka bir işlem sürüyor; bitmesini bekleyin."
+        pids = self.adaylar() if kind == "gecir" else [r["pid"] for r in DBI.q("SELECT pid FROM seo WHERE gecis='gecti' ORDER BY pid")]
+        if not pids:
+            return "Geçirilecek açıklama yok." if kind == "gecir" else "Geri alınacak geçiş yok."
+        self.running, self.kind, self.done, self.todo, self.stop_flag = True, kind, 0, len(pids), False
+        spawn(self._run, kind, pids)
+        return (f"{len(pids)} açıklama yeni şablona geçiriliyor." if kind == "gecir"
+                else f"{len(pids)} açıklama önceki şablona döndürülüyor.")
+
+    def stop(self):
+        self.stop_flag = True
+
+    def _run(self, kind, pids):
+        def one(pid):
+            if self.stop_flag:
+                return
+            try:
+                gecir(pid) if kind == "gecir" else gecis_geri(pid)
+            except Exception as e:  # noqa: BLE001
+                DBI.x("UPDATE seo SET gecis='hata', pmsg=? WHERE pid=?", (f"Şablon geçişi: {str(e)[:200]}", pid))
+                log(f"Ürün {pid}: {e}", "err")
+            self.done += 1
+        try:
+            pmap(one, pids, 2)
+        finally:
+            say = {r["gecis"]: r["n"] for r in DBI.q("SELECT gecis, COUNT(*) n FROM seo WHERE gecis IS NOT NULL GROUP BY gecis")}
+            log(("Şablon geçişi" if kind == "gecir" else "Şablon geçişini geri alma") + f" {'durduruldu' if self.stop_flag else 'bitti'}: "
+                f"{say.get('gecti', 0)} geçti, {say.get('atlandi', 0)} atlandı, {say.get('hata', 0)} hata.", "ok")
+            self.running = False
+
+    def state(self):
+        say = {r["gecis"]: r["n"] for r in DBI.q("SELECT gecis, COUNT(*) n FROM seo WHERE gecis IS NOT NULL GROUP BY gecis")}
+        return {"running": self.running, "kind": self.kind, "done": self.done, "todo": self.todo,
+                "aday": len(self.adaylar()), "sayilar": say,
+                "atlananlar": [dict(r) for r in DBI.q("SELECT pid, sku, name, pmsg FROM seo WHERE gecis IN ('atlandi', 'hata') "
+                                                      "ORDER BY pid LIMIT 100")]}
+
+
+def gecir(pid):
+    """Bir ürünün gönderilmiş açıklamasını bugünkü şablona geçirir. Dönüş: gecis durumu."""
+    r = DBI.q("SELECT plan, backup FROM seo WHERE pid=?", (pid,), one=True)
+    plan, b = json.loads(r["plan"]), json.loads(r["backup"])
+
+    def atla(neden):
+        DBI.x("UPDATE seo SET gecis='atlandi', pmsg=? WHERE pid=?", (f"Şablon geçişi atlandı: {neden}", pid))
+        return "atlandi"
+    prod = API.get_product(pid)
+    detail = API.get_detail(prod)
+    kw_now, kw_rec = kw_read(prod)
+    simdi = (detail or {}).get("details") or ""
+    if (ST.strip_tags(simdi) != ST.strip_tags(plan["details_html"]) or (prod.get("pageTitle") or "").strip() != plan["pageTitle"].strip()
+            or (prod.get("metaDescription") or "").strip() != plan["metaDescription"].strip()
+            or (kw_now or "").strip() != plan["keyword"].strip()):
+        return atla("gönderildikten sonra panelde değiştirilmiş; dokunulmadı.")
+    method = CFG.get("count_method") or SAFE_METHODS
+    yeni = SM.build_machine_seo(dict(prod, name=clean_name(prod.get("name") or "")), (b.get("detail") or {}).get("details") or "",
+                                plan["keyword"], sku=prod.get("sku") or "", barcode=prod.get("barcode") or "", method=method,
+                                target=float(CFG.get("target_density") or 2.5), variant=int(plan.get("variant") or 0),
+                                prof=PROFILE(), sablon=sablon())
+    if yeni["keyword"].strip() != plan["keyword"].strip():
+        return atla("hedef kelime değişecekti.")
+    if yeni["details_html"] == simdi:
+        return atla("zaten bu şablonda.")
+    sc = ST.seo_score(clean_name(prod.get("name") or ""), plan["keyword"], yeni["details_html"], plan["pageTitle"],
+                      plan["metaDescription"], method)
+    if sc["top"] < 100:
+        return atla("yeni hâli SEO kurallarını tutmuyor (" + "; ".join(sc["fails"][:2]) + ").")
+    DBI.x("UPDATE seo SET onceki=? WHERE pid=?", (json.dumps({"details": simdi, "zaman": datetime.now().isoformat(timespec="seconds")},
+                                                             ensure_ascii=False), pid))
+    _, msg = _seo_yaz(pid, prod, detail, kw_rec, {
+        "pageTitle": plan["pageTitle"], "metaDescription": plan["metaDescription"],
+        "metaKeywords": prod.get("metaKeywords") or "", "details_html": yeni["details_html"], "keyword": plan["keyword"]})
+    if msg:
+        DBI.x("UPDATE seo SET gecis='hata', pmsg=? WHERE pid=?", (msg, pid))
+        return "hata"
+    plan["details_html"] = yeni["details_html"]
+    DBI.x("UPDATE seo SET gecis='gecti', plan=?, pmsg=? WHERE pid=?",
+          (json.dumps(plan, ensure_ascii=False), "Açıklama yeni şablona geçirildi.", pid))
+    return "gecti"
+
+
+def gecis_geri(pid):
+    """Şablon geçişini geri alır: açıklama bir önceki (geçişten önceki) hâline döner. Dönüş: gecis durumu."""
+    r = DBI.q("SELECT plan, onceki FROM seo WHERE pid=? AND gecis='gecti'", (pid,), one=True)
+    if not r or not r["onceki"]:
+        return "hata"
+    plan, onceki = json.loads(r["plan"]), json.loads(r["onceki"])
+    prod = API.get_product(pid)
+    detail = API.get_detail(prod)
+    kw_now, kw_rec = kw_read(prod)
+    _, msg = _seo_yaz(pid, prod, detail, kw_rec, {
+        "pageTitle": prod.get("pageTitle") or "", "metaDescription": prod.get("metaDescription") or "",
+        "metaKeywords": prod.get("metaKeywords") or "", "details_html": onceki["details"], "keyword": kw_now or plan["keyword"]})
+    if msg:
+        DBI.x("UPDATE seo SET pmsg=? WHERE pid=?", (msg, pid))
+        return "hata"
+    plan["details_html"] = onceki["details"]
+    DBI.x("UPDATE seo SET gecis='geri', onceki=NULL, plan=?, pmsg=? WHERE pid=?",
+          (json.dumps(plan, ensure_ascii=False), "Şablon geçişi geri alındı; önceki açıklama yazıldı.", pid))
+    return "geri"
+
+
+GECIS = _Ref("gecis")
 
 
 # ============================================================ kırık bağlantı taraması
@@ -2761,6 +2926,7 @@ class Tenant:
             self.catjobs = CatJobs()
             self.oto = Otopilot()
             self.links = LinkScanner()
+            self.gecis = SablonGecisi()
         finally:
             _cur.t = prev
 
@@ -2818,7 +2984,8 @@ WRITE_ROUTES = {
     "/api/seo/send": "seo_gonder", "/api/seo/send_all": "seo_gonder",
     "/api/cat/apply": "kategori_duzelt", "/api/cat/apply_many": "kategori_duzelt", "/api/cat/assign": "kategori_duzelt",
     "/api/cat/create": "kategori_ac", "/api/cat/create_many": "kategori_ac",
-    "/api/otopilot/onayla": "otopilot",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
+    "/api/otopilot/onayla": "otopilot",
+    "/api/sablon/gecis/start": "seo_gonder",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
 }
 
 
@@ -3321,6 +3488,8 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/otopilot":
             return self._send(200, OTO.state())
+        if p == "/api/sablon/gecis":
+            return self._send(200, GECIS.state())
         if p == "/api/linkler":
             tur = q.get("tur") or ""
             rows = [dict(r, kaynaklar=json.loads(r["kaynaklar"] or "[]"), harita=bool(r["harita"]))
@@ -3574,6 +3743,18 @@ class H(BaseHTTPRequestHandler):
             renk = tema_rengi_oner()
             return self._send(200, {"renk": renk} if renk else
                               {"error": "Sitenizde tema rengi bulunamadı; rengi kendiniz seçin."})
+        if p == "/api/sablon/gecis/start":
+            return self._send(200, {"msg": GECIS.start("gecir")})
+        if p == "/api/sablon/gecis/geri":          # geri alma: abonelikten bağımsız
+            return self._send(200, {"msg": GECIS.start("geri")})
+        if p == "/api/sablon/gecis/stop":
+            GECIS.stop()
+            return self._send(200, {"msg": "Durduruluyor; sıradaki ürünlere dokunulmayacak."})
+        if p == "/api/seo/undo":                   # geri alma: abonelikten bağımsız
+            if SEOJOBS.running or GECIS.running:
+                return self._send(200, {"error": "Toplu işlem sürüyor; bitmesini bekleyin."})
+            state, msg = seo_geri_al(int(q.get("pid") or 0))
+            return self._send(200, {"ok": state == "uygulandi", "msg": msg} if state == "uygulandi" else {"error": msg})
         if p == "/api/linkler/start":
             return self._send(200, {"msg": LINKS.start()})
         if p == "/api/linkler/stop":

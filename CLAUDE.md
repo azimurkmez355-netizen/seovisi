@@ -31,6 +31,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_abonelik.py`: paketler, abonelik kaydı ve yazma izni (geçici paket dosyasıyla).
   - `test_sablon.py`: açıklama şablonu; varsayılanın eski açıklamaları birebir üretmesi, SEO sayımının kaymaması.
   - `test_uyari.py`, `test_kopya.py`, `test_baglanti.py`: uyarı, kopya ve kırık bağlantı kuralları.
+  - `test_gecis.py`: toplu şablon geçişi ve SEO geri alma.
+  - `test_panel.py`: panel betiğinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -54,7 +56,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `kopya.py` | Kopya ürün grupları (yalnızca okur): aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama. |
 | `baglanti.py` | Kırık bağlantı taraması: herkese açık siteyi gezer (ana sayfa, site haritası, robots.txt); ağ erişimi dışarıdan verilir. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
-| `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). |
+| `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/marka/` | Logo, simge ve renkler. |
 
 ### Çok mağaza yapısı
@@ -158,6 +160,17 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Ağ erişimi `site_getirici()` ile: her alan adı `public_host` ile denetlenir (taramada bir kez), yönlendirmeler `_PublicRedirects`
   ile; sitedeki bir bağlantı iç ağı gösterse de istek gönderilmez. Testler `site_getirici`'yi sahte siteyle değiştirir.
 
+### Toplu şablon geçişi ve SEO geri alma
+
+- Bütün SEO yazmaları `_seo_yaz()` üzerinden: gönderim (`send_plan`), şablon geçişi (`gecir`, `gecis_geri`) ve geri alma (`seo_geri_al`).
+  Korunan alan değişirse ürün eski hâline yazılır, `SEOJOBS` ve `GECIS` durur. Yeni bir SEO yazma yolu bunu kullanmalı.
+- `SablonGecisi` (`/api/sablon/gecis*`): yalnızca seovisi'nin gönderdiği (pstate gonderildi, plan ve özgün yedek olan) açıklamalar;
+  açıklama özgün yedekten aynı hedef kelime ve varyantla bugünkü şablonla yeniden kurulur, yalnızca `details` değişir. Gönderildikten
+  sonra açıklaması, başlığı, metası ya da hedef kelimesi değişmiş ürün, zaten bu şablonda olan ve yeni hâli SEO kurallarını tutmayan
+  atlanır. Bir önceki açıklama `seo.onceki`de; `gecis`: gecti | atlandi | hata | geri.
+- `seo_geri_al` (`/api/seo/undo`): ürünü seovisi'den önceki hâline (açıklama, başlık, meta, anahtar kelimeler, hedef kelime) döndürür;
+  geri almalar abonelikten bağımsızdır (WRITE_ROUTES'ta yok).
+
 ### Mağazaya yazma güvenliği
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
@@ -176,5 +189,5 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
-- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti ve kırık bağlantı taraması bitti. Kalan:
-  eski açıklamaları yeni şablona yedekli toplu geçirme, özellik doldurma, aylık e-posta raporu (haftalık otomatik taramalarla). Ayrıntılar `YOL_HARITASI.md` içinde.
+- Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti, kırık bağlantı taraması ve toplu şablon
+  geçişi bitti. Kalan: özellik doldurma, aylık e-posta raporu (haftalık otomatik taramalarla). Ayrıntılar `YOL_HARITASI.md` içinde.

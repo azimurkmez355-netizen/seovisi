@@ -611,6 +611,13 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
         <label class="check"><input type="checkbox" id="t-barkod"><span>Barkodu göster</span></label>
       </div>
       <div class="acts"><button class="btn" id="t-save">Şablonu kaydet</button><button class="btn ghost" id="t-reset">Varsayılana dön</button></div>
+      <div class="step">
+        <h3>Gönderilmiş açıklamaları yeni şablona geçir</h3>
+        <p>seovisi'nin daha önce gönderdiği açıklamalar kaydedilmiş şablonla yeniden yazılır. Cümleler aynı kalır; yalnızca görünüm, renk ve bölümler değişir. Sayfa başlığına, meta açıklamaya ve hedef kelimeye dokunulmaz. Gönderildikten sonra panelde elle değiştirdiğiniz ürünler atlanır. Her ürünün önceki açıklaması saklanır; geçişi tek tuşla geri alabilirsiniz.</p>
+        <p id="sg-info" class="muted" style="margin:0 0 10px"></p>
+        <div class="acts" style="margin-top:0"><button class="btn" id="sg-start">Yeni şablona geçir</button><button class="btn ghost" id="sg-stop" hidden>Durdur</button><button class="btn ghost" id="sg-undo" hidden>Geçişi geri al</button></div>
+        <div id="sg-skip"></div>
+      </div>
     </div>
     <div class="tpl-prev"><div class="step">
       <h3>Önizleme</h3>
@@ -871,6 +878,7 @@ let T = null, TO = null, tTimer = null;
 async function tLoad(){
   const r = await api('/api/sablon'); if(!r.sablon) return;
   T = r.sablon; TO = r.secenekler; tRender();
+  tKirli = false; gTickT();                     // kaydedilmiş şablon yüklendi
 }
 function tRender(){
   lookCards($('#t-looks'), 't-look', TO.gorunumler, T.gorunum, () => { T.gorunum = document.querySelector('input[name="t-look"]:checked').value; tColorRow(); tChanged(); });
@@ -897,7 +905,36 @@ function tBolumler(){
     });
   });
 }
-function tChanged(){ clearTimeout(tTimer); tTimer = setTimeout(tPreview, 300); }
+function tChanged(){ tKirli = true; gTickT(); clearTimeout(tTimer); tTimer = setTimeout(tPreview, 300); }
+let tKirli = false;
+
+/* toplu şablon geçişi: kaydedilmiş şablonla, yalnızca seovisi'nin gönderdiği ve sonradan değiştirilmemiş açıklamalar */
+let SG = null;
+async function gTickT(){
+  if(!document.querySelector('#sp-sablon.on') && SG) return;
+  SG = await api('/api/sablon/gecis'); if(SG.aday === undefined) return;
+  const say = SG.sayilar || {};
+  $('#sg-info').innerHTML = SG.running
+    ? `<b>${SG.kind === 'gecir' ? 'Geçiriliyor' : 'Geri alınıyor'}:</b> ${nf(SG.done)} / ${nf(SG.todo)}`
+    : `Geçirilebilecek açıklama: <b>${nf(SG.aday)}</b>` + (say.gecti || say.atlandi || say.hata
+      ? ` · Son geçiş: ${nf(say.gecti || 0)} geçti, ${nf(say.atlandi || 0)} atlandı, ${nf(say.hata || 0)} hata` : '')
+      + (tKirli ? ' · <span class="bad-t">Önce şablonu kaydedin; geçiş kaydedilmiş şablonu kullanır.</span>' : '');
+  $('#sg-start').disabled = SG.running || !SG.aday || tKirli;
+  $('#sg-stop').hidden = !SG.running; $('#sg-undo').hidden = SG.running || !say.gecti;
+  $('#sg-skip').innerHTML = !SG.running && SG.atlananlar.length ? `<details style="margin-top:10px"><summary class="muted" style="cursor:pointer">Atlanan ve hata veren ürünler (${SG.atlananlar.length})</summary>
+    <ul style="margin:8px 0 0;padding-left:18px">${SG.atlananlar.map(x => `<li><b>${esc(x.name || '')}</b> <small class="muted">${esc(x.sku || '')}</small><br><small>${esc(x.pmsg || '')}</small></li>`).join('')}</ul></details>` : '';
+}
+$('#sg-start').onclick = async () => {
+  if(!await ask(`${nf(SG.aday)} açıklama kaydedilmiş şablonla yeniden yazılacak. Önce birkaç ürünü kontrol etmek isterseniz şablon önizlemesine bakabilirsiniz. Geçiş tek tuşla geri alınabilir.`,
+                {title: 'Açıklamalar yeni şablona geçirilsin mi?', ok: 'Yeni şablona geçir', go: true})) return;
+  const r = await post('/api/sablon/gecis/start'); if(r.msg) toast(r.msg); gTickT();
+};
+$('#sg-stop').onclick = async () => { const r = await post('/api/sablon/gecis/stop'); if(r.msg) toast(r.msg); gTickT(); };
+$('#sg-undo').onclick = async () => {
+  if(!await ask('Geçirilen açıklamalar geçişten önceki hâline döner.', {title: 'Şablon geçişi geri alınsın mı?', ok: 'Geri al'})) return;
+  const r = await post('/api/sablon/gecis/geri'); if(r.msg) toast(r.msg); gTickT();
+};
+setInterval(() => { if(document.querySelector('#sp-sablon.on')) gTickT(); }, 2000);
 async function tPreview(){
   const r = await post('/api/sablon/onizle', {sablon: T}); if(!r.html) return;
   $('#t-prev').innerHTML = r.html;   // sunucunun ürettiği, kaçışlı örnek açıklama
@@ -1143,7 +1180,7 @@ async function sRows(){
   document.querySelectorAll('#srows tr[data-pid]').forEach(tr => tr.onclick = () => sOpen(tr.dataset.pid));
   $('#spinfo').textContent = `${r.total.toLocaleString('tr-TR')} ürün, sayfa ${spage+1} / ${Math.max(1, Math.ceil(r.total/100))}`;
 }
-const PST = {hazir:'Gönderilmeyi bekliyor', gonderildi:'Gönderildi', hata:'Hata'};
+const PST = {hazir:'Gönderilmeyi bekliyor', gonderildi:'Gönderildi', hata:'Hata', geri:'Özgün hâline döndü'};
 async function sOpen(pid){
   const it = await api('/api/seo/item?pid='+pid); if(it.error) return;
   const col = it.ok===1 ? GC.v : it.ok===0 ? GC.y : GC.u, lab = it.ok===1 ? 'SEO %100' : it.ok===0 ? 'Eksik' : 'Okunamadı';
@@ -1176,6 +1213,7 @@ async function sOpen(pid){
       ${P && it.ok!==1 ? '<button class="btn go" id="s-send">Ideasoft\'a gönder</button>' : ''}
       ${it.ok!==1 ? `<button class="btn ghost" id="s-regen">${P ? 'Yeniden oluştur' : 'Açıklama hazırla'}</button>` : ''}
       ${it.ok!==1 ? '<button class="btn ghost" id="s-rep">İncele ve onar</button>' : ''}
+      ${it.has_backup && (it.pstate === 'gonderildi' || it.pstate === 'hata') ? '<button class="btn ghost" id="s-undo">Özgün hâline döndür</button>' : ''}
       <a class="btn ghost" href="${it.panel_url}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>
       <button class="btn ghost" id="s-raw">Ham ürün kaydı</button>
     </div>
@@ -1194,6 +1232,12 @@ async function sOpen(pid){
     if(!await ask('Açıklama, hedef kelime ve SEO bilgileri Ideasoft\'a yazılır. Eski hâli yedeklenir.', {title:'Bu ürün gönderilsin mi?', ok:'Ideasoft\'a gönder', go:true})) return;
     const b = $('#s-send'); b.disabled = true; b.textContent = 'Gönderiliyor…';
     const r = await post('/api/seo/send?pid='+pid, vals()); if(r.msg) toast(r.msg);
+    sOpen(pid); sTick(); sRows();
+  };
+  if($('#s-undo')) $('#s-undo').onclick = async () => {
+    if(!await ask('Açıklama, sayfa başlığı, meta açıklama ve hedef kelime seovisi göndermeden önceki hâline döner.', {title:'Ürün özgün hâline döndürülsün mü?', ok:'Özgün hâline döndür'})) return;
+    const b = $('#s-undo'); b.disabled = true; b.textContent = 'Döndürülüyor…';
+    const r = await post('/api/seo/undo?pid='+pid); if(r.msg) toast(r.msg);
     sOpen(pid); sTick(); sRows();
   };
   if($('#s-cal')) $('#s-cal').onclick = async () => { const v = $('#s-oran').value.trim(); if(!v) return;

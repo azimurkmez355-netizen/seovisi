@@ -52,20 +52,20 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 - [x] Ürün SEO'su: başlık, meta açıklama, açıklama
 - [x] Kategori analizi: yanlış ve kategorisiz ürünler, yeni kategori açma (SEO ve görselle)
 - [x] Görseli eksik ürünler listesi
-- [x] Her değişikliği geri alma
+- [x] Her değişikliği geri alma (SEO gönderimi için "Özgün hâline döndür" Faz 2'de eklendi)
 
 **Eklenecekler:**
 - [x] Kurulum sihirbazı
 - [x] Yeni ürün otopilotu: yeni ürünler fark edilir, SEO'su ve kategorisi hazırlanır; onaylı ya da otomatik onaylı gönderim
 - [ ] Aylık e-posta raporu
 - [ ] Yapay zekâ ile ürüne özel açıklama; marka sesi seçimi (samimi, kurumsal, genç)
-- [ ] Açıklama şablonu ayarlama:
+- [x] Açıklama şablonu ayarlama:
   - [x] hazır şablonlar: sade, bantlı, çizgili, kutulu
   - [x] ana renk (sitenin tema rengi önerilir)
   - [x] bölümleri açma, kapama ve sıralama; başlık metinleri
   - [x] madde işareti, kapanış metni, stok kodu / barkod gösterimi
   - [x] canlı önizleme ve SEO puanı tahmini
-  - [ ] eski açıklamaları yeni şablona toplu geçirme (yedekli)
+  - [x] eski açıklamaları yeni şablona toplu geçirme (yedekli)
 - [x] Kopya ürün tespiti
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [x] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
@@ -175,7 +175,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 - [x] (K) Kurulum sihirbazı: mağaza adı ve marka, açıklama görünümü (sade / bantlı, canlı önizleme), ilk tarama ve özet, paket bilgisi
   - [ ] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
-- [ ] (K) Açıklama şablonu ayarlama — ayarlar ekranı, 4 görünüm, renk, bölümler, önizleme bitti; eski açıklamaların toplu geçirilmesi kaldı
+- [x] (K) Açıklama şablonu ayarlama (ayarlar, 4 görünüm, renk, bölümler, önizleme; gönderilmiş açıklamaların yedekli toplu geçişi ve geri alınması)
 - [x] (K) Yeni ürün otopilotu ve iş sırası (saatlik kontrol; yayına alınıp 30 dk geçen ürün; onaylı / otomatik; şüpheli öneri her zaman onaya)
   - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
 - [x] (K) Kopya ürün tespiti (aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama; neredeyse aynılar v2 varyant önerisinde)
