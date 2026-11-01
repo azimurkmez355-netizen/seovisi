@@ -85,7 +85,7 @@ SERVER_DEFAULT = {
     "public_url": "",             # sunucu kipinde dışarıdan açılan adres, örn. https://app.seovisi.com.tr
     "yerel": "",                  # yerel kipte açılan mağaza klasörü
     "frame_hosts": [],            # panelin çerçevede açılabileceği ek adresler (FRAME_HOSTS'a ek)
-    "kw_loc": {},                 # hedef kelime yerinin varsayılanı (Ustapazar'da bulunan); mağaza keşif yaparsa onunki geçerli
+    "kw_loc": {"res": "product", "path": "targetKeyword"},   # hedef kelime yerinin varsayılanı (Ustapazar'da bulunan)
     "hiz_magaza_dk": 300,        # Ideasoft'a mağaza başına dakikada en çok istek (tahmin; Ideasoft'un cevabıyla kesinleşir)
     "otopilot_dk": 60,            # otopilotun her mağazada yeni ürünlere bakma aralığı (dakika)
     "link_sinir": 10000,          # kırık bağlantı taramasında bir mağazada gezilen en çok sayfa

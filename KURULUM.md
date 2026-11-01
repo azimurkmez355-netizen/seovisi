@@ -71,7 +71,7 @@ nano veri/canli/sunucu.json
 ```json
 {"client_id": "IDEASOFT-CLIENT-ID", "client_secret": "IDEASOFT-CLIENT-SECRET",
  "public_url": "https://app.seovisi.com.tr",
- "kw_loc": {"res": "product", "path": "USTAPAZARDA-BULUNAN-YER"}}
+ "kw_loc": {"res": "product", "path": "targetKeyword"}}
 ```
 
 Test için aynısını `veri/test/sunucu.json` dosyasına `"public_url": "https://test.seovisi.com.tr"` ile yazın.
