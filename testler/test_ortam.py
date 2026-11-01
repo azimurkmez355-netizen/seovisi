@@ -58,6 +58,14 @@ class Ayarlar(unittest.TestCase):
         app.ortamdan_ayarla({})
         self.assertEqual(YN.oku(self.tmp), k)
 
+    def test_giris_sayfasi_eksik_degiskenleri_yazar(self):
+        app.ortamdan_ayarla({"SEOVISI_PUBLIC_URL": "https://ornek.up.railway.app"})
+        s = app.login_page()
+        self.assertIn("SEOVISI_CLIENT_ID, SEOVISI_CLIENT_SECRET.", s)
+        self.assertNotIn("SEOVISI_PUBLIC_URL", s)
+        app.ortamdan_ayarla({"SEOVISI_CLIENT_ID": "c", "SEOVISI_CLIENT_SECRET": "s"})
+        self.assertNotIn("eksik", app.login_page())
+
 
 class Istek:
     def __init__(self, ip, basliklar):

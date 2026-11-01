@@ -3330,11 +3330,11 @@ def migrate_legacy():
 
 
 def login_page(msg=""):
-    ready = all(SRV.get(k) for k in ("client_id", "client_secret", "public_url"))
+    eksik = [e for e, k in ORTAM_AYAR.items() if not SRV.get(k)]
     err = f'<p class="err">{html.escape(msg)}</p>' if msg else ""
-    if not ready:
-        err += ('<p class="err">Sunucu ayarları eksik: data/sunucu.json dosyasına Ideasoft uygulama anahtarlarını '
-                've public_url adresini girin.</p>')
+    if eksik:
+        err += (f'<p class="err">Sunucu ayarları eksik: {", ".join(eksik)}. Ortam değişkeni olarak (Railway: Variables) '
+                'ya da data/sunucu.json dosyasına girin.</p>')
     return f"""<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>seovisi — giriş</title><link rel="icon" href="/favicon.ico">
 <style>
@@ -3574,7 +3574,7 @@ class H(BaseHTTPRequestHandler):
                 return self._send(429, {"error": f"Çok fazla deneme yapıldı. {-(-wait // 60)} dakika sonra yeniden deneyin."},
                                   extra={"Retry-After": str(wait)})
             if not kayitli:
-                return self._send(400, {"error": "Yönetici parolası belirlenmemiş. Sunucuda: python app.py --yonetici-parola"})
+                return self._send(400, {"error": "Yönetici parolası belirlenmemiş. Sunucuda: python app.py --yonetici-parola (Railway: SEOVISI_YONETICI_PAROLA değişkeni)"})
             if not YN.dogru(str(self._json().get("parola") or ""), kayitli):
                 print(f"Yönetici paneli: hatalı parola ({self.client_ip()}).", flush=True)
                 return self._send(403, {"error": "Parola yanlış."})

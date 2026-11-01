@@ -184,7 +184,7 @@ function girisGoster(parolaVar) {
   $('#y-app').hidden = true;
   $('#y-login').hidden = false;
   $('#y-login-note').innerHTML = parolaVar === false
-    ? 'Yönetici parolası henüz belirlenmemiş. Sunucuda şu komutu çalıştırın:<br><code>python app.py --yonetici-parola</code>'
+    ? 'Yönetici parolası henüz belirlenmemiş. Sunucuda şu komutu çalıştırın:<br><code>python app.py --yonetici-parola</code><br>Railway üzerinde: <code>SEOVISI_YONETICI_PAROLA</code> değişkeni.'
     : 'Bu sayfa yalnızca seovisi yöneticisi içindir.';
   $('#y-parola').focus();
 }
