@@ -409,6 +409,21 @@ def yonetim(port, appdir, ca):
           [h["mesaj"] for h in hs if h["id"] == "a-magaza-com"] == ["Ideasoft bağlantısı koptu"]
           and d["ozet"]["toplam"] == 3 and d["ozet"]["hata_7g"] >= 1, hs)
 
+    sil = lambda m, onay: req(port, "POST", "/yonetim/api/sil", {"magaza": m, "onay": onay}, cookie=cy)  # noqa: E731
+    st, _, j = sil("yeni-magaza-com", "baska.com")
+    check("silme onayı tutmazsa silinmez", st == 400 and os.path.isdir(yeni), (st, j))
+    st, _, j = sil("yeni-magaza-com", "https://yeni-magaza.com/")
+    check("yönetici henüz giriş yapmamış mağazanın kaydını siler", st == 200 and not os.path.exists(yeni), (st, j))
+    cb = login(port, "b-moda.com")[4]
+    st, _, j = sil("b-moda-com", "b-moda.com")
+    check("yönetici mağazanın bütün verisini siler, oturumu da kapanır",
+          st == 200 and not os.path.exists(os.path.join(data, "magazalar", "b-moda-com"))
+          and req(port, "GET", "/api/state", cookie=cb)[0] == 401
+          and "b-moda-com silindi" in open(os.path.join(data, "silme.log"), encoding="utf-8").read(), (st, j))
+    check("olmayan mağaza silinemez", sil("../sunucu.json", "x")[0] == 400 and os.path.isfile(os.path.join(data, "sunucu.json")))
+    st, _, j = req(port, "POST", "/yonetim/api/silme_iptal", {"magaza": "a-magaza-com"}, cookie=cy)
+    check("silme iptali kaldırılmamış mağazada bir şey değiştirmez", st == 200 and j["magaza"]["bagli"] is True, (st, j))
+
     YN.yaz(data, "yeni-parola-456")
     check("parola değişince eski yönetici oturumları kapanır", req(port, "GET", "/yonetim/api/durum", cookie=cy)[0] == 401)
     st, h, _ = req(port, "POST", "/yonetim/cikis", {})

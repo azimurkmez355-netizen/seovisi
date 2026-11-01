@@ -35,6 +35,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_rapor.py`: aylık rapor, olay kaydı, haftalık tarama.
   - `test_yedek.py`: günlük yedek.
   - `test_yonetim.py`: yönetici parolası, çerezi ve hata listesi.
+  - `test_silme.py`: uygulama kaldırılınca işaretleme, iptal ve süre dolunca silme (geçici klasörde).
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
@@ -130,6 +131,17 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   (`THROTTLE.bugun`), son işlem ve son 7 günün hataları (`islem.log`'daki `[err]` satırları). Hiç giriş yapmamış mağazanın
   klasörüne ayar yazılmaz (`tenant()` çağrılmaz). Abonelik `AB.yaz(..., kaynak="yonetici")` ile yazılır.
 - İstek işlenirken beklenmeyen hata (500) mağazanın kaydına `err` olarak düşer; yönetici panelinde görünür.
+
+### Uygulama kaldırılınca veri silme (`app.py`, aynı adlı bölüm)
+
+- Yalnızca sunucu kipinde. Ideasoft yenileme anahtarını 400 / 401 ile reddederse `uygulama_kaldirildi()`: anahtarlar silinir,
+  `kaldirildi` (zaman) ve `kaldirma_nedeni` ayarlanır, otopilot ve haftalık tarama durur. Ağ hatası ve 5xx işaretlemez.
+  Ideasoft kaldırma bildirimi gelirse webhook da bu işlevi çağıracak.
+- Yeniden bağlanınca (`save_token`) işaret kalkar. `silme_turu()` (zamanlayıcıda, saatte bir) `silme_gun` (sunucu.json, 30) dolan
+  mağazanın klasörünü `magaza_sil()` ile tamamen siler; işi süren mağaza sonraki tura kalır. Silinenler `data/silme.log`'a.
+- Yönetici panelinde kaldırılanlar ve silinecekleri gün görünür; "Verileri kalıcı olarak sil" (onay için adres yazılır) ve
+  "Silmeyi iptal et".
+- Yerel kurulumda (Ustapazar) hiçbir veri kendiliğinden silinmez; bu kural gevşetilmemeli.
 
 ### Kurulum sihirbazı ve hedef kelime yeri
 

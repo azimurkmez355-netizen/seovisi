@@ -70,6 +70,13 @@ td.msg{white-space:normal;min-width:280px}
 .form .act{display:flex;gap:8px;flex-wrap:wrap}
 .msgline{margin:8px 0 0;font-weight:600}
 .msgline.ok{color:var(--ok)} .msgline.bad{color:var(--bad)}
+.tag.kaldirildi{background:var(--warn-soft);color:var(--warn)}
+.sil{margin-top:12px;background:var(--surface);border:1px solid var(--bad-soft);border-radius:var(--r);padding:16px}
+.sil h3{margin:0 0 6px;font-size:14.5px;color:var(--bad)}
+.sil p{margin:0 0 10px;color:var(--ink2)}
+.sil .act{display:flex;gap:8px;flex-wrap:wrap}
+.sil input{flex:1 1 240px}
+.btn.bad{background:var(--bad);border-color:var(--bad);color:#fff}
 .login{max-width:380px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:30px 28px}
 .login h1{font-size:20px;margin:16px 0 6px}
 .login p{color:var(--ink2);margin:0 0 16px}
@@ -112,6 +119,7 @@ td.msg{white-space:normal;min-width:280px}
       <option value="ucretsiz">Ücretsiz / süresi dolan / iptal</option>
       <option value="hata">Son 7 günde hatası olan</option>
       <option value="baglanti">Bağlantısı kopuk</option>
+      <option value="kaldirildi">Uygulamayı kaldıran</option>
     </select>
     <button class="btn pri" id="y-yeni" type="button">Abonelik aç</button>
   </div>
@@ -138,6 +146,15 @@ td.msg{white-space:normal;min-width:280px}
     </div>
   </form>
   <p class="msgline" id="y-form-msg" hidden></p>
+  <div class="sil" id="y-sil" hidden>
+    <h3>Mağazanın verileri</h3>
+    <p id="y-sil-not"></p>
+    <div class="act" id="y-iptal-kutu" hidden><button class="btn" type="button" id="y-iptal">Silmeyi iptal et</button></div>
+    <div class="act">
+      <input id="y-sil-onay" autocomplete="off" placeholder="Onay için mağazanın adresini yazın">
+      <button class="btn bad" type="button" id="y-sil-btn">Verileri kalıcı olarak sil</button>
+    </div>
+  </div>
 
   <h2>Son hatalar <span class="muted" id="y-hata-filtre"></span></h2>
   <div class="tbl"><table>
@@ -152,7 +169,7 @@ const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
 const sayi = n => Number(n || 0).toLocaleString('tr-TR');
 const tarih = s => s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : '';
-let D = null, HATA = [], HATA_MAGAZA = '';
+let D = null, HATA = [], HATA_MAGAZA = '', SECILI = '';
 
 async function api(path, body) {
   const r = await fetch(path, body === undefined ? {headers: {'X-Seovisi': '1'}} :
@@ -189,7 +206,7 @@ function ozetCiz() {
   const o = D.ozet;
   const k = [['Mağaza', o.toplam], ['Bağlı', o.bagli], ['Aktif abonelik', o.aktif], ['Deneme', o.deneme],
     ['Ücretsiz / süresi dolan', o.ucretsiz], ['30 gün içinde bitecek', o.yakinda, o.yakinda ? 'warn' : ''],
-    ['Otopilot açık', o.otopilot], ['Bugünkü Ideasoft isteği', o.istek_bugun], ['Hata (7 gün)', o.hata_7g, o.hata_7g ? 'bad' : '']];
+    ['Otopilot açık', o.otopilot], ['Uygulamayı kaldıran', o.kaldirilan, o.kaldirilan ? 'warn' : ''], ['Bugünkü Ideasoft isteği', o.istek_bugun], ['Hata (7 gün)', o.hata_7g, o.hata_7g ? 'bad' : '']];
   $('#y-ozet').innerHTML = k.map(([l, n, c]) => `<div class="card ${c || ''}"><div class="n">${sayi(n)}</div><div class="l">${l}</div></div>`).join('');
 }
 
@@ -201,6 +218,7 @@ function uyar(r) {
   if (f === 'ucretsiz') return !['aktif', 'deneme'].includes(a.durum);
   if (f === 'hata') return r.hata_7g > 0;
   if (f === 'baglanti') return !r.bagli;
+  if (f === 'kaldirildi') return !!r.kaldirildi;
   return true;
 }
 
@@ -215,7 +233,8 @@ function listeCiz() {
     return `<tr>
       <td class="m"><b>${esc(r.ad || r.magaza || r.id)}</b><span>${esc(r.magaza || r.id)}</span></td>
       <td>${esc(a.ad)}</td>
-      <td><span class="tag ${esc(a.durum)}">${esc(a.durum_adi)}</span></td>
+      <td><span class="tag ${esc(a.durum)}">${esc(a.durum_adi)}</span>${r.kaldirildi
+        ? `<br><span class="tag kaldirildi">Kaldırıldı · ${tarih(r.silinecek)} silinecek</span>` : ''}</td>
       <td>${a.bitis ? tarih(a.bitis) + kalan : '<span class="muted">—</span>'}</td>
       <td class="num">${sayi(r.urun)}</td>
       <td>${baglanti}${isler}</td>
@@ -237,9 +256,21 @@ function hataCiz() {
     : '<tr><td colspan="3" class="muted">Son 7 günde hata yok.</td></tr>';
 }
 
+function silCiz(r) {
+  SECILI = r ? r.id : '';
+  $('#y-sil').hidden = !r;
+  if (!r) return;
+  $('#y-sil-onay').value = '';
+  $('#y-iptal-kutu').hidden = !r.kaldirildi;
+  $('#y-sil-not').textContent = (r.kaldirildi
+    ? `Uygulama ${tarih(r.kaldirildi)} tarihinde kaldırıldı; mağaza yeniden bağlanmazsa veriler ${tarih(r.silinecek)} günü kendiliğinden silinir. `
+    : '') + 'Kalıcı silme mağazanın ayarlarını, taramalarını, yedeklenen açıklamalarını, kayıtlarını ve aboneliğini siler; geri alınamaz.';
+}
+
 function formDoldur(r) {
   const msg = $('#y-form-msg');
   msg.hidden = true;
+  silCiz(r);
   if (!r) {
     $('#y-form-baslik').textContent = 'Abonelik aç';
     $('#y-form').reset();
@@ -287,6 +318,24 @@ $('#y-paket').addEventListener('change', () => {
   else if (d.value === 'ucretsiz') d.value = 'aktif';
 });
 $('#y-durum').addEventListener('change', () => { if ($('#y-durum').value === 'ucretsiz') $('#y-paket').value = 'ucretsiz'; });
+$('#y-sil-btn').addEventListener('click', async () => {
+  const msg = $('#y-form-msg');
+  try {
+    await api('/yonetim/api/sil', {magaza: SECILI, onay: $('#y-sil-onay').value});
+    msg.className = 'msgline ok'; msg.textContent = 'Mağazanın verileri silindi.';
+    formDoldur(null); await yukle();
+  } catch (x) { msg.className = 'msgline bad'; msg.textContent = x.message; }
+  msg.hidden = false;
+});
+$('#y-iptal').addEventListener('click', async () => {
+  const msg = $('#y-form-msg');
+  try {
+    const r = await api('/yonetim/api/silme_iptal', {magaza: SECILI});
+    await yukle(); silCiz(r.magaza);
+    msg.className = 'msgline ok'; msg.textContent = 'Silme iptal edildi. Mağaza panelden yeniden bağlanmalı.';
+  } catch (x) { msg.className = 'msgline bad'; msg.textContent = x.message; }
+  msg.hidden = false;
+});
 $('#y-ara').addEventListener('input', listeCiz);
 $('#y-filtre').addEventListener('change', listeCiz);
 $('#y-yeni').addEventListener('click', () => formDoldur(null));

@@ -87,6 +87,7 @@ SERVER_DEFAULT = {
     "otopilot_dk": 60,            # otopilotun her mağazada yeni ürünlere bakma aralığı (dakika)
     "link_sinir": 10000,          # kırık bağlantı taramasında bir mağazada gezilen en çok sayfa
     "hiz_toplam_dk": 1200,        # bütün mağazalar toplamı (uygulama başına sınır varsa)
+    "silme_gun": 30,              # uygulamayı kaldıran mağazanın verisinin silinmesine kalan gün
 }
 SERVER = {"on": False}            # main() --sunucu ile açar
 
@@ -426,6 +427,9 @@ class Ideasoft:
         CFG.update(access_token=tok["access_token"],
                    refresh_token=tok.get("refresh_token") or CFG.get("refresh_token"),
                    expires_at=time.time() + int(tok.get("expires_in") or 3600))
+        if CFG.get("kaldirildi"):             # yeniden bağlandı: silme iptal
+            CFG.update(kaldirildi="", kaldirma_nedeni="")
+            log("Mağaza yeniden bağlandı; verilerin silinmesi iptal edildi.", "ok")
 
     def _token_req(self, data):
         cid, sec = client_creds()
@@ -442,7 +446,13 @@ class Ideasoft:
                 return
             if not CFG.get("refresh_token"):
                 raise ApiError(401, "Bağlantı yok. Ayarlar sayfasından mağazaya bağlanın.")
-            self._token_req({"grant_type": "refresh_token", "refresh_token": CFG.get("refresh_token")})
+            try:
+                self._token_req({"grant_type": "refresh_token", "refresh_token": CFG.get("refresh_token")})
+            except ApiError as e:
+                if e.status in (400, 401):     # Ideasoft anahtarı reddetti: uygulama kaldırıldı ya da izin geri alındı
+                    uygulama_kaldirildi("Ideasoft erişim anahtarını reddetti")
+                    raise ApiError(401, "Mağazanın Ideasoft bağlantısı sona erdi; yeniden giriş yapın.")
+                raise
             log("Erişim anahtarı yenilendi.")
 
     def call(self, method, path, params=None, body=None, tries=6):
@@ -2939,6 +2949,7 @@ def oto_zamanlayici():
         time.sleep(60)
         oto_tur()
         haftalik_tur()
+        silme_turu()
 
 
 def _magazalar():
@@ -2985,12 +2996,92 @@ def oto_tur():
             _cur.t = tenant(tid)
             son = OTO._kv("oto_son_kontrol")
             vakit = not son or son <= (datetime.now() - timedelta(minutes=oto_aralik())).strftime("%Y-%m-%d %H:%M")
-            if oto_ayar()["acik"] and vakit and not OTO.running:
+            if oto_ayar()["acik"] and vakit and not OTO.running and not CFG.get("kaldirildi"):
                 OTO.kontrol()
         except Exception:  # noqa: BLE001
             traceback.print_exc()
         finally:
             _cur.t = prev
+
+
+# ============================================================ uygulama kaldırılınca veri silme
+#
+# Mağaza uygulamayı kaldırınca (Ideasoft erişim anahtarını reddeder ya da ileride kaldırma bildirimi gelir) "kaldırıldı"
+# olarak işaretlenir: anahtarlar silinir, otomatik işler durur. silme_gun (sunucu.json, 30) içinde yeniden bağlanırsa
+# işaret kalkar; bağlanmazsa mağaza klasörünün tamamı (ayarlar, veritabanı, yedeklenen açıklamalar, kayıt, abonelik)
+# silinir. Yalnızca sunucu kipinde: yerel kurulumdaki (Ustapazar) veri hiçbir zaman kendiliğinden silinmez.
+# Günlük yedeklerdeki kopyalar yedeklerin saklama süresi (14 gün) dolunca gider.
+
+def uygulama_kaldirildi(neden):
+    """O anki mağazayı kaldırıldı olarak işaretler (Ideasoft bildirimi gelirse webhook da bunu çağırır)."""
+    if not SERVER["on"]:
+        return
+    CFG.update(access_token="", refresh_token="", expires_at=0)
+    if not CFG.get("kaldirildi"):
+        CFG.update(kaldirildi=datetime.now().strftime("%Y-%m-%d %H:%M"), kaldirma_nedeni=neden)
+        log(f"Uygulama kaldırıldı ({neden}). Mağaza {silme_gunu()} gün içinde yeniden bağlanmazsa verileri silinecek.",
+            "warn")
+
+
+def silme_gunu():
+    return max(1, int(_num(SRV.get("silme_gun") if SRV else None) or 30))
+
+
+def silinecegi_gun(kaldirildi):
+    """Kaldırılma zamanından silineceği gün (YYYY-AA-GG) ya da None."""
+    try:
+        return (datetime.strptime(kaldirildi, "%Y-%m-%d %H:%M") + timedelta(days=silme_gunu())).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return None
+
+
+def magaza_sil(tid, neden):
+    """Mağaza klasörünü tamamen siler. İşi sürüyorsa silmez (False). data/silme.log'a yalnızca klasör adı ve neden yazılır."""
+    d = os.path.join(STORES, tid)
+    if not re.fullmatch(r"[a-z0-9-]{1,80}", tid or "") or not os.path.isdir(d):
+        return False
+    with _tenants_lock:
+        t = _tenants.get(tid)
+        if t is not None:
+            if any(getattr(t, k).running for k, _ in _IS_ADI):
+                return False
+            del _tenants[tid]
+    if t is not None:
+        with t.dbi.lock:
+            t.dbi.c.close()
+    shutil.rmtree(d, ignore_errors=True)
+    THROTTLE.gunluk.pop(tid, None)
+    try:
+        with open(os.path.join(DATA, "silme.log"), "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} {tid} silindi ({neden})\n")
+    except OSError:
+        pass
+    print(f"{tid}: mağaza verileri silindi ({neden}).", flush=True)
+    return not os.path.exists(d)
+
+
+_SILME = {"son": 0.0}
+
+
+def silme_turu(simdi=None):
+    """Kaldırılalı silme_gun geçen mağazaları siler; saatte bir bakar."""
+    if not SERVER["on"] or time.time() - _SILME["son"] < 3600 and simdi is None:
+        return
+    _SILME["son"] = time.time()
+    bugun = (simdi or datetime.now()).strftime("%Y-%m-%d")
+    prev = getattr(_cur, "t", None)
+    for tid in _magazalar():
+        try:
+            _cur.t = tenant(tid)
+            gun = silinecegi_gun(CFG.get("kaldirildi"))
+            neden = f"uygulama {CFG.get('kaldirildi')} tarihinde kaldırıldı: {CFG.get('kaldirma_nedeni')}"
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+            continue
+        finally:
+            _cur.t = prev
+        if gun and gun <= bugun:
+            magaza_sil(tid, neden)
 
 
 # ================================================================== mağazalar
@@ -3316,14 +3407,15 @@ def yonetim_satiri(tid):
     a = AB.gecerli(kayit)
     row = {"id": tid, "magaza": "", "ad": "", "bagli": False, "giris": known_tenant(tid), "abonelik": a,
            "kaynak": kayit.get("kaynak"), "urun": 0, "otopilot": False, "isler": [], "istek_bugun": THROTTLE.bugun(tid),
-           "son_islem": YN.son_islem(d), "hata_7g": len(YN.hatalar(d))}
+           "son_islem": YN.son_islem(d), "hata_7g": len(YN.hatalar(d)), "kaldirildi": "", "silinecek": None}
     if row["giris"]:
         prev = getattr(_cur, "t", None)
         try:
             _cur.t = t = tenant(tid)
             row.update(magaza=CFG.get("store") or "", ad=PROFILE().get("magaza") or "",
                        bagli=bool(CFG.get("access_token") or CFG.get("refresh_token")), urun=urun_sayisi(),
-                       otopilot=oto_ayar()["acik"], isler=[ad for k, ad in _IS_ADI if getattr(t, k).running])
+                       otopilot=oto_ayar()["acik"], isler=[ad for k, ad in _IS_ADI if getattr(t, k).running],
+                       kaldirildi=CFG.get("kaldirildi") or "", silinecek=silinecegi_gun(CFG.get("kaldirildi")))
         finally:
             _cur.t = prev
     return row
@@ -3338,7 +3430,7 @@ def yonetim_durum():
             "ucretsiz": durum["ucretsiz"] + durum["suresi_doldu"] + durum["iptal"],
             "yakinda": sum(1 for r in rows if r["abonelik"]["kalan_gun"] is not None and r["abonelik"]["kalan_gun"] <= 30),
             "hata_7g": sum(r["hata_7g"] for r in rows), "istek_bugun": sum(r["istek_bugun"] for r in rows),
-            "otopilot": sum(r["otopilot"] for r in rows)}
+            "otopilot": sum(r["otopilot"] for r in rows), "kaldirilan": sum(1 for r in rows if r["kaldirildi"])}
     P = AB.paketler()["paketler"]
     return {"ozet": ozet, "magazalar": rows, "paketler": [{"id": k, "ad": v["ad"], "urun": v.get("urun")} for k, v in P.items()],
             "durumlar": [{"id": k, "ad": AB.DURUM_ADI[k]} for k in AB.DURUMLAR]}
@@ -3351,6 +3443,39 @@ def yonetim_hatalar(gun=7):
         if re.fullmatch(r"[a-z0-9-]{1,80}", tid) and os.path.isdir(d):
             out += [dict(h, id=tid) for h in YN.hatalar(d, gun)]
     return sorted(out, key=lambda h: h["zaman"], reverse=True)[:300]
+
+
+def _yonetim_magaza(form):
+    """İstekteki mağaza klasörü; yoksa ValueError."""
+    tid = str(form.get("magaza") or "")
+    if not re.fullmatch(r"[a-z0-9-]{1,80}", tid) or not os.path.isdir(os.path.join(STORES, tid)):
+        raise ValueError("Mağaza bulunamadı.")
+    return tid
+
+
+def yonetim_sil(form):
+    """Yönetici panelinden silme (KVKK silme talebi gibi). Onay için mağazanın adresi ya da klasör adı yeniden yazılır."""
+    tid = _yonetim_magaza(form)
+    onay = store_host(str(form.get("onay") or ""))
+    if not onay or tenant_id(onay) != tid:
+        raise ValueError("Onay için mağazanın adresini aynen yazın.")
+    if not magaza_sil(tid, "yönetici panelinden silindi"):
+        raise ValueError("Mağazada süren bir iş var; bitince yeniden deneyin.")
+
+
+def yonetim_silme_iptal(form):
+    tid = _yonetim_magaza(form)
+    if not known_tenant(tid):
+        raise ValueError("Mağaza bulunamadı.")
+    prev = getattr(_cur, "t", None)
+    try:
+        _cur.t = tenant(tid)
+        if CFG.get("kaldirildi"):
+            CFG.update(kaldirildi="", kaldirma_nedeni="")
+            log("Verilerin silinmesi yönetici tarafından iptal edildi; mağaza yeniden bağlanmalı.", "warn")
+    finally:
+        _cur.t = prev
+    return yonetim_satiri(tid)
 
 
 def yonetim_abonelik(form):
@@ -3661,9 +3786,11 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, yonetim_durum())
         if p == "/yonetim/api/hatalar" and method == "GET":
             return self._send(200, {"hatalar": yonetim_hatalar()})
-        if p == "/yonetim/api/abonelik" and method == "POST":
+        islem = {"/yonetim/api/abonelik": yonetim_abonelik, "/yonetim/api/sil": yonetim_sil,
+                 "/yonetim/api/silme_iptal": yonetim_silme_iptal}.get(p)
+        if islem and method == "POST":
             try:
-                return self._send(200, {"ok": True, "magaza": yonetim_abonelik(self._json())})
+                return self._send(200, {"ok": True, "magaza": islem(self._json())})
             except ValueError as e:
                 return self._send(400, {"error": str(e)})
         return self._send(404, {"error": "Yok"})

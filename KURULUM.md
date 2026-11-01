@@ -114,6 +114,9 @@ docker compose exec app python app.py --abonelikler
 - **İzleme:** ücretsiz bir izleme hizmetinde (ör. UptimeRobot) `https://app.seovisi.com.tr/saglik` adresini 5 dakikada bir denetletin;
   erişilemezse size e-posta / SMS gelir.
 - **Kayıtlar:** `docker compose logs -f app`
+- **Veri silme:** uygulamayı kaldıran mağazanın verisi 30 gün sonra kendiliğinden silinir (yedeklerdeki kopyası 14 gün sonra gider).
+  Bir mağaza verisinin silinmesini isterse (KVKK) yönetici panelinde mağazayı "Düzenle" > "Verileri kalıcı olarak sil".
+  Silinen mağazalar `veri/canli/silme.log` dosyasına yazılır.
 
 ## 9. Güncelleme
 

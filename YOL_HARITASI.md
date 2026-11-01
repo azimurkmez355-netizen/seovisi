@@ -193,7 +193,8 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [ ] (K) Ideasoft bağlantısı platform adaptörü arkasına
 - [x] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam (KURULUM.md)
 - [x] (K) Günlük yedek (anahtarsız, 14 gün), sağlık adresi /saglik (dış izleme hizmetiyle alarm)
-- [ ] (K) Uygulama kaldırılınca veri silme
+- [x] (K) Uygulama kaldırılınca veri silme (anahtar reddi → kaldırıldı, 30 gün sonra silinir; yönetici panelinden hemen silme)
+  - [ ] (?) Ideasoft kaldırma bildirimi (webhook) varsa `uygulama_kaldirildi()` bildirimle de çağrılacak (9. soru)
 - [x] (K) Yönetici paneli: mağazalar, abonelikler, kullanım, hatalar (`/yonetim`, ayrı yönetici parolası)
 
 ## Faz 4 — Yapay zekâ (2–3 hafta)
