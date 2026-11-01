@@ -35,6 +35,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_rapor.py`: aylık rapor, olay kaydı, haftalık tarama.
   - `test_yedek.py`: günlük yedek.
   - `test_yonetim.py`: yönetici parolası, çerezi ve hata listesi.
+  - `test_ortam.py`: ortam değişkenlerinden sunucu ayarları ve yönetici parolası, müşteri adresi başlığı (`SEOVISI_IP_BASLIGI`).
   - `test_silme.py`: uygulama kaldırılınca işaretleme, iptal ve süre dolunca silme (geçici klasörde).
   - `test_platform.py`: platform adaptörü sınırı (app.py'de Ideasoft adresi ve doğrudan istek yok), Ideasoft adaptörünün arayüzü.
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
@@ -49,6 +50,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Sunucu kurulumu: `Dockerfile`, `docker-compose.yml` (canlı + test + Caddy + yedek), `Caddyfile`, `.env.ornek`; adımlar `KURULUM.md`.
   Kap içinde `SEOVISI_VEKIL` Docker ağını güvenilen ters vekil yapar (`guvenilir_vekil`); `/saglik` dış izleme içindir.
   `python app.py --yedek KLASOR [--dongu] [--sakla 14]`. GitHub'daki "docker" işi görüntüyü kurup çalıştırarak denetler.
+- Railway (deneme dönemi; `KURULUM.md` A): `railway.json` Dockerfile ile kurar, sağlık `/saglik`. Dosya düzenlenemediği için
+  `ortamdan_ayarla()` açılışta `SEOVISI_CLIENT_ID`, `SEOVISI_CLIENT_SECRET`, `SEOVISI_PUBLIC_URL` değerlerini `sunucu.json`a,
+  `SEOVISI_YONETICI_PAROLA`yı (farklıysa) `yonetici.json`a yazar. Sunucu kipinde `--port` yoksa `PORT` ortam değişkeni. Railway
+  müşteri adresini `X-Real-IP` ile verir (`SEOVISI_IP_BASLIGI`); disk root ile bağlandığı için `RAILWAY_RUN_UID=0`. Yedek Railway'in kendisinde.
 
 ## Mimari
 

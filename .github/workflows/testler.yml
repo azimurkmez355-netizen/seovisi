@@ -43,6 +43,18 @@ jobs:
           curl -fs http://127.0.0.1:8080/ | grep -q "Mağazanızla giriş yapın"
           curl -fs http://127.0.0.1:8080/yonetim | grep -q "Yönetici girişi"
           test -f veri/sunucu.json && ! test -f veri/anahtar.key        # anahtar ortam değişkeninden; diskte yok
+      - name: Railway gibi çalıştır (PORT, ayarlar ortam değişkeninden, root kullanıcı)
+        run: |
+          mkdir -p veri-rw
+          docker run -d --name rw --user 0 -e PORT=9090 -e SEOVISI_ANAHTAR=test -e SEOVISI_IP_BASLIGI=X-Real-IP \
+            -e SEOVISI_CLIENT_ID=cid -e SEOVISI_CLIENT_SECRET=gizli-deger -e SEOVISI_PUBLIC_URL=https://ornek.up.railway.app \
+            -e SEOVISI_YONETICI_PAROLA=uzun-bir-parola -v "$PWD/veri-rw:/app/data" -p 9090:9090 seovisi
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:9090/saglik && break; sleep 1; done
+          curl -fs http://127.0.0.1:9090/saglik | grep -q '"ok": true'
+          grep -q '"public_url": "https://ornek.up.railway.app"' veri-rw/sunucu.json
+          ! grep -q gizli-deger veri-rw/sunucu.json
+          test -f veri-rw/yonetici.json
+          ! docker logs rw 2>&1 | grep -q "eksik"
       - name: Yedek komutu
         run: |
           mkdir -p yedekler && sudo chown 1000:1000 yedekler
@@ -50,4 +62,4 @@ jobs:
           ls yedekler/seovisi-*.zip
       - name: Kayıtlar
         if: failure()
-        run: docker logs sv || true
+        run: docker logs sv; docker logs rw || true

@@ -175,7 +175,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 ## Faz 2 — v1 özellikleri (5–6 hafta)
 
 - [x] (K) Kurulum sihirbazı: mağaza adı ve marka, açıklama görünümü (sade / bantlı, canlı önizleme), ilk tarama ve özet, paket bilgisi
-  - [ ] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
+  - [x] (S) Ustapazar'da bulunan hedef kelime yerinin sunucu.json'a varsayılan olarak girilmesi (`kw_loc`)
 - [x] (K) Açıklama şablonu ayarlama (ayarlar, 4 görünüm, renk, bölümler, önizleme; gönderilmiş açıklamaların yedekli toplu geçişi ve geri alınması)
 - [x] (K) Yeni ürün otopilotu ve iş sırası (saatlik kontrol; yayına alınıp 30 dk geçen ürün; onaylı / otomatik; şüpheli öneri her zaman onaya)
   - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
@@ -188,7 +188,9 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 ## Faz 3 — Sunucu altyapısı (3–4 hafta)
 
-- [ ] (S) Türkiye'de bir sanal sunucu
+- [ ] (S) Sunucu: deneme döneminde Railway (Avrupa bölgesi), gerçek satışta Türkiye'de sanal sunucu (KVKK)
+  - [x] (K) Railway uyarlaması: `railway.json`, PORT, ayarlar ve yönetici parolası ortam değişkeninden, X-Real-IP (KURULUM.md A)
+  - [ ] (S) Railway hesabı, proje, disk, değişkenler, alan adı, yedek
 - [x] (K) Bugünkü yapı kalır (standart kütüphane, mağaza başına SQLite); FastAPI / PostgreSQL mağaza sayısı büyüyünce yeniden değerlendirilir
 - [x] (K) Ideasoft bağlantısı platform adaptörü arkasına (`platformlar/`; ortak alan adlarına çeviri ikinci altyapı eklenirken)
 - [x] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam (KURULUM.md)

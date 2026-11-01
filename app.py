@@ -3436,9 +3436,11 @@ class H(BaseHTTPRequestHandler):
 
     def client_ip(self):
         """İsteği gönderenin adresi. İstek güvenilen bir ters vekilden (aynı makinedeki ya da SEOVISI_VEKIL ağlarındaki
-        Caddy) geldiyse onun eklediği son adres; yoksa bütün müşteriler vekilin tek adresinden geliyor görünürdü."""
+        Caddy) geldiyse onun eklediği son adres; yoksa bütün müşteriler vekilin tek adresinden geliyor görünürdü.
+        Adresi başka bir başlıkla gönderen vekil için (Railway: X-Real-IP) başlığın adı SEOVISI_IP_BASLIGI ortam değişkeninde."""
         ip = self.client_address[0]
-        fwd = (self.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
+        baslik = os.environ.get("SEOVISI_IP_BASLIGI", "").strip() or "X-Forwarded-For"
+        fwd = (self.headers.get(baslik) or "").split(",")[-1].strip()
         try:
             if fwd and guvenilir_vekil(ip):
                 ipaddress.ip_address(fwd)
@@ -4124,10 +4126,33 @@ def abonelik_komutu():
     return 0
 
 
+ORTAM_AYAR = {"SEOVISI_CLIENT_ID": "client_id", "SEOVISI_CLIENT_SECRET": "client_secret",
+              "SEOVISI_PUBLIC_URL": "public_url"}
+
+
+def ortamdan_ayarla(env=None):
+    """Sunucu ayarları ve yönetici parolası ortam değişkenlerinden (Railway gibi dosya düzenlenemeyen yerler için).
+    Dolu değişken sunucu.json'daki değerin yerine geçer ve oraya yazılır (gizli olan şifreli); boşsa dosyadaki kalır.
+    SEOVISI_YONETICI_PAROLA yalnızca kayıtlı paroladan farklıysa yazılır (yazılınca açık yönetici oturumları kapanır)."""
+    env = os.environ if env is None else env
+    yeni = {k: env[e].strip() for e, k in ORTAM_AYAR.items()
+            if env.get(e, "").strip() and env[e].strip() != SRV.get(k)}
+    if yeni:
+        SRV.update(**yeni)
+    parola = env.get("SEOVISI_YONETICI_PAROLA", "")
+    if parola and not YN.dogru(parola, YN.oku(DATA)):
+        try:
+            YN.yaz(DATA, parola)
+        except ValueError as e:
+            print(f"Uyarı: SEOVISI_YONETICI_PAROLA kaydedilmedi: {e}")
+    return sorted(yeni)
+
+
 def main():
     """Yerel kip (baslat.bat): tek kullanıcı, bu bilgisayardaki mağaza, giriş yok.
     Sunucu kipi (python app.py --sunucu [--port 8080] [--host 127.0.0.1]): her mağaza Ideasoft ile giriş yapar,
     verisi data/magazalar altında kendi klasöründe durur. Önüne HTTPS sağlayan bir ters vekil (Caddy vb.) konur.
+    Sunucu kipinde --port verilmezse PORT ortam değişkeni (Railway) kullanılır; ayarlar için ortamdan_ayarla().
     Abonelik komutları için abonelik_komutu()."""
     global SRV
     if {"--abonelik", "--abonelikler"} & set(sys.argv[1:]):
@@ -4152,7 +4177,7 @@ def main():
         print(f"Yedek alındı: {YD.yedekle(DATA, hedef, sakla=int(arg('--sakla', '14')))}")
         return
     SERVER["on"] = "--sunucu" in sys.argv[1:]
-    port = int(arg("--port", PORT))
+    port = int(arg("--port", (SERVER["on"] and os.environ.get("PORT")) or PORT))
     host = arg("--host", "127.0.0.1")
     os.makedirs(STORES, exist_ok=True)
     url = f"http://localhost:{port}/"
@@ -4169,6 +4194,7 @@ def main():
         except (OSError, ValueError) as e:
             print(f"Paket dosyası okunamadı ({AB.PAKET_PATH}): {e}")
             sys.exit(1)
+        ortamdan_ayarla()
         missing = [k for k in ("client_id", "client_secret", "public_url") if not SRV.get(k)]
         if missing:
             print(f"Uyarı: {SERVER_PATH} içinde eksik: {', '.join(missing)}. Bunlar girilene kadar giriş yapılamaz.")
