@@ -36,6 +36,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_yedek.py`: günlük yedek.
   - `test_yonetim.py`: yönetici parolası, çerezi ve hata listesi.
   - `test_silme.py`: uygulama kaldırılınca işaretleme, iptal ve süre dolunca silme (geçici klasörde).
+  - `test_platform.py`: platform adaptörü sınırı (app.py'de Ideasoft adresi ve doğrudan istek yok), Ideasoft adaptörünün arayüzü.
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
@@ -53,7 +54,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 
 | Dosya | Görevi |
 |---|---|
-| `app.py` | Web sunucusu (`http.server`), Ideasoft Admin API istemcisi, taramalar ve arka plan işleri, uygulama / geri alma, oturum |
+| `app.py` | Web sunucusu (`http.server`), taramalar ve arka plan işleri, uygulama / geri alma, yazma güvenliği, oturum |
+| `platformlar/` | Platform adaptörleri. `__init__.py`: ortak arayüz (`Platform`), `ApiError`, `store_host`, kayıt (`PLATFORMLAR`). `ideasoft.py`: Ideasoft girişi, anahtar, istek gönderme ve kaynak işlemleri. |
 | `kategori.py` | Kategori analizi. Ürün adlarından öğrenen sınıflandırıcı (Naive Bayes + kategori adı benzerliği); yanlış ve kategorisiz ürünler, yeni kategori önerileri. Sektöre özel kelime listesi yok; yaygın ve "seri" kelimeler mağazanın kendi verisinden çıkarılır. |
 | `seo_text.py` | Başlık, meta açıklama, anahtar kelimeler, kelime sayımı, SEO puanı. `panel_factor()` mağaza ayarından okunur. |
 | `seo_machine.py` | Ürün açıklaması (HTML) üretimi. Hedef kelime yoğunluğunu %2–3 aralığına oturtur; görünüm ve bölümler şablondan. |
@@ -78,7 +80,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - İstek işleyicisi (`H._dispatch`) mağazayı oturumdan ya da yerel kipte `LOCAL["id"]` değerinden seçer.
 - Arka plan işleri `spawn()` ile başlatılır ve başlatan mağazanın bağlamını taşır. **Yeni arka plan işlerinde `threading.Thread` yerine mutlaka `spawn()` kullan.**
   Paralel işler için de `ThreadPoolExecutor` yerine `pmap()`; yoksa iş parçacıkları "Mağaza seçilmedi" hatası verir.
-- Ideasoft'a giden her istek `Ideasoft.call` içinde `THROTTLE.acquire(mağaza)` ile izin alır: mağaza başına ve toplam dakikalık sınır
+- Ideasoft'a giden her istek platformun `call`'ı içinde `THROTTLE.acquire(mağaza)` ile izin alır (`_PlatformOrtami.izin`): mağaza başına ve toplam dakikalık sınır
   (`sunucu.json`: `hiz_magaza_dk`, `hiz_toplam_dk`; varsayılanlar tahmin). Toplam sınırda mağazalar sırayla izin alır. 429 gelirse
   `THROTTLE.pause()` o mağazanın bütün işlerini `Retry-After` kadar bekletir. Ideasoft'a başka yoldan istek gönderme.
 - Eski kurulumdaki `data/ayarlar.json` ve `durum.db`, ilk açılışta `migrate_legacy()` ile mağaza klasörüne taşınır.
@@ -218,7 +220,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 
 Bu kurallar hiçbir zaman gevşetilmemeli:
 - Yazmadan önce ürün yeniden okunur.
-- Yazdıktan sonra korunan alanlar (`Ideasoft.PROTECTED`: fiyat, stok, ad…) karşılaştırılır. Biri değiştiyse ürün eski hâline yazılır ve işlem durur.
+- Yazdıktan sonra korunan alanlar (`API.PROTECTED`, Ideasoft'ta `platformlar/ideasoft.py`: fiyat, stok, ad…) karşılaştırılır. Biri değiştiyse ürün eski hâline yazılır ve işlem durur.
 - Eski açıklama ve kategoriler yedeklenir; her değişiklik geri alınabilir.
 - Kategori değişikliğinde önce `PUT products` denenir; olmazsa `product_to_categories` kullanılır.
 
@@ -227,6 +229,20 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 - Panelin SEO puanı kelime sayımına HTML etiketlerini de katar. Ham HTML sayımı ile panel arasındaki oran mağaza başına `panel_factor` ayarıdır (varsayılan 1,30).
 - Açıklama HTML'i Ideasoft editöründen (TinyMCE) geçer; yalnızca basit satır içi stiller güvenli.
 - API'de kullanılan kaynaklar: `products`, `product_details`, `categories`, `category_images`, `product_images`, `product_to_categories`, `seo_settings`, `metafields`, `product_extra_fields`.
+
+### Platform adaptörü (`platformlar/`)
+
+- `app.py` mağazaya yalnızca platform nesnesi `API` üzerinden ulaşır (`API.get_product`, `API.urunler_sonra`, `API.urun_yaz`,
+  `API.aciklama_yaz`, `API.kategorileri_yaz`, `API.gorseller`, `API.kategori*`, `API.liste` / `kayit_yaz` / `kayit_ekle`,
+  `API.panel_adresleri`…). `API.call(` ya da Ideasoft adresi app.py'de yazılmaz (`test_platform.py` denetler).
+- Mağazanın platformu `yeni_platform()` ile, mağaza ayarı `platform` (yoksa ideasoft). Adaptör programdan ihtiyacını
+  `_PlatformOrtami` ile alır; yeni bir ihtiyaç hem oraya hem `platformlar/__init__.py` başındaki listeye yazılır.
+- Yazma güvenliği (yeniden okuma, `fingerprint` karşılaştırması, geri yazma, yedek) app.py'de kalır; adaptör yalnızca nasıl okunup
+  yazılacağını bilir.
+- Henüz yapılmayan (ikinci altyapı eklenirken): ürün / kategori kayıtları Ideasoft alan adlarıyla gelir (name, price1, pageTitle,
+  details…); hedef kelime yeri (`kw_loc`) ve SEO kural kaynakları (`seo_settings`, `metafields`) Ideasoft'a göre. Bunlar ortak
+  alan adlarına adaptörde çevrilecek. Panelin "Panelde aç" bağlantıları sunucudan gelen `panel.urun` / `panel.kategori` önekleriyle.
+- `test_cok_magaza.py` uygulamayı kopyalarken `platformlar/` klasörünü de kopyalar; Dockerfile da.
 
 ## Bilinen açık işler (v1'e girmeden)
 

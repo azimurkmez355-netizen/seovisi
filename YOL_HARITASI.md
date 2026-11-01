@@ -190,7 +190,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 
 - [ ] (S) Türkiye'de bir sanal sunucu
 - [x] (K) Bugünkü yapı kalır (standart kütüphane, mağaza başına SQLite); FastAPI / PostgreSQL mağaza sayısı büyüyünce yeniden değerlendirilir
-- [ ] (K) Ideasoft bağlantısı platform adaptörü arkasına
+- [x] (K) Ideasoft bağlantısı platform adaptörü arkasına (`platformlar/`; ortak alan adlarına çeviri ikinci altyapı eklenirken)
 - [x] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam (KURULUM.md)
 - [x] (K) Günlük yedek (anahtarsız, 14 gün), sağlık adresi /saglik (dış izleme hizmetiyle alarm)
 - [x] (K) Uygulama kaldırılınca veri silme (anahtar reddi → kaldırıldı, 30 gün sonra silinir; yönetici panelinden hemen silme)

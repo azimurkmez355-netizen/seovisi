@@ -46,6 +46,9 @@ import baglanti as BG  # noqa: E402
 import rapor as RP  # noqa: E402
 import yedek as YD  # noqa: E402
 import yonetim as YN  # noqa: E402
+import platformlar as PL  # noqa: E402
+from platformlar import ApiError, store_host  # noqa: E402,F401
+from platformlar.ideasoft import Ideasoft  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -259,20 +262,10 @@ class DB:
 DBI = _Ref("dbi")
 
 
-# ================================================================ Ideasoft API
-
-class ApiError(Exception):
-    def __init__(self, status, body, url=""):
-        super().__init__(f"HTTP {status}: {body[:300]}")
-        self.status, self.body, self.url = status, body, url
-
-
-def store_host(s):
-    """Kullanıcının yazdığı mağaza adresinden yalın alan adı: https://Magaza.com/ → magaza.com"""
-    s = (s or "").strip().lower()
-    s = re.sub(r"^[a-z]+://", "", s)
-    return s.split("/")[0].split("?")[0].strip(".")
-
+# ================================================================ mağaza platformu
+#
+# Ideasoft'a özgü her şey (adresler, kaynak adları, istek gönderme) platformlar/ideasoft.py içinde; buradan yalnızca
+# platform nesnesi (API) kullanılır. Ideasoft'a başka yoldan istek gönderme.
 
 def client_creds():
     """Mağazanın kendi API anahtarı (yerel kurulum) yoksa sunucunun ortak Ideasoft uygulaması."""
@@ -289,24 +282,10 @@ def redirect_uri():
 
 def auth_link(host, state):
     cid = client_creds()[0] if getattr(_cur, "t", None) else SRV.get("client_id")
-    q = urllib.parse.urlencode({"client_id": cid, "response_type": "code", "state": state,
-                                "redirect_uri": redirect_uri()})
-    return f"https://{host}/panel/auth?{q}"
+    return Ideasoft.auth_link(host, state, cid, redirect_uri())
 
 
-def token_request(host, data):
-    """Ideasoft'tan erişim anahtarı ister; mağaza bağlamı gerektirmez (girişte mağaza henüz yoktur)."""
-    req = urllib.request.Request(f"https://{host}/oauth/v2/token", data=urllib.parse.urlencode(data).encode(),
-                                 method="POST", headers={"Content-Type": "application/x-www-form-urlencoded",
-                                                         "Accept": "application/json"})
-    try:
-        with urllib.request.urlopen(req, context=ssl.create_default_context(), timeout=40) as r:
-            tok = json.loads(r.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raise ApiError(e.code, e.read().decode("utf-8", "replace"), "token")
-    if not tok.get("access_token"):
-        raise ApiError(0, json.dumps(tok), "token")
-    return tok
+token_request = Ideasoft.token_request   # girişte mağaza bağlamı yokken; testler sahtesiyle değiştirir
 
 
 # ============================================================ Ideasoft hız sınırı
@@ -407,170 +386,45 @@ def rate_limits():
 THROTTLE = Throttle(rate_limits)
 
 
-class Ideasoft:
-    PROTECTED =("name", "sku", "barcode", "price1", "stockAmount", "status", "discount", "discountType",
-                 "taxIncluded", "tax", "slug", "hasOption", "buyingPrice", "warranty")
-
-    def __init__(self):
-        self.ctx = ssl.create_default_context()
-        self.tok_lock = threading.Lock()
-        self.req_times = deque(maxlen=2000)
-
-    # ---- temel
-    def base(self):
-        return f"https://{store_host(CFG.get('store'))}"
-
-    def auth_url(self, state):
-        return auth_link(store_host(CFG.get("store")), state)
-
-    def save_token(self, tok):
-        CFG.update(access_token=tok["access_token"],
-                   refresh_token=tok.get("refresh_token") or CFG.get("refresh_token"),
-                   expires_at=time.time() + int(tok.get("expires_in") or 3600))
-        if CFG.get("kaldirildi"):             # yeniden bağlandı: silme iptal
-            CFG.update(kaldirildi="", kaldirma_nedeni="")
-            log("Mağaza yeniden bağlandı; verilerin silinmesi iptal edildi.", "ok")
-
-    def _token_req(self, data):
-        cid, sec = client_creds()
-        tok = token_request(store_host(CFG.get("store")), dict(data, client_id=cid, client_secret=sec))
-        self.save_token(tok)
-        return tok
-
-    def exchange(self, code):
-        return self._token_req({"grant_type": "authorization_code", "code": code, "redirect_uri": redirect_uri()})
-
-    def refresh(self):
-        with self.tok_lock:
-            if CFG.get("expires_at", 0) - time.time() > 120 and CFG.get("access_token"):
-                return
-            if not CFG.get("refresh_token"):
-                raise ApiError(401, "Bağlantı yok. Ayarlar sayfasından mağazaya bağlanın.")
-            try:
-                self._token_req({"grant_type": "refresh_token", "refresh_token": CFG.get("refresh_token")})
-            except ApiError as e:
-                if e.status in (400, 401):     # Ideasoft anahtarı reddetti: uygulama kaldırıldı ya da izin geri alındı
-                    uygulama_kaldirildi("Ideasoft erişim anahtarını reddetti")
-                    raise ApiError(401, "Mağazanın Ideasoft bağlantısı sona erdi; yeniden giriş yapın.")
-                raise
-            log("Erişim anahtarı yenilendi.")
-
-    def call(self, method, path, params=None, body=None, tries=6):
-        url = f"{self.base()}/admin-api/{path.lstrip('/')}"
-        if params:
-            url += "?" + urllib.parse.urlencode(params)
-        data = json.dumps(body, ensure_ascii=False).encode("utf-8") if body is not None else None
-        refreshed = False
-        for attempt in range(tries):
-            if CFG.get("expires_at", 0) - time.time() < 120:
-                self.refresh()
-            req = urllib.request.Request(url, data=data, method=method, headers={
-                "Authorization": f"Bearer {CFG.get('access_token')}",
-                "Accept": "application/json", "Content-Type": "application/json; charset=utf-8"})
-            THROTTLE.acquire(current().id)
-            self.req_times.append(time.time())
-            try:
-                with urllib.request.urlopen(req, context=self.ctx, timeout=60) as r:
-                    raw = r.read().decode("utf-8")
-                    return json.loads(raw) if raw.strip() else None
-            except urllib.error.HTTPError as e:
-                txt = e.read().decode("utf-8", "replace")
-                if e.code == 401 and not refreshed:
-                    refreshed = True
-                    CFG.update(expires_at=0)
-                    self.refresh()
-                    continue
-                if e.code in (429, 500, 502, 503, 504) and attempt < tries - 1:
-                    wait = min(120, _num(e.headers.get("Retry-After")) or 0) or min(30, 1.5 * 2 ** attempt)
-                    if e.code == 429:              # mağazanın bütün işleri birlikte bekler, sıra diğerlerine geçer
-                        THROTTLE.pause(current().id, wait)
-                    else:
-                        time.sleep(wait)
-                    continue
-                raise ApiError(e.code, txt, url)
-            except (urllib.error.URLError, socket.timeout, ConnectionError) as e:
-                if attempt < tries - 1:
-                    time.sleep(min(30, 2 * 2 ** attempt))
-                    continue
-                raise ApiError(0, f"Ağ hatası: {e}", url)
-
-    def rpm(self):
-        now = time.time()
-        return sum(1 for t in self.req_times if now - t < 60)
-
-    # ---- ürün bulma
-    def detect_lookup(self):
-        probe = "ZZ-YOK-" + secrets.token_hex(4)
-        for mode, params in (("sku", {"sku": probe}), ("qsku", {"q[sku]": probe}), ("s", {"s": probe})):
-            try:
-                r = self.call("GET", "products", dict(params, limit=5))
-                if isinstance(r, list) and len(r) == 0:
-                    CFG.update(lookup_mode=mode)
-                    log(f"Ürün arama yöntemi: {mode}")
-                    return mode
-            except ApiError:
-                continue
-        CFG.update(lookup_mode="index")
-        log("Stok kodu filtresi desteklenmiyor; mağaza ürün listesi indekslenecek.", "warn")
-        return "index"
-
-    def build_index(self, progress=None):
-        DBI.x("DELETE FROM idx")
-        since, total = 0, 0
-        while True:
-            prm = {"limit": 100, "sort": "id"}
-            if since:
-                prm["sinceId"] = since
-            r = self.call("GET", "products", prm)
-            if not r:
-                break
-            DBI.xm("INSERT OR REPLACE INTO idx(sku, pid, name) VALUES(?,?,?)",
-                   [((p.get("sku") or "").strip().upper(), p["id"], p.get("name")) for p in r if p.get("sku")])
-            total += len(r)
-            since = max(p["id"] for p in r)
-            if progress:
-                progress(total)
-            if len(r) < 100:
-                break
-        log(f"Mağaza indeksi hazır: {total} ürün.")
-        return total
-
-    def find(self, sku):
-        """Stok koduna göre ürünü bulur. Dönüş: ürün dict | None."""
-        mode = CFG.get("lookup_mode") or self.detect_lookup()
-        key = sku.strip().upper()
-        if mode == "index":
-            r = DBI.q("SELECT pid FROM idx WHERE sku=?", (key,), one=True)
-            return self.call("GET", f"products/{r['pid']}") if r else None
-        params = {"sku": sku} if mode == "sku" else {"q[sku]": sku} if mode == "qsku" else {"s": sku}
-        res = self.call("GET", "products", dict(params, limit=50)) or []
-        for p in res:
-            if (p.get("sku") or "").strip().upper() == key:
-                return p
-        return None
-
-    def get_product(self, pid):
-        return self.call("GET", f"products/{pid}")
-
-    def get_detail(self, product):
-        d = product.get("detail")
-        if isinstance(d, dict) and d.get("id"):
-            try:
-                return self.call("GET", f"product_details/{d['id']}")
-            except ApiError:
-                return d
-        r = self.call("GET", "product_details", {"product": product["id"], "limit": 5}) or []
-        return r[0] if r else None
+class _PlatformOrtami:
+    """Platform adaptörünün programdan aldıkları (platformlar/__init__.py). Her biri o anki mağazaya yönlenir."""
+    cfg, db = CFG, DBI
 
     @staticmethod
-    def fingerprint(p):
-        fp = {k: p.get(k) for k in Ideasoft.PROTECTED}
-        fp["currency"] = (p.get("currency") or {}).get("id") if isinstance(p.get("currency"), dict) else p.get("currency")
-        fp["brand"] = (p.get("brand") or {}).get("id") if isinstance(p.get("brand"), dict) else p.get("brand")
-        fp["categories"] = sorted((c or {}).get("id") for c in (p.get("categories") or []) if isinstance(c, dict))
-        fp["images"] = len(p.get("images") or [])
-        fp["prices"] = len(p.get("prices") or [])
-        return fp
+    def log(msg, level="info"):
+        log(msg, level)
+
+    @staticmethod
+    def izin():
+        THROTTLE.acquire(current().id)
+
+    @staticmethod
+    def yavasla(sn):
+        THROTTLE.pause(current().id, sn)
+
+    @staticmethod
+    def creds():
+        return client_creds()
+
+    @staticmethod
+    def redirect_uri():
+        return redirect_uri()
+
+    @staticmethod
+    def token_request(host, data):
+        return token_request(host, data)
+
+    @staticmethod
+    def kaldirildi(neden):
+        uygulama_kaldirildi(neden)
+
+
+PLATFORM_ORTAMI = _PlatformOrtami()
+
+
+def yeni_platform():
+    """O anki mağazanın platform nesnesi (bugün yalnızca Ideasoft; mağaza ayarı "platform")."""
+    return PL.PLATFORMLAR[CFG.get("platform") or Ideasoft.AD](PLATFORM_ORTAMI)
 
 
 API = _Ref("api")
@@ -653,12 +507,12 @@ def _fill(q, pid):
 def find_record(res, pid, loc):
     """Ürünün hedef kelime kaydını getirir (yoksa None)."""
     if loc.get("query"):
-        recs = API.call("GET", res, dict(_fill(loc["query"], pid), limit=100)) or []
+        recs = API.liste(res, dict(_fill(loc["query"], pid), limit=100))
     else:
         if res not in _scan_cache:
             allr, page = [], 1
             while page <= 500:
-                r = API.call("GET", res, {"limit": 100, "page": page}) or []
+                r = API.liste(res, {"limit": 100, "page": page})
                 allr += r
                 if len(r) < 100:
                     break
@@ -708,7 +562,7 @@ def kw_write(pid, value, rec):
         if res == "product_extra_fields":
             body["product"] = {"id": pid}
         jset(body, loc["path"], value)
-        API.call("PUT", f"{res}/{rec['id']}", body=body)
+        API.kayit_yaz(res, rec["id"], body)
         return
     body = {}
     if res == "product_extra_fields":
@@ -720,7 +574,7 @@ def kw_write(pid, value, rec):
         else:
             body["jsonValue"] = {}
     jset(body, loc["path"], value)
-    created = API.call("POST", res, body=body)
+    created = API.kayit_ekle(res, body)
     if res in _scan_cache and isinstance(created, dict):
         _scan_cache[res].append(created)
 
@@ -761,7 +615,7 @@ def discover(sku=None, needle=None):
             if hits:
                 break
             try:
-                recs = API.call("GET", res, dict(_fill(qv, pid), limit=100)) or []
+                recs = API.liste(res, dict(_fill(qv, pid), limit=100))
             except ApiError as e:
                 checked.append(f"{res} {qv}: HTTP {e.status}")
                 continue
@@ -779,7 +633,7 @@ def discover(sku=None, needle=None):
             page = 1
             while page <= 300 and not hits:
                 try:
-                    recs = API.call("GET", res, {"limit": 100, "page": page}) or []
+                    recs = API.liste(res, {"limit": 100, "page": page})
                 except ApiError as e:
                     checked.append(f"{res} tarama: HTTP {e.status}")
                     break
@@ -841,8 +695,7 @@ def calibrate(panel_count, sku=None):
 
 # ======================================================== Ideasoft kaydında yazılamayan alanlar
 
-READONLY = ("children", "comments", "next", "prev", "updatedAt", "createdAt", "seoSetting",
-            "solvedCount", "seoTotalRuleCount")
+READONLY = Ideasoft.READONLY
 
 
 # ============================================================ görsel kontrolü
@@ -861,8 +714,7 @@ def slugify(s):
 
 
 def image_count(pid):
-    r = API.call("GET", "product_images", {"product": pid, "limit": 20}) or []
-    return len([x for x in r if str((x.get("product") or {}).get("id", pid)) == str(pid)])
+    return len(API.gorseller(pid, 20))
 
 
 class ImgScanner:
@@ -918,19 +770,7 @@ class ImgScanner:
         return "Sonuçlar silindi; Başlat ile baştan taranır."
 
     def _count(self):
-        try:
-            r = API.call("GET", "products/count")
-            if isinstance(r, dict):
-                for v in r.values():
-                    if isinstance(v, (int, float)):
-                        return int(v)
-            if isinstance(r, (int, float)):
-                return int(r)
-            if isinstance(r, str) and r.strip().isdigit():
-                return int(r)
-        except ApiError:
-            pass
-        return 0
+        return API.urun_sayisi()
 
     def _run(self):
         try:
@@ -948,14 +788,11 @@ class ImgScanner:
                     break
                 if page_mode:
                     pno += 1
-                    page = API.call("GET", "products", {"limit": 100, "page": pno, "sort": "id"}) or []
+                    page = API.urun_sayfasi(pno)
                     page = [p for p in page if isinstance(p, dict) and p.get("id")]
                 else:
-                    prm = {"limit": 100, "sort": "id"}
-                    if last:  # Ideasoft sinceId için en az 1 istiyor
-                        prm["sinceId"] = last
                     try:
-                        raw = API.call("GET", "products", prm) or []
+                        raw = API.urunler_sonra(last)
                     except ApiError as e:
                         if e.status != 400:
                             raise
@@ -1120,7 +957,7 @@ class SeoScanner:
             if self.stop_flag:
                 return
             self.phase = f"{label} okunuyor (sayfa {page})"
-            r = API.call("GET", res, dict(params or {}, limit=100, page=page)) or []
+            r = API.liste(res, dict(params or {}, limit=100, page=page))
             new = [x for x in r if x.get("id") not in seen]
             if not new:  # sayfa parametresi desteklenmiyorsa aynı kayıtlar döner: dur
                 return
@@ -1140,9 +977,9 @@ class SeoScanner:
             last, warned = 0, False
             # Liste yanıtında tamamlanan kural sayısı yoksa tek ürün kaydında olup olmadığına bak
             self.single = False
-            first = API.call("GET", "products", {"limit": 1, "sort": "id"}) or []
+            first = API.urunler_sonra(0, limit=1)
             if first and panel_pct(seo_fields(first[0])) is None:
-                full = API.call("GET", f"products/{first[0]['id']}") or {}
+                full = API.get_product(first[0]["id"]) or {}
                 if panel_pct(seo_fields(full)) is not None:
                     self.single = True
                     log("SEO yüzdesi tek tek ürün kayıtlarından okunacak (biraz daha uzun sürer).")
@@ -1151,15 +988,12 @@ class SeoScanner:
                 if self.stop_flag:
                     break
                 self.phase = "ürünler okunuyor"
-                prm = {"limit": 100, "sort": "id"}
-                if last:
-                    prm["sinceId"] = last
-                page = [p for p in (API.call("GET", "products", prm) or []) if p.get("id", 0) > last]
+                page = [p for p in API.urunler_sonra(last) if p.get("id", 0) > last]
                 if not page:
                     break
                 rows, bilgi, now = [], [], datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if self.single:
-                    page = pmap(lambda q: API.call("GET", f"products/{q['id']}") or q, page, 4)
+                    page = pmap(lambda q: API.get_product(q["id"]) or q, page, 4)
                 for p in page:
                     fields = seo_fields(p)
                     pct = panel_pct(fields)
@@ -1410,7 +1244,7 @@ class CatScanner:
         page, seen = 1, set()
         while not self.stop_flag:
             self.phase = f"{label} okunuyor (sayfa {page})"
-            r = API.call("GET", res, dict(params or {}, limit=100, page=page)) or []
+            r = API.liste(res, dict(params or {}, limit=100, page=page))
             new = [x for x in r if x.get("id") not in seen]
             if not new:
                 return
@@ -1429,10 +1263,7 @@ class CatScanner:
         prods, last, has_key = {}, 0, False
         while not self.stop_flag:
             self.phase = f"ürünler okunuyor ({len(prods):,} ürün)".replace(",", ".")
-            prm = {"limit": 100, "sort": "id"}
-            if last:
-                prm["sinceId"] = last
-            page = [p for p in (API.call("GET", "products", prm) or []) if p.get("id", 0) > last]
+            page = [p for p in API.urunler_sonra(last) if p.get("id", 0) > last]
             if not page:
                 break
             for p in page:
@@ -1497,7 +1328,7 @@ class CatScanner:
         fx = DBI.q("SELECT SUM(state='uygulandi') u, SUM(state='hata') h FROM catfix", one=True)
         return {"running": self.running, "phase": self.phase, "note": self.note, "stored": n,
                 "summary": rep.get("summary"), "generated": rep.get("generated"),
-                "panel": API.base() if CFG.get("store") else "", "jobs": CATJOBS.state(),
+                "panel": API.panel_adresleri() if CFG.get("store") else "", "jobs": CATJOBS.state(),
                 "applied": fx["u"] or 0, "failed": fx["h"] or 0,
                 "connected": bool(CFG.get("access_token") or CFG.get("refresh_token"))}
 
@@ -1603,25 +1434,6 @@ def _cat_ids(prod):
     return [i for i in (_ref_id(c) for c in (prod.get("categories") or [])) if i]
 
 
-def _write_cats(pid, prod, target, mode):
-    if mode == "put":
-        keep = {_ref_id(c): c for c in prod.get("categories") or []}
-        payload = {k: v for k, v in copy.deepcopy(prod).items() if k not in READONLY}
-        payload["categories"] = [keep.get(c) or {"id": c} for c in target]
-        API.call("PUT", f"products/{pid}", body=payload)
-        return
-    # ürün-kategori bağlantıları tek tek eklenir / silinir
-    cur = _cat_ids(API.get_product(pid))
-    for a in target:
-        if a not in cur:
-            API.call("POST", "product_to_categories", body={"product": {"id": pid}, "category": {"id": a}})
-    rm = [c for c in cur if c not in target]
-    if rm:
-        for link in API.call("GET", "product_to_categories", {"product": pid, "limit": 100}) or []:
-            if _ref_id(link.get("product")) == pid and _ref_id(link.get("category")) in rm and link.get("id"):
-                API.call("DELETE", f"product_to_categories/{link['id']}")
-
-
 def apply_categories(pid, add, rem, expect=None, bos_olabilir=False):
     """Ürüne add kategorilerini ekler, rem kategorilerini çıkarır. Dönüş: (durum, mesaj, önceki, sonraki)
     bos_olabilir: yalnızca geri alma; ürün düzeltmeden önce kategorisizdiyse yine kategorisiz kalabilir."""
@@ -1640,7 +1452,7 @@ def apply_categories(pid, add, rem, expect=None, bos_olabilir=False):
     last = ""
     for mode in [first] + [m for m in ("put", "link") if m != first]:
         try:
-            _write_cats(pid, prod, target, mode)
+            API.kategorileri_yaz(pid, prod, target, mode)
         except ApiError as e:
             last = str(e)[:200]
         after = API.get_product(pid)
@@ -1649,7 +1461,7 @@ def apply_categories(pid, add, rem, expect=None, bos_olabilir=False):
         if fp != fp_before:
             diff = [k for k, v in fp_before.items() if fp.get(k) != v]
             try:
-                API.call("PUT", f"products/{pid}", body={k: v for k, v in prod.items() if k not in READONLY})
+                API.urun_geri_yaz(pid, prod)
             except ApiError:
                 pass
             back = Ideasoft.fingerprint(API.get_product(pid))
@@ -1933,14 +1745,13 @@ def category_image_candidates(pids, limit=6):
     out = []
     for pid in pids[:15]:
         try:
-            recs = API.call("GET", "product_images", {"product": pid, "limit": 5}) or []
+            recs = API.gorseller(pid, 5)
         except ApiError:
             continue
-        recs = [r for r in recs if str((r.get("product") or {}).get("id", pid)) == str(pid)]
         recs.sort(key=lambda r: r.get("sortOrder") or 0)
         u = _image_url(recs[0]) if recs else ""
         if u:
-            out.append({"pid": pid, "url": "https:" + u if u.startswith("//") else (API.base() + u if u.startswith("/") else u)})
+            out.append({"pid": pid, "url": API.mutlak_url(u)})
         if len(out) >= limit:
             break
     return out
@@ -1949,7 +1760,7 @@ def category_image_candidates(pids, limit=6):
 def _category_schema():
     """Mağazadaki kategori kayıtlarının alan adları (alan adları sürüme göre değişebilir)."""
     try:
-        sample = API.call("GET", "categories", {"limit": 50}) or []
+        sample = API.liste("categories", {"limit": 50})
     except ApiError:
         sample = []
     keys = set()
@@ -1985,11 +1796,11 @@ def create_category(name, parent_id, seo=None, image_url=""):
     want = {sch["title"]: seo.get("pageTitle"), sch["desc"]: seo.get("metaDescription"), sch["keys"]: seo.get("metaKeywords")}
     want = {k: v for k, v in want.items() if v}
     body.update(want)
-    r = API.call("POST", "categories", body=body) or {}
+    r = API.kategori_ekle(body)
     cid = _ref_id(r.get("id"))
     if not cid:
         raise ApiError(0, f"Kategori oluşturuldu ama numarası okunamadı: {json.dumps(r)[:200]}")
-    got = API.call("GET", f"categories/{cid}") or {}
+    got = API.kategori(cid)
     notes = []
     if parent_id and _ref_id(got.get("parent")) != parent_id:
         notes.append("Kategori istenen üst kategorinin altında görünmüyor.")
@@ -2002,7 +1813,7 @@ def create_category(name, parent_id, seo=None, image_url=""):
 
     if image_url:
         notes.append(_category_image(cid, got, image_url, body["slug"], sch))
-    pct = panel_pct(seo_fields(API.call("GET", f"categories/{cid}") or {}))
+    pct = panel_pct(seo_fields(API.kategori(cid)))
     if pct is not None:
         notes.insert(0, f"Ideasoft SEO puanı: %{pct}.")
     notes = [n for n in notes if n]
@@ -2022,22 +1833,21 @@ def _category_image(cid, got, url, slug, sch):
     att = f"data:image/{mime};base64," + __import__("base64").b64encode(data).decode()
 
     def has_image():
-        c = API.call("GET", f"categories/{cid}") or {}
+        c = API.kategori(cid)
         return any(v for k, v in c.items() if re.search(r"image", k, re.I) and v and not isinstance(v, bool))
-    body = {k: v for k, v in got.items() if k not in READONLY}
+    body = API.yazilacak(got)
     body["attachment"] = att
     if sch.get("image"):
         body[sch["image"]] = f"{slug}.{ext}"
     errs = []
     try:
-        API.call("PUT", f"categories/{cid}", body=body)
+        API.kategori_yaz(cid, body)
         if has_image():
             return "Resim yüklendi."
     except ApiError as e:
         errs.append(str(e)[:120])
     try:  # bazı sürümlerde kategori resmi ayrı bir kaynaktan yüklenir
-        API.call("POST", "category_images", body={"category": {"id": cid}, "filename": slug, "extension": ext,
-                                                  "attachment": att})
+        API.kategori_gorseli_ekle(cid, slug, ext, att)
         if has_image():
             return "Resim yüklendi."
     except ApiError as e:
@@ -2220,7 +2030,7 @@ def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
     işler durur. Dönüş: (yazmadan sonraki ürün, None) ya da (None, hata mesajı)."""
     loc = kw_loc()
     fp_before = Ideasoft.fingerprint(prod)
-    payload = {k: v for k, v in copy.deepcopy(prod).items() if k not in READONLY}
+    payload = API.yazilacak(prod)
     if yeni_ad:
         payload["name"] = yeni_ad
         fp_before = dict(fp_before, name=yeni_ad)        # beklenen tek değişiklik
@@ -2230,20 +2040,14 @@ def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
         payload["detail"] = dict(payload["detail"], details=alanlar["details_html"])
     if loc["res"] == "product":
         jset(payload, loc["path"], alanlar["keyword"])
-    API.call("PUT", f"products/{pid}", body=payload)
-    if detail and detail.get("id"):
-        d = {k: v for k, v in detail.items() if k != "product"}
-        d.update(details=alanlar["details_html"], product={"id": pid}, sku=detail.get("sku") or prod.get("sku"))
-        API.call("PUT", f"product_details/{detail['id']}", body=d)
-    else:
-        API.call("POST", "product_details", body={"sku": prod.get("sku"), "details": alanlar["details_html"],
-                                                  "extraDetails": "", "product": {"id": pid}})
+    API.urun_yaz(pid, payload)
+    API.aciklama_yaz(pid, prod, detail, alanlar["details_html"])
     kw_write(pid, alanlar["keyword"], kw_rec)
     after = API.get_product(pid)
     if Ideasoft.fingerprint(after) != fp_before:
         diff = [k for k, v in fp_before.items() if Ideasoft.fingerprint(after).get(k) != v]
         try:
-            API.call("PUT", f"products/{pid}", body={k: v for k, v in prod.items() if k not in READONLY})
+            API.urun_geri_yaz(pid, prod)
         except ApiError:
             pass
         SEOJOBS.stop()
@@ -2314,10 +2118,9 @@ def send_plan(pid, edited=None):
     # Ideasoft'un hesapladığı yüzde (liste kaydında)
     pct = None
     for _ in range(2):
-        lst = API.call("GET", "products", {"ids": str(pid), "limit": 1}) or []
-        lst = [x for x in lst if x.get("id") == pid]
-        if lst:
-            pct = panel_pct(seo_fields(lst[0]))
+        kayit = API.urun_liste_kaydi(pid)
+        if kayit:
+            pct = panel_pct(seo_fields(kayit))
         if pct == 100:
             break
         time.sleep(1.5)
@@ -2710,10 +2513,7 @@ class Otopilot:
         """Numarası since'ten büyük bütün ürünler (Ideasoft ürün numaraları artarak verilir)."""
         out, last = [], since
         while True:
-            prm = {"limit": 100, "sort": "id"}
-            if last:
-                prm["sinceId"] = last
-            page = [p for p in (API.call("GET", "products", prm) or []) if p.get("id", 0) > last]
+            page = [p for p in API.urunler_sonra(last) if p.get("id", 0) > last]
             if not page:
                 return out
             out += page
@@ -3099,7 +2899,7 @@ class Tenant:
         try:
             self.cfg = Config(self.path("ayarlar.json"))
             self.dbi = DB(self.path("durum.db"))
-            self.api = Ideasoft()
+            self.api = yeni_platform()
             self.img = ImgScanner()
             self.seoscan = SeoScanner()
             self.seojobs = SeoJobs()
@@ -3877,7 +3677,7 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sayilar": Counter(g["tur"] for g in gruplar), "toplam": len(gruplar),
                                     "gruplar": gruplar[page * 30:(page + 1) * 30], "turler": {k: v[0] for k, v in KP.TURLER.items()},
                                     "taranan": DBI.q("SELECT COUNT(*) n FROM urunbilgi", one=True)["n"],
-                                    "panel": API.base() if CFG.get("store") else ""})
+                                    "panel": API.panel_adresleri() if CFG.get("store") else ""})
         if p == "/api/uyarilar":
             items, taranan = uyarilar()
             say = Counter(u["tur"] for u in items)
@@ -3887,7 +3687,7 @@ class H(BaseHTTPRequestHandler):
             page = max(0, int(q.get("page") or 0))
             return self._send(200, {"taranan": taranan, "sayilar": say, "toplam": len(sec), "items": sec[page * 50:(page + 1) * 50],
                                     "turler": UY.TURLER, "gruplar": UY.GRUPLAR,
-                                    "panel": API.base() if CFG.get("store") else ""})
+                                    "panel": API.panel_adresleri() if CFG.get("store") else ""})
         if p == "/api/seo/state":
             st = SEOSCAN.state()
             st["jobs"] = SEOJOBS.state()
@@ -3925,7 +3725,7 @@ class H(BaseHTTPRequestHandler):
                          args + [page * 100])
             return self._send(200, {"total": total, "items": [dict(r) for r in rows]})
         if p == "/api/seo/raw":
-            prod = API.call("GET", f"products/{int(q.get('pid') or 0)}") or {}
+            prod = API.get_product(int(q.get("pid") or 0)) or {}
             keep = {k: v for k, v in prod.items() if not isinstance(v, (list, dict))}
             keep["_nesneler"] = sorted(k for k, v in prod.items() if isinstance(v, (list, dict)))
             return self._send(200, keep)
@@ -3937,7 +3737,7 @@ class H(BaseHTTPRequestHandler):
             d["fails"] = json.loads(d["fails"] or "[]")
             d["plan"] = json.loads(d["plan"]) if d.get("plan") else None
             d["has_backup"] = bool(d.pop("backup", None))
-            d["panel_url"] = f"{API.base()}/panel/products/edit/{d['pid']}"
+            d["panel_url"] = API.panel_adresleri()["urun"] + str(d["pid"])
             return self._send(200, d)
         if p == "/api/overview":
             return self._send(200, overview())
@@ -3970,7 +3770,7 @@ class H(BaseHTTPRequestHandler):
             if not r:
                 return self._send(200, {"error": "Bulunamadı"})
             d = dict(r)
-            d["panel_url"] = f"{API.base()}/panel/products/edit/{d['pid']}"
+            d["panel_url"] = API.panel_adresleri()["urun"] + str(d["pid"])
             return self._send(200, d)
         if p == "/api/img/map":
             rows = DBI.q("SELECT pid, has FROM img ORDER BY pid")

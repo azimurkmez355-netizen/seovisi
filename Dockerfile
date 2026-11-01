@@ -6,6 +6,7 @@ ENV PYTHONUNBUFFERED=1 PYTHONUTF8=1
 WORKDIR /app
 COPY *.py paketler.json ./
 COPY ui ./ui
+COPY platformlar ./platformlar
 RUN useradd --system --uid 1000 seovisi && mkdir -p /app/data /yedek && chown seovisi /app/data /yedek
 USER seovisi
 

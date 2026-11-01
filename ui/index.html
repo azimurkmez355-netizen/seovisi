@@ -1357,7 +1357,7 @@ function progHtml(j){
   const pct = j.todo ? Math.floor(j.done / j.todo * 100) : 0;
   const res = (j.results || []).map(r => r.error
     ? `<li class="bad-t" style="font-weight:400"><b>${esc(r.name)}</b>: açılamadı — ${esc(r.error)}</li>`
-    : `<li style="font-weight:400"><b>${esc(r.name)}</b> açıldı (no ${r.cid})${CS && CS.panel ? ` · <a target="_blank" rel="noopener" href="${esc(CS.panel)}/panel/categories/edit/${r.cid}">panelde aç</a>` : ''}
+    : `<li style="font-weight:400"><b>${esc(r.name)}</b> açıldı (no ${r.cid})${CS && CS.panel ? ` · <a target="_blank" rel="noopener" href="${esc(CS.panel.kategori)}${r.cid}">panelde aç</a>` : ''}
         <div style="font-size:13px">${(r.notes||[]).map(n => `<span class="${/kaydetmedi|yüklenemedi|indirilemedi/.test(n) ? 'bad-t' : 'ok-t'}" style="font-weight:400">${esc(n)}</span>`).join(' · ')}</div></li>`).join('');
   return `<div class="meter"><div class="m"><span style="width:${pct}%;background:${j.running ? 'var(--isle)' : 'var(--yesil)'}"></span></div><b>%${pct}</b></div>
     <p class="muted" style="margin:4px 0">${j.running ? 'Şu an: ' + esc(j.current || '…') : 'Tamamlandı.'}</p>
@@ -1428,7 +1428,7 @@ async function cRows(){
   $('#cpinfo').textContent = `${r.total.toLocaleString('tr-TR')} kayıt, sayfa ${cpage+1} / ${Math.max(1, Math.ceil(r.total/100))}`;
   cSelInfo();
 }
-const panelLink = pid => CS && CS.panel ? `<a class="btn ghost" href="${esc(CS.panel)}/panel/products/edit/${pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : '';
+const panelLink = pid => CS && CS.panel ? `<a class="btn ghost" href="${esc(CS.panel.urun)}${pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : '';
 const sugHtml = it => !it.sug ? '<span class="muted">Öneri yok, tıklayıp kategori seçin</span>'
   : `<b>${esc(it.sug)}</b>${it.strength === 'olasi' ? ' <span class="pill" style="color:#9a6b00"><i style="background:var(--warn)"></i>olası</span>' : ''}`;
 let CTREE = null;
@@ -1497,7 +1497,7 @@ async function cGroup(i){
     <h3 style="font:600 15px var(--disp);margin:18px 0 6px">Ürünler</h3>
     <table><thead><tr><th>Ürün no</th><th>Stok kodu</th><th>Ürün adı</th><th>Kategorisi</th></tr></thead>
     <tbody>${g.products.map(p => `<tr data-pid="${p.pid}"><td class="n">${p.pid}</td><td>${esc(p.sku)}</td><td>${esc(p.name)}</td><td>${esc(p.cats)}</td></tr>`).join('')}</tbody></table>`;
-  if(CS && CS.panel) document.querySelectorAll('#dbody tr[data-pid]').forEach(tr => tr.onclick = () => window.open(`${CS.panel}/panel/products/edit/${tr.dataset.pid}`, '_blank', 'noopener'));
+  if(CS && CS.panel) document.querySelectorAll('#dbody tr[data-pid]').forEach(tr => tr.onclick = () => window.open(`${CS.panel.urun}${tr.dataset.pid}`, '_blank', 'noopener'));
   $('#drawer').classList.add('open'); $('#drawer').setAttribute('aria-hidden','false');
   if(alt){ $('#c-regen').onclick = () => cNewSeo(i, g, false); cNewSeo(i, g, true); }
 }
@@ -1777,7 +1777,7 @@ async function uRows(){
       <td><b>${esc(x.name)}</b><br><small class="muted">${esc(x.sku)} · no ${x.pid}</small></td>
       <td><span class="pill"><i style="background:${renk[x.grup]}"></i>${esc(x.baslik)}</span><br><small>${esc(x.mesaj)}</small></td>
       <td style="white-space:nowrap">${para(x.satis, x.para)}</td>
-      <td>${r.panel ? `<a class="btn ghost sm" href="${esc(r.panel)}/panel/products/edit/${x.pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : ''}</td></tr>`).join('')
+      <td>${r.panel ? `<a class="btn ghost sm" href="${esc(r.panel.urun)}${x.pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>` : ''}</td></tr>`).join('')
     : `<tr><td colspan="4" class="muted">${r.taranan ? 'Bu süzgece uyan uyarı yok.' : 'Henüz taranmadı.'}</td></tr>`;
   $('#upinfo').textContent = r.toplam ? `${nf(upage * 50 + 1)}–${nf(Math.min(r.toplam, (upage + 1) * 50))} / ${nf(r.toplam)}` : '';
   $('#uprev').disabled = upage === 0; $('#unext').disabled = (upage + 1) * 50 >= r.toplam;
@@ -1787,7 +1787,7 @@ function kRows(){
   const r = UK; if(!r.gruplar) return;
   $('#uthead').innerHTML = '<th>Kopya</th><th>Ortak değer</th><th>Ürünler</th>'; $('#uq').hidden = true;
   $('#u-info').textContent = 'Aynı stok kodunu, barkodu, adı, sayfa başlığını ya da meta açıklamayı taşıyan ürünler. Aynı içerikli sayfalardan Google çoğu zaman yalnızca birini gösterir. Mağazada hiçbir şey değiştirilmez.';
-  const panel = pid => r.panel ? ` <a href="${esc(r.panel)}/panel/products/edit/${pid}" target="_blank" rel="noopener">panelde aç</a>` : '';
+  const panel = pid => r.panel ? ` <a href="${esc(r.panel.urun)}${pid}" target="_blank" rel="noopener">panelde aç</a>` : '';
   $('#urows').innerHTML = r.gruplar.length ? r.gruplar.map(g => `<tr>
       <td><span class="pill"><i style="background:${g.tur === 'ayni_sku' || g.tur === 'ayni_barkod' ? 'var(--kirmizi)' : 'var(--sari)'}"></i>${esc(g.baslik)}</span><br><small>${esc(g.mesaj)}</small></td>
       <td style="max-width:260px;overflow-wrap:anywhere">${esc(g.deger)}</td>

@@ -31,6 +31,8 @@ def copy_app(dst):
         if f.endswith((".py", ".json")):
             shutil.copy(os.path.join(SRC, f), dst)
     shutil.copytree(os.path.join(SRC, "ui"), os.path.join(dst, "ui"))
+    shutil.copytree(os.path.join(SRC, "platformlar"), os.path.join(dst, "platformlar"),
+                    ignore=shutil.ignore_patterns("__pycache__"))
 
 
 def req(port, method, path, body=None, cookie=None, form=False, headers=None, panel=True):
@@ -253,7 +255,7 @@ def uyarilar(port, ca, cb):
     check("uyarılar bırakılan beş hatayı bulur", a["taranan"] == 425 and a["sayilar"] == {
         "fiyat_yok": 1, "indirim": 1, "uc_fiyat": 1, "zarar": 1, "stok_yok": 1}, (a.get("taranan"), a.get("sayilar")))
     check("uyarı satırı açıklama ve panel bağlantısı taşır",
-          all(x["mesaj"] and x["sku"] for x in a["items"]) and a["panel"] == "https://a-magaza.com", a["items"][:1])
+          all(x["mesaj"] and x["sku"] for x in a["items"]) and a["panel"]["urun"] == "https://a-magaza.com/panel/products/edit/", a["items"][:1])
     f = req(port, "GET", "/api/uyarilar?tur=fiyat", cookie=ca)[2]
     check("uyarılar gruba göre süzülür", f["toplam"] == 4 and all(x["grup"] == "fiyat" for x in f["items"]), f.get("toplam"))
     b = req(port, "GET", "/api/uyarilar", cookie=cb)[2]
@@ -264,7 +266,7 @@ def uyarilar(port, ca, cb):
     check("kopya: aynı stok kodu ve barkod bulunur", ka["sayilar"].get("ayni_sku") == 1 and ka["sayilar"].get("ayni_barkod") == 1
           and ka["sayilar"].get("ayni_ad", 0) > 0, ka.get("sayilar"))
     check("kopya grubu ürünleri ve panel bağlantısını taşır",
-          all(len(g["urunler"]) >= 2 and g["mesaj"] for g in ka["gruplar"]) and ka["panel"] == "https://a-magaza.com")
+          all(len(g["urunler"]) >= 2 and g["mesaj"] for g in ka["gruplar"]) and ka["panel"]["urun"] == "https://a-magaza.com/panel/products/edit/")
     check("kopya: diğer mağazada stok kodu / barkod kopyası yok, mağazalar ayrı",
           not kb["sayilar"].get("ayni_sku") and not kb["sayilar"].get("ayni_barkod"), kb.get("sayilar"))
     check("genel bakış kopya grubu sayısını gösterir", c["kopya"] == ka["toplam"] > 0, (c["kopya"], ka["toplam"]))
