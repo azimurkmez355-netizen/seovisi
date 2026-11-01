@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>seovisi — yönetim</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<style>
+/* Yönetici paneli: mağaza panelinin renkleriyle (ui/index.html), ondan bağımsız tek sayfa. */
+:root{
+  --bg:#f3f4f1; --surface:#ffffff; --surface2:#f8f9f6; --line:#e3e5e0; --line2:#cfd3cc;
+  --ink:#15161a; --ink2:#535a64; --ink3:#868d97;
+  --brand:#2f4bf0; --brand2:#2238c4; --brand-soft:#eceefd;
+  --ok:#1e9e5a; --ok-soft:#e6f5ec; --warn:#b07a00; --warn-soft:#fdf4da; --bad:#d23c22; --bad-soft:#fcebe7;
+  --r:10px; --r-s:7px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#111216; --surface:#1a1c21; --surface2:#20232a; --line:#2c2f37; --line2:#3a3e48;
+  --ink:#eef0f4; --ink2:#b4b9c4; --ink3:#868d97;
+  --brand:#7186ff; --brand2:#93a3ff; --brand-soft:#232a4d;
+  --ok:#4cc985; --ok-soft:#173826; --warn:#f0bf4c; --warn-soft:#3a3016; --bad:#ff7b6b; --bad-soft:#41201b;
+}}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14.5px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px}
+[hidden]{display:none!important}
+.muted{color:var(--ink3)}
+header{display:flex;align-items:center;gap:14px;padding:14px 24px;background:var(--surface);border-bottom:1px solid var(--line)}
+header img{height:26px;display:block}
+header b{font-size:15px;color:var(--ink2);font-weight:600}
+header .sp{flex:1}
+main{max-width:1240px;margin:0 auto;padding:24px 24px 60px}
+h2{font-size:17px;margin:30px 0 12px}
+.btn{border:1px solid var(--line2);background:var(--surface);border-radius:var(--r-s);padding:7px 13px;cursor:pointer;font-weight:600}
+.btn:hover{border-color:var(--ink3)}
+.btn.pri{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.pri:hover{background:var(--brand2)}
+.btn.s{padding:4px 10px;font-size:13px}
+input,select{border:1px solid var(--line2);background:var(--surface);border-radius:var(--r-s);padding:8px 10px;min-width:0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.card .n{font-size:26px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.card .l{color:var(--ink2);font-size:13px}
+.card.warn .n{color:var(--warn)} .card.bad .n{color:var(--bad)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.bar input{flex:1 1 220px}
+.tbl{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+th{font-size:12px;color:var(--ink2);font-weight:600;background:var(--surface2)}
+tr:last-child td{border-bottom:0}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+td.msg{white-space:normal;min-width:280px}
+.m b{display:block}
+.m span{color:var(--ink3);font-size:12.5px}
+.tag{display:inline-block;padding:1px 8px;border-radius:20px;font-size:12px;font-weight:600;background:var(--surface2);color:var(--ink2)}
+.tag.aktif{background:var(--ok-soft);color:var(--ok)} .tag.deneme{background:var(--brand-soft);color:var(--brand)}
+.tag.suresi_doldu,.tag.iptal{background:var(--bad-soft);color:var(--bad)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--bad);margin-right:6px}
+.dot.ok{background:var(--ok)}
+.hata-n{color:var(--bad);font-weight:600;background:none;border:0;padding:0;cursor:pointer;text-decoration:underline}
+.yakin{color:var(--warn);font-weight:600}
+.form{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px;
+  grid-template-columns:repeat(auto-fill,minmax(190px,1fr));align-items:end}
+.form label{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--ink2)}
+.form .wide{grid-column:1/-1}
+.form .act{display:flex;gap:8px;flex-wrap:wrap}
+.msgline{margin:8px 0 0;font-weight:600}
+.msgline.ok{color:var(--ok)} .msgline.bad{color:var(--bad)}
+.login{max-width:380px;margin:12vh auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:30px 28px}
+.login h1{font-size:20px;margin:16px 0 6px}
+.login p{color:var(--ink2);margin:0 0 16px}
+.login input{width:100%;margin-bottom:12px}
+.login .btn{width:100%;padding:10px}
+.login code{font-size:12.5px;background:var(--surface2);padding:2px 6px;border-radius:5px}
+@media (max-width:640px){header{padding:12px 16px}main{padding:16px 16px 48px}}
+</style>
+</head>
+<body>
+
+<div class="login" id="y-login" hidden>
+  <img src="/marka/seovisi-logo.svg" alt="seovisi" height="28">
+  <h1>Yönetici girişi</h1>
+  <p id="y-login-note">Bu sayfa yalnızca seovisi yöneticisi içindir.</p>
+  <form id="y-login-f">
+    <input type="password" id="y-parola" autocomplete="current-password" placeholder="Yönetici parolası" required>
+    <button class="btn pri" type="submit">Giriş yap</button>
+  </form>
+  <p class="msgline bad" id="y-login-err" hidden></p>
+</div>
+
+<div id="y-app" hidden>
+<header>
+  <img src="/marka/seovisi-logo.svg" alt="seovisi"><b>Yönetim</b><span class="sp"></span>
+  <button class="btn s" id="y-yenile" type="button">Yenile</button>
+  <button class="btn s" id="y-cikis" type="button">Çıkış</button>
+</header>
+<main>
+  <div class="cards" id="y-ozet"></div>
+
+  <h2>Mağazalar</h2>
+  <div class="bar">
+    <input id="y-ara" type="search" placeholder="Mağaza ara (ad ya da adres)">
+    <select id="y-filtre">
+      <option value="">Hepsi</option>
+      <option value="aktif">Aktif</option>
+      <option value="deneme">Deneme</option>
+      <option value="yakin">30 gün içinde bitecek</option>
+      <option value="ucretsiz">Ücretsiz / süresi dolan / iptal</option>
+      <option value="hata">Son 7 günde hatası olan</option>
+      <option value="baglanti">Bağlantısı kopuk</option>
+    </select>
+    <button class="btn pri" id="y-yeni" type="button">Abonelik aç</button>
+  </div>
+  <div class="tbl"><table>
+    <thead><tr><th>Mağaza</th><th>Paket</th><th>Durum</th><th>Bitiş</th><th>Ürün</th><th>Bağlantı</th><th>Otopilot</th>
+      <th>Bugün istek</th><th>Son işlem</th><th>Hata (7 gün)</th><th></th></tr></thead>
+    <tbody id="y-liste"></tbody>
+  </table></div>
+
+  <h2 id="y-form-baslik">Abonelik</h2>
+  <form class="form" id="y-form">
+    <label class="wide">Mağaza (adres, örn. magaza.myideasoft.com)
+      <input id="y-magaza" required autocomplete="off"></label>
+    <label>Paket <select id="y-paket"></select></label>
+    <label>Durum <select id="y-durum"></select></label>
+    <label>Bitiş tarihi <input id="y-bitis" type="date"></label>
+    <div class="act">
+      <button class="btn s" type="button" data-uzat="1">+1 ay</button>
+      <button class="btn s" type="button" data-uzat="12">+1 yıl</button>
+    </div>
+    <div class="act wide">
+      <button class="btn pri" type="submit">Kaydet</button>
+      <button class="btn" type="button" id="y-temizle">Temizle</button>
+    </div>
+  </form>
+  <p class="msgline" id="y-form-msg" hidden></p>
+
+  <h2>Son hatalar <span class="muted" id="y-hata-filtre"></span></h2>
+  <div class="tbl"><table>
+    <thead><tr><th>Zaman</th><th>Mağaza</th><th>Hata</th></tr></thead>
+    <tbody id="y-hatalar"></tbody>
+  </table></div>
+</main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
+const sayi = n => Number(n || 0).toLocaleString('tr-TR');
+const tarih = s => s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : '';
+let D = null, HATA = [], HATA_MAGAZA = '';
+
+async function api(path, body) {
+  const r = await fetch(path, body === undefined ? {headers: {'X-Seovisi': '1'}} :
+    {method: 'POST', headers: {'X-Seovisi': '1', 'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  const j = await r.json().catch(() => ({}));
+  if (r.status === 401 && j.giris) { girisGoster(j.parola_var); throw new Error(j.error); }
+  if (!r.ok) throw new Error(j.error || ('Hata ' + r.status));
+  return j;
+}
+
+function girisGoster(parolaVar) {
+  $('#y-app').hidden = true;
+  $('#y-login').hidden = false;
+  $('#y-login-note').innerHTML = parolaVar === false
+    ? 'Yönetici parolası henüz belirlenmemiş. Sunucuda şu komutu çalıştırın:<br><code>python app.py --yonetici-parola</code>'
+    : 'Bu sayfa yalnızca seovisi yöneticisi içindir.';
+  $('#y-parola').focus();
+}
+
+async function yukle() {
+  D = await api('/yonetim/api/durum');
+  HATA = (await api('/yonetim/api/hatalar')).hatalar;
+  $('#y-login').hidden = true;
+  $('#y-app').hidden = false;
+  if (!$('#y-paket').options.length) {
+    $('#y-paket').innerHTML = D.paketler.map(p => `<option value="${esc(p.id)}">${esc(p.ad)}${p.urun ? ' (' + sayi(p.urun) + ' ürün)' : ''}</option>`).join('');
+    $('#y-durum').innerHTML = D.durumlar.map(d => `<option value="${esc(d.id)}">${esc(d.ad)}</option>`).join('');
+    $('#y-durum').value = 'aktif';
+  }
+  ozetCiz(); listeCiz(); hataCiz();
+}
+
+function ozetCiz() {
+  const o = D.ozet;
+  const k = [['Mağaza', o.toplam], ['Bağlı', o.bagli], ['Aktif abonelik', o.aktif], ['Deneme', o.deneme],
+    ['Ücretsiz / süresi dolan', o.ucretsiz], ['30 gün içinde bitecek', o.yakinda, o.yakinda ? 'warn' : ''],
+    ['Otopilot açık', o.otopilot], ['Bugünkü Ideasoft isteği', o.istek_bugun], ['Hata (7 gün)', o.hata_7g, o.hata_7g ? 'bad' : '']];
+  $('#y-ozet').innerHTML = k.map(([l, n, c]) => `<div class="card ${c || ''}"><div class="n">${sayi(n)}</div><div class="l">${l}</div></div>`).join('');
+}
+
+function uyar(r) {
+  const f = $('#y-filtre').value, a = r.abonelik, q = $('#y-ara').value.trim().toLowerCase();
+  if (q && !(r.ad + ' ' + r.magaza + ' ' + r.id).toLowerCase().includes(q)) return false;
+  if (f === 'aktif' || f === 'deneme') return a.durum === f;
+  if (f === 'yakin') return a.kalan_gun != null && a.kalan_gun <= 30;
+  if (f === 'ucretsiz') return !['aktif', 'deneme'].includes(a.durum);
+  if (f === 'hata') return r.hata_7g > 0;
+  if (f === 'baglanti') return !r.bagli;
+  return true;
+}
+
+function listeCiz() {
+  const rows = D.magazalar.filter(uyar);
+  $('#y-liste').innerHTML = rows.length ? rows.map(r => {
+    const a = r.abonelik;
+    const kalan = a.kalan_gun == null ? '' : ` <span class="${a.kalan_gun <= 30 ? 'yakin' : 'muted'}">(${a.kalan_gun} gün)</span>`;
+    const baglanti = !r.giris ? '<span class="muted">Giriş yapmadı</span>'
+      : `<span class="dot ${r.bagli ? 'ok' : ''}"></span>${r.bagli ? 'Bağlı' : 'Kopuk'}`;
+    const isler = r.isler.length ? `<br><span class="muted">${esc(r.isler.join(', '))}</span>` : '';
+    return `<tr>
+      <td class="m"><b>${esc(r.ad || r.magaza || r.id)}</b><span>${esc(r.magaza || r.id)}</span></td>
+      <td>${esc(a.ad)}</td>
+      <td><span class="tag ${esc(a.durum)}">${esc(a.durum_adi)}</span></td>
+      <td>${a.bitis ? tarih(a.bitis) + kalan : '<span class="muted">—</span>'}</td>
+      <td class="num">${sayi(r.urun)}</td>
+      <td>${baglanti}${isler}</td>
+      <td>${r.otopilot ? 'Açık' : '<span class="muted">Kapalı</span>'}</td>
+      <td class="num">${sayi(r.istek_bugun)}</td>
+      <td>${r.son_islem ? tarih(r.son_islem) + ' ' + r.son_islem.slice(11, 16) : '<span class="muted">—</span>'}</td>
+      <td class="num">${r.hata_7g ? `<button class="hata-n" type="button" data-hata="${esc(r.id)}">${sayi(r.hata_7g)}</button>` : '0'}</td>
+      <td><button class="btn s" type="button" data-duzenle="${esc(r.id)}">Düzenle</button></td></tr>`;
+  }).join('') : '<tr><td colspan="11" class="muted">Mağaza yok.</td></tr>';
+}
+
+function hataCiz() {
+  const ad = id => { const r = D.magazalar.find(x => x.id === id); return r ? (r.magaza || r.id) : id; };
+  const rows = HATA.filter(h => !HATA_MAGAZA || h.id === HATA_MAGAZA);
+  $('#y-hata-filtre').innerHTML = HATA_MAGAZA
+    ? `— ${esc(ad(HATA_MAGAZA))} <button class="btn s" type="button" id="y-hata-hepsi">Hepsini göster</button>` : '';
+  $('#y-hatalar').innerHTML = rows.length ? rows.map(h => `<tr><td>${tarih(h.zaman)} ${esc(h.zaman.slice(11, 16))}</td>
+    <td>${esc(ad(h.id))}</td><td class="msg">${esc(h.mesaj)}</td></tr>`).join('')
+    : '<tr><td colspan="3" class="muted">Son 7 günde hata yok.</td></tr>';
+}
+
+function formDoldur(r) {
+  const msg = $('#y-form-msg');
+  msg.hidden = true;
+  if (!r) {
+    $('#y-form-baslik').textContent = 'Abonelik aç';
+    $('#y-form').reset();
+    $('#y-durum').value = 'aktif';
+    $('#y-magaza').readOnly = false;
+  } else {
+    const a = r.abonelik;
+    $('#y-form-baslik').textContent = 'Abonelik: ' + (r.magaza || r.id);
+    $('#y-magaza').value = r.id;
+    $('#y-magaza').readOnly = true;
+    $('#y-paket').value = a.kayitli_paket && D.paketler.some(p => p.id === a.kayitli_paket) ? a.kayitli_paket : a.paket;
+    $('#y-durum').value = D.durumlar.some(d => d.id === a.durum) ? a.durum : 'aktif';
+    $('#y-bitis').value = a.bitis || '';
+  }
+  $('#y-form').scrollIntoView({behavior: 'smooth', block: 'center'});
+  (r ? $('#y-paket') : $('#y-magaza')).focus({preventScroll: true});
+}
+
+function uzat(ay) {
+  // bitiş bugünden ileriyse ondan, geçmişse bugünden itibaren uzatılır
+  const bugun = new Date(), v = $('#y-bitis').value;
+  let d = v ? new Date(v + 'T12:00:00') : bugun;
+  if (d < bugun) d = bugun;
+  d.setMonth(d.getMonth() + ay);
+  $('#y-bitis').value = [d.getFullYear(), String(d.getMonth() + 1).padStart(2, '0'), String(d.getDate()).padStart(2, '0')].join('-');
+  if (!['aktif', 'deneme'].includes($('#y-durum').value)) $('#y-durum').value = 'aktif';
+}
+
+$('#y-login-f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = $('#y-login-err');
+  err.hidden = true;
+  try {
+    await api('/yonetim/giris', {parola: $('#y-parola').value});
+    $('#y-parola').value = '';
+    await yukle();
+  } catch (x) { err.textContent = x.message; err.hidden = false; }
+});
+$('#y-cikis').addEventListener('click', async () => { await api('/yonetim/cikis', {}).catch(() => {}); girisGoster(); });
+$('#y-yenile').addEventListener('click', () => yukle().catch(x => alert(x.message)));
+// ücretli paket ücretsiz durumla kaydedilemez (sunucu ücretsize çevirirdi); seçimler birbirini izler
+$('#y-paket').addEventListener('change', () => {
+  const d = $('#y-durum');
+  if ($('#y-paket').value === 'ucretsiz') d.value = 'ucretsiz';
+  else if (d.value === 'ucretsiz') d.value = 'aktif';
+});
+$('#y-durum').addEventListener('change', () => { if ($('#y-durum').value === 'ucretsiz') $('#y-paket').value = 'ucretsiz'; });
+$('#y-ara').addEventListener('input', listeCiz);
+$('#y-filtre').addEventListener('change', listeCiz);
+$('#y-yeni').addEventListener('click', () => formDoldur(null));
+$('#y-temizle').addEventListener('click', () => formDoldur(null));
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-duzenle],[data-hata],[data-uzat],#y-hata-hepsi');
+  if (!b) return;
+  if (b.dataset.duzenle) formDoldur(D.magazalar.find(r => r.id === b.dataset.duzenle));
+  else if (b.dataset.hata) { HATA_MAGAZA = b.dataset.hata; hataCiz(); $('#y-hatalar').scrollIntoView({behavior: 'smooth'}); }
+  else if (b.dataset.uzat) uzat(Number(b.dataset.uzat));
+  else { HATA_MAGAZA = ''; hataCiz(); }
+});
+$('#y-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('#y-form-msg');
+  try {
+    const r = await api('/yonetim/api/abonelik', {magaza: $('#y-magaza').value, paket: $('#y-paket').value,
+      durum: $('#y-durum').value, bitis: $('#y-bitis').value});
+    await yukle();
+    const a = r.magaza.abonelik;
+    msg.className = 'msgline ok';
+    msg.textContent = `Kaydedildi: ${r.magaza.magaza || r.magaza.id} — ${a.ad}, ${a.durum_adi}${a.bitis ? ', bitiş ' + tarih(a.bitis) : ''}.`
+      + (r.magaza.giris ? '' : ' Mağaza henüz giriş yapmadı; ilk girişte bu kayıt geçerli olur.');
+  } catch (x) { msg.className = 'msgline bad'; msg.textContent = x.message; }
+  msg.hidden = false;
+});
+
+yukle().catch(() => {});
+</script>
+</body>
+</html>

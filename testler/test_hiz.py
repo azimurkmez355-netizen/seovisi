@@ -67,6 +67,17 @@ class Sinir(unittest.TestCase):
         th.acquire("yavas")
         self.assertGreater(time.monotonic() - t0, 0.45)
 
+    def test_gunluk_istek_sayisi(self):                  # yönetici panelindeki "bugün istek"
+        th = app.Throttle(lambda: (6000, 100000))
+        for _ in range(3):
+            th.acquire("a")
+        th.acquire("b")
+        self.assertEqual((th.bugun("a"), th.bugun("b"), th.bugun("c")), (3, 1, 0))
+        th.gunluk["a"][0] = "2000-01-01"                  # dünkü sayı bugüne taşınmaz
+        self.assertEqual(th.bugun("a"), 0)
+        th.acquire("a")
+        self.assertEqual(th.bugun("a"), 1)
+
     def test_ayardan_okunur(self):
         srv = app.SRV
         try:

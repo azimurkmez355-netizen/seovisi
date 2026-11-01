@@ -45,6 +45,7 @@ import kopya as KP  # noqa: E402
 import baglanti as BG  # noqa: E402
 import rapor as RP  # noqa: E402
 import yedek as YD  # noqa: E402
+import yonetim as YN  # noqa: E402
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(BASE, "data")
@@ -325,6 +326,7 @@ class Throttle:
         self.stores = {}          # mağaza -> {"tok", "at", "until", "served"}
         self.total = None         # [jeton, son dolum]
         self.waiting = {}         # mağaza -> sıradaki istekler (FIFO)
+        self.gunluk = {}          # mağaza -> [gün, bugünkü istek sayısı] (yönetici paneli)
 
     @staticmethod
     def _fill(b, rate, now):
@@ -363,6 +365,9 @@ class Throttle:
                             s["b"][0] -= 1
                             self.total[0] -= 1
                             s["served"] = now
+                            gun = time.strftime("%Y-%m-%d")
+                            g = self.gunluk.get(key)
+                            self.gunluk[key] = [gun, (g[1] if g and g[0] == gun else 0) + 1]
                             q.popleft()
                             self.cv.notify_all()
                             return
@@ -378,6 +383,12 @@ class Throttle:
                 if not q and self.waiting.get(key) is q:
                     del self.waiting[key]
                     self.cv.notify_all()
+
+    def bugun(self, key):
+        """Mağazanın bugün Ideasoft'a gönderdiği istek sayısı."""
+        with self.cv:
+            g = self.gunluk.get(key)
+        return g[1] if g and g[0] == time.strftime("%Y-%m-%d") else 0
 
     def pause(self, key, seconds):
         """Ideasoft "yavaşla" (429) dediğinde mağazanın isteklerini bir süre durdurur."""
@@ -3270,6 +3281,95 @@ def session_tenant(cookie_header):
     return parts[0]
 
 
+# ============================================================ yönetici paneli
+#
+# /yonetim: yalnızca sunucu kipinde, mağaza oturumundan tamamen ayrı. Parola data/yonetici.json'da karma olarak durur
+# (python app.py --yonetici-parola). Çerez "svy" yalnızca /yonetim yolunda geçerli, SameSite=Strict, 12 saat; sayfa
+# hiçbir çerçevede açılmaz. Girişten başka her POST gibi buradakiler de X-Seovisi başlığı ister.
+
+ADMIN_TRIES = RateLimit(10, 900)  # yönetici girişi: aynı adresten 15 dakikada en çok 10 deneme
+UI_YONETIM = os.path.join(BASE, "ui", "yonetim.html")
+_IS_ADI = (("seoscan", "SEO taraması"), ("catscan", "Kategori analizi"), ("img", "Görsel taraması"),
+           ("links", "Kırık bağlantı taraması"), ("seojobs", "SEO gönderimi"), ("catjobs", "Kategori düzeltme"),
+           ("gecis", "Şablon geçişi"), ("oto", "Otopilot"))
+
+
+def yonetici_cerezi(deger="", clear=False):
+    site = "; Secure" if SRV.get("public_url", "").startswith("https://") else ""
+    age = 0 if clear else YN.OTURUM_SAAT * 3600
+    return f"svy={'' if clear else deger}; Path=/yonetim; HttpOnly; SameSite=Strict{site}; Max-Age={age}"
+
+
+def yonetici_oturumu(cookie_header):
+    c = http.cookies.SimpleCookie()
+    try:
+        c.load(cookie_header or "")
+    except http.cookies.CookieError:
+        return False
+    return "svy" in c and YN.cerez_gecerli(SRV.get("secret"), YN.oku(DATA), c["svy"].value)
+
+
+def yonetim_satiri(tid):
+    """Bir mağazanın özeti. Hiç giriş yapmamış (yalnızca aboneliği açılmış) mağazanın klasörüne ayar yazılmaz."""
+    d = os.path.join(STORES, tid)
+    kayit = AB.oku(d) if os.path.isfile(os.path.join(d, AB.FILE)) else {}   # okumak, kaydı olmayana kayıt açardı
+    a = AB.gecerli(kayit)
+    row = {"id": tid, "magaza": "", "ad": "", "bagli": False, "giris": known_tenant(tid), "abonelik": a,
+           "kaynak": kayit.get("kaynak"), "urun": 0, "otopilot": False, "isler": [], "istek_bugun": THROTTLE.bugun(tid),
+           "son_islem": YN.son_islem(d), "hata_7g": len(YN.hatalar(d))}
+    if row["giris"]:
+        prev = getattr(_cur, "t", None)
+        try:
+            _cur.t = t = tenant(tid)
+            row.update(magaza=CFG.get("store") or "", ad=PROFILE().get("magaza") or "",
+                       bagli=bool(CFG.get("access_token") or CFG.get("refresh_token")), urun=urun_sayisi(),
+                       otopilot=oto_ayar()["acik"], isler=[ad for k, ad in _IS_ADI if getattr(t, k).running])
+        finally:
+            _cur.t = prev
+    return row
+
+
+def yonetim_durum():
+    tids = sorted(d for d in os.listdir(STORES) if re.fullmatch(r"[a-z0-9-]{1,80}", d)
+                  and (known_tenant(d) or os.path.isfile(os.path.join(STORES, d, AB.FILE))))
+    rows = [yonetim_satiri(t) for t in tids]
+    durum = Counter(r["abonelik"]["durum"] for r in rows)
+    ozet = {"toplam": len(rows), "bagli": sum(r["bagli"] for r in rows), "aktif": durum["aktif"], "deneme": durum["deneme"],
+            "ucretsiz": durum["ucretsiz"] + durum["suresi_doldu"] + durum["iptal"],
+            "yakinda": sum(1 for r in rows if r["abonelik"]["kalan_gun"] is not None and r["abonelik"]["kalan_gun"] <= 30),
+            "hata_7g": sum(r["hata_7g"] for r in rows), "istek_bugun": sum(r["istek_bugun"] for r in rows),
+            "otopilot": sum(r["otopilot"] for r in rows)}
+    P = AB.paketler()["paketler"]
+    return {"ozet": ozet, "magazalar": rows, "paketler": [{"id": k, "ad": v["ad"], "urun": v.get("urun")} for k, v in P.items()],
+            "durumlar": [{"id": k, "ad": AB.DURUM_ADI[k]} for k in AB.DURUMLAR]}
+
+
+def yonetim_hatalar(gun=7):
+    out = []
+    for tid in sorted(os.listdir(STORES)):
+        d = os.path.join(STORES, tid)
+        if re.fullmatch(r"[a-z0-9-]{1,80}", tid) and os.path.isdir(d):
+            out += [dict(h, id=tid) for h in YN.hatalar(d, gun)]
+    return sorted(out, key=lambda h: h["zaman"], reverse=True)[:300]
+
+
+def yonetim_abonelik(form):
+    """Yönetici panelinden abonelik açma / uzatma. Mağaza klasör adıyla ya da alan adıyla verilir; henüz giriş yapmamış
+    mağazanın kaydı ilk girişte geçerli olur (komut satırındaki --abonelik gibi)."""
+    m = str(form.get("magaza") or "").strip().lower()
+    if re.fullmatch(r"[a-z0-9-]{1,80}", m) and os.path.isdir(os.path.join(STORES, m)):
+        tid = m
+    else:
+        host = store_host(m)
+        if not re.fullmatch(r"[a-z0-9-]+(\.[a-z0-9-]+)+", host):
+            raise ValueError("Mağaza adresini yazın, örn. magaza.myideasoft.com")
+        tid = tenant_id(host)
+    AB.yaz(os.path.join(STORES, tid), paket=form.get("paket") or None, durum=form.get("durum") or "aktif",
+           bitis=form.get("bitis") or None, kaynak="yonetici")
+    print(f"Yönetici paneli: {tid} aboneliği değişti.", flush=True)
+    return yonetim_satiri(tid)
+
+
 def local_store():
     """Yerel kipte açılacak mağaza: en son kullanılan, yoksa ilk bulunan, hiç yoksa yeni bir 'yerel' klasörü."""
     tid = SRV.get("yerel")
@@ -3370,6 +3470,7 @@ if (window.top !== window.self) {{
 
 class H(BaseHTTPRequestHandler):
     server_version = "seovisi/1.0"
+    yonetim = False               # /yonetim isteği: sayfa hiçbir çerçevede açılmaz
     timeout = 60                  # yavaş ya da yarım kalan bağlantı bir iş parçacığını süresiz tutmasın
 
     def log_message(self, *a):
@@ -3377,7 +3478,8 @@ class H(BaseHTTPRequestHandler):
 
     def _security_headers(self):
         t = getattr(_cur, "t", None)
-        h = {"Content-Security-Policy": CSP.format(frame_ancestors(store_host(CFG.get("store")) if t else "")),
+        fa = "'none'" if self.yonetim else frame_ancestors(store_host(CFG.get("store")) if t else "")
+        h = {"Content-Security-Policy": CSP.format(fa),
              "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin"}
         if SERVER["on"] and SRV.get("public_url", "").startswith("https://"):
             h["Strict-Transport-Security"] = "max-age=31536000"
@@ -3437,6 +3539,7 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
         _cur.t = None
+        self.yonetim = False
         try:
             # Panelin kendi istekleri bu başlığı taşır. Başka bir site tarayıcıya başlık ekletemez; böylece çerez ya da
             # localhost üzerinden sahte istek gönderilemez.
@@ -3465,6 +3568,8 @@ class H(BaseHTTPRequestHandler):
             self._send(502, {"error": str(e)})
         except Exception as e:  # noqa: BLE001
             traceback.print_exc()
+            if getattr(_cur, "t", None) is not None:
+                log(f"Beklenmeyen hata ({u.path}): {e}", "err")      # yönetici panelindeki hata listesine düşer
             self._send(500, {"error": str(e)})
         finally:
             _cur.t = None
@@ -3515,6 +3620,10 @@ class H(BaseHTTPRequestHandler):
             else:
                 self._send(404, {"error": "Giriş kodu geçersiz ya da süresi doldu; yeniden giriş yapın."})
             return True
+        if (p == "/yonetim" or p.startswith("/yonetim/")) and SERVER["on"]:
+            self.yonetim = True
+            self._yonetim(method, p, q)
+            return True
         if p == "/saglik" and method == "GET":        # dışarıdan izleme: program ayakta ve veri klasörü yazılabilir mi
             ok = os.access(DATA, os.W_OK)
             self._send(200 if ok else 503, {"ok": ok})
@@ -3526,6 +3635,38 @@ class H(BaseHTTPRequestHandler):
             self._callback(q)
             return True
         return False
+
+    def _yonetim(self, method, p, q):
+        if p == "/yonetim" and method == "GET":
+            with open(UI_YONETIM, encoding="utf-8") as f:
+                return self._send(200, f.read(), "text/html; charset=utf-8")
+        kayitli = YN.oku(DATA)
+        if p == "/yonetim/giris" and method == "POST":
+            wait = ADMIN_TRIES.hit(self.client_ip())
+            if wait:
+                return self._send(429, {"error": f"Çok fazla deneme yapıldı. {-(-wait // 60)} dakika sonra yeniden deneyin."},
+                                  extra={"Retry-After": str(wait)})
+            if not kayitli:
+                return self._send(400, {"error": "Yönetici parolası belirlenmemiş. Sunucuda: python app.py --yonetici-parola"})
+            if not YN.dogru(str(self._json().get("parola") or ""), kayitli):
+                print(f"Yönetici paneli: hatalı parola ({self.client_ip()}).", flush=True)
+                return self._send(403, {"error": "Parola yanlış."})
+            print(f"Yönetici paneli: giriş yapıldı ({self.client_ip()}).", flush=True)
+            return self._send(200, {"ok": True}, extra={"Set-Cookie": yonetici_cerezi(YN.cerez(SRV.get("secret"), kayitli))})
+        if p == "/yonetim/cikis" and method == "POST":
+            return self._send(200, {"ok": True}, extra={"Set-Cookie": yonetici_cerezi(clear=True)})
+        if not yonetici_oturumu(self.headers.get("Cookie")):
+            return self._send(401, {"error": "Oturum kapandı; yeniden giriş yapın.", "giris": True, "parola_var": bool(kayitli)})
+        if p == "/yonetim/api/durum" and method == "GET":
+            return self._send(200, yonetim_durum())
+        if p == "/yonetim/api/hatalar" and method == "GET":
+            return self._send(200, {"hatalar": yonetim_hatalar()})
+        if p == "/yonetim/api/abonelik" and method == "POST":
+            try:
+                return self._send(200, {"ok": True, "magaza": yonetim_abonelik(self._json())})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+        return self._send(404, {"error": "Yok"})
 
     def _callback(self, q):
         if q.get("error"):
@@ -4029,7 +4170,8 @@ def arg(name, default=""):
 def abonelik_komutu():
     """Elle abonelik (yönetici paneli gelene kadar; beta mağazaları ve Ustapazar için):
       python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31 [--durum aktif|deneme|iptal|ucretsiz]
-      python app.py --abonelikler        bütün mağazaların kaydı"""
+      python app.py --abonelikler        bütün mağazaların kaydı
+    Sunucuda aynı işler yönetici panelinden (/yonetim) de yapılır."""
     os.makedirs(STORES, exist_ok=True)
     if "--abonelikler" in sys.argv[1:]:
         for tid in sorted(os.listdir(STORES)):
@@ -4063,6 +4205,19 @@ def main():
     global SRV
     if {"--abonelik", "--abonelikler"} & set(sys.argv[1:]):
         sys.exit(abonelik_komutu())
+    if "--yonetici-parola" in sys.argv[1:]:            # yönetici paneli (/yonetim) parolası; düz hâli saklanmaz
+        import getpass
+        p1 = getpass.getpass("Yeni yönetici parolası: ")
+        if p1 != getpass.getpass("Yeniden: "):
+            print("Parolalar aynı değil; kaydedilmedi.")
+            sys.exit(1)
+        try:
+            YN.yaz(DATA, p1)
+        except ValueError as e:
+            print(f"Kaydedilmedi: {e}")
+            sys.exit(1)
+        print("Yönetici parolası kaydedildi; açık yönetici oturumları kapandı.")
+        return
     if "--yedek" in sys.argv[1:]:                      # python app.py --yedek /yedekler [--dongu]
         hedef = arg("--yedek")
         if "--dongu" in sys.argv[1:]:

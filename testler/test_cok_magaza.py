@@ -154,6 +154,7 @@ def sunucu_kipi():
         abonelik(8770, A, ca, cb_state=lambda: req(8770, "GET", "/api/state", cookie=login(8770, "b-moda.com")[4])[2])
         otopilot(8770, A, ca)
         kapi(8770)
+        yonetim(8770, A, ca)
         guvenlik(8770, ca)
     finally:
         proc.terminate()
@@ -347,6 +348,76 @@ def kapi(port):
     check("kapı kodu da yalnızca panelden alınır", st == 403, st)
 
 
+def yonetim(port, appdir, ca):
+    sys.path.insert(0, SRC)
+    import yonetim as YN
+    data = os.path.join(appdir, "data")
+    st, h, page = req(port, "GET", "/yonetim")
+    check("yönetici sayfası açılır ve hiçbir çerçevede gösterilmez",
+          st == 200 and "Yönetici girişi" in page and h.get("Content-Security-Policy", "").endswith("frame-ancestors 'none'"), h)
+    st, _, j = req(port, "GET", "/yonetim/api/durum")
+    check("parola belirlenmeden yönetici paneli kapalı", st == 401 and j.get("parola_var") is False, (st, j))
+    check("parolasız girişte komut gösterilir", "--yonetici-parola" in req(port, "POST", "/yonetim/giris", {"parola": "x"})[2]["error"])
+    YN.yaz(data, "dogru-parola-123")
+    check("diskte parolanın kendisi yok", "dogru-parola-123" not in open(os.path.join(data, YN.FILE), encoding="utf-8").read())
+    st, _, _ = req(port, "POST", "/yonetim/giris", {"parola": "dogru-parola-123"}, panel=False)
+    check("yönetici girişi de yalnızca panelden", st == 403, st)
+    st, _, j = req(port, "POST", "/yonetim/giris", {"parola": "yanlis-parola-1"})
+    check("yanlış parola reddedilir", st == 403 and "yanlış" in j["error"], (st, j))
+    st, h, _ = req(port, "POST", "/yonetim/giris", {"parola": "dogru-parola-123"})
+    ck = h.get("Set-Cookie", "")
+    check("doğru parola yalnızca /yonetim yolunda geçerli, sıkı çerez verir",
+          st == 200 and ck.startswith("svy=") and "Path=/yonetim" in ck and "SameSite=Strict" in ck and "HttpOnly" in ck, ck)
+    cy = ck.split(";")[0]
+    check("mağaza oturumu yönetici panelini açmaz", req(port, "GET", "/yonetim/api/durum", cookie=ca)[0] == 401)
+    check("yönetici oturumu mağaza panelini açmaz", req(port, "GET", "/api/state", cookie=cy)[0] == 401)
+    check("bozuk yönetici çerezi reddedilir", req(port, "GET", "/yonetim/api/durum", cookie=cy[:-3] + "abc")[0] == 401)
+
+    d = req(port, "GET", "/yonetim/api/durum", cookie=cy)[2]
+    m = {r["id"]: r for r in d["magazalar"]}
+    check("mağazalar listelenir (adres, ürün, bağlantı, abonelik)",
+          sorted(m) == ["a-magaza-com", "b-moda-com"] and m["a-magaza-com"]["magaza"] == "a-magaza.com"
+          and m["a-magaza-com"]["urun"] >= 425 and m["a-magaza-com"]["abonelik"]["durum"] == "aktif"
+          and m["a-magaza-com"]["bagli"] is True and m["b-moda-com"]["ad"] == "Moda Evi", m)
+    check("özet sayılar", d["ozet"]["toplam"] == 2 and d["ozet"]["aktif"] == 1 and d["ozet"]["bagli"] == 2, d["ozet"])
+
+    st, _, j = req(port, "POST", "/yonetim/api/abonelik", {"magaza": "https://Yeni-Magaza.com/", "paket": "baslangic",
+                                                           "durum": "deneme", "bitis": "2027-01-31"}, cookie=cy)
+    yeni = os.path.join(data, "magazalar", "yeni-magaza-com")
+    check("henüz giriş yapmamış mağazaya abonelik açılır, ayar yazılmaz",
+          st == 200 and j["magaza"]["giris"] is False and j["magaza"]["abonelik"]["durum"] == "deneme"
+          and not os.path.exists(os.path.join(yeni, "ayarlar.json")), (st, j))
+    st, _, j = req(port, "POST", "/yonetim/api/abonelik", {"magaza": "b-moda-com", "paket": "yok", "durum": "aktif"}, cookie=cy)
+    check("geçersiz paket yazılmaz", st == 400 and "Paket" in j["error"], (st, j))
+    st, _, j = req(port, "POST", "/yonetim/api/abonelik", {"magaza": "b-moda-com", "paket": "baslangic", "durum": "aktif",
+                                                           "bitis": "2027-10-31"}, cookie=cy)
+    kayit = json.load(open(os.path.join(data, "magazalar", "b-moda-com", "abonelik.json"), encoding="utf-8"))
+    check("abonelik uzatılır ve kaynağı yönetici olarak kaydedilir",
+          st == 200 and kayit["bitis"] == "2027-10-31" and kayit["kaynak"] == "yonetici", kayit)
+    check("abonelik değişince mağaza panelinde hemen geçerli",
+          req(port, "GET", "/api/state", cookie=login(port, "b-moda.com")[4])[2]["abonelik"]["paket"] == "baslangic")
+    check("yönetici panelinden abonelik de yalnızca panelden",
+          req(port, "POST", "/yonetim/api/abonelik", {"magaza": "b-moda-com"}, cookie=cy, panel=False)[0] == 403)
+
+    from datetime import datetime, timedelta
+    with open(os.path.join(data, "magazalar", "a-magaza-com", "islem.log"), "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now() - timedelta(days=9):%Y-%m-%d %H:%M:%S} [err] Eski hata\n")
+        f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S} [err] Ideasoft bağlantısı koptu\n")
+    hs = req(port, "GET", "/yonetim/api/hatalar", cookie=cy)[2]["hatalar"]
+    d = req(port, "GET", "/yonetim/api/durum", cookie=cy)[2]
+    check("son 7 günün hataları mağazasıyla listelenir",
+          [h["mesaj"] for h in hs if h["id"] == "a-magaza-com"] == ["Ideasoft bağlantısı koptu"]
+          and d["ozet"]["toplam"] == 3 and d["ozet"]["hata_7g"] >= 1, hs)
+
+    YN.yaz(data, "yeni-parola-456")
+    check("parola değişince eski yönetici oturumları kapanır", req(port, "GET", "/yonetim/api/durum", cookie=cy)[0] == 401)
+    st, h, _ = req(port, "POST", "/yonetim/cikis", {})
+    check("yönetici çıkışı çerezi siler", st == 200 and "Max-Age=0" in h.get("Set-Cookie", ""))
+    codes = [req(port, "POST", "/yonetim/giris", {"parola": "tahmin-" + str(i)})[0] for i in range(11)]
+    st, _, j = req(port, "POST", "/yonetim/giris", {"parola": "yeni-parola-456"})
+    check("art arda yönetici girişi engellenir (doğru parola da)", codes[-1] == 429 and st == 429, (codes, st))
+
+
 def guvenlik(port, cookie):
     _, h, _ = req(port, "GET", "/api/state", cookie=cookie)
     csp = h.get("Content-Security-Policy", "")
@@ -402,6 +473,8 @@ def yerel_kip():
         check("yerel kipte analiz çalışır", s["stored"] == 425, s.get("stored"))
         st, _, _ = req(8771, "POST", "/giris", {"store": "b-moda.com"}, form=True)
         check("yerel kipte giriş yolu kapalı", st == 404, st)
+        check("yerel kipte yönetici paneli yok", req(8771, "GET", "/yonetim/api/durum")[0] == 404
+              and req(8771, "POST", "/yonetim/giris", {"parola": "x" * 12})[0] == 404)
         s = req(8771, "GET", "/api/state")[2]
         j = req(8771, "POST", "/api/cat/assign?pid=1&cid=999999", {})[2]
         check("yerel kipte abonelik sınırı yok", s["abonelik"] is None and not j.get("abonelik"), (s.get("abonelik"), j))

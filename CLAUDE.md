@@ -34,7 +34,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_gecis.py`: toplu şablon geçişi ve SEO geri alma.
   - `test_rapor.py`: aylık rapor, olay kaydı, haftalık tarama.
   - `test_yedek.py`: günlük yedek.
-  - `test_panel.py`: panel betiğinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
+  - `test_yonetim.py`: yönetici parolası, çerezi ve hata listesi.
+  - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -63,8 +64,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `baglanti.py` | Kırık bağlantı taraması: herkese açık siteyi gezer (ana sayfa, site haritası, robots.txt); ağ erişimi dışarıdan verilir. |
 | `rapor.py` | Aylık rapor hesabı: olay sayıları ve durum fotoğraflarının ay başı / ay sonu karşılaştırması. |
 | `yedek.py` | Günlük yedek: data klasörünün tutarlı zip kopyası (anahtar hariç), eski yedeklerin silinmesi. |
+| `yonetim.py` | Yönetici paneli yardımcıları: parola karması (`data/yonetici.json`), oturum çerezi, kayıtlardaki hatalar. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
+| `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. |
 | `ui/marka/` | Logo, simge ve renkler. |
 
 ### Çok mağaza yapısı
@@ -110,11 +113,23 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Yalnızca sunucu kipinde geçerli; yerel kip (Ustapazar, geliştirme) sınırsızdır.
 - `paketler.json`: paketler (ad, ürün sınırı, özellikler) ve yeni mağazanın başlangıç kaydı (`yeni_magaza`: ücretsiz ya da N günlük deneme).
   Dosya değişince yeniden başlatmadan okunur; düzenlerken bozulursa son geçerli hâli kullanılır. Fiyat burada yok (App Store'da).
-- Her mağazanın kaydı `abonelik.json`; her istekte diskten okunur. Bütün kaynaklar `AB.yaz()` ile yazar. Bugün:
-  `python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31 [--durum aktif|deneme|iptal|ucretsiz]`, liste: `--abonelikler`.
+- Her mağazanın kaydı `abonelik.json`; her istekte diskten okunur. Bütün kaynaklar `AB.yaz()` ile yazar. Bugün: yönetici paneli
+  ya da `python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31 [--durum aktif|deneme|iptal|ucretsiz]`, liste: `--abonelikler`.
 - Süresi geçen, iptal edilen ya da tanınmayan kayıt ücretsiz analize düşer: analiz ve geri alma açık, mağazaya yazma kapalı.
 - Mağazaya yazan her POST yolu `WRITE_ROUTES` içinde bir özelliğe bağlıdır; `route_post` başında denetlenir. **Yeni bir yazma yolu
   eklersen buraya da ekle.** Geri alma bilerek listede yok. Ürün sınırı taramalarda görülen ürün sayısıyla (`urun_sayisi()`) karşılaştırılır.
+
+### Yönetici paneli (`app.py`, "yönetici paneli" bölümü)
+
+- Yalnızca sunucu kipinde, `/yonetim` altında; mağaza oturumundan tamamen ayrı. Parola `python app.py --yonetici-parola` ile
+  belirlenir, `data/yonetici.json`da yalnızca karması durur ve her girişte diskten okunur. Parola belirlenmeden panel kapalı.
+- Çerez `svy`: `Path=/yonetim`, `SameSite=Strict`, 12 saat; imza parola karmasını da kapsar (parola değişince oturumlar kapanır).
+  Giriş aynı adresten 15 dakikada en çok 10 deneme (`ADMIN_TRIES`). Sayfa hiçbir çerçevede açılmaz (`frame-ancestors 'none'`).
+  Buradaki POST'lar da `X-Seovisi` başlığı ister.
+- Mağaza listesi `yonetim_durum()`: abonelik, ürün sayısı, bağlantı, otopilot, süren işler, bugünkü Ideasoft isteği
+  (`THROTTLE.bugun`), son işlem ve son 7 günün hataları (`islem.log`'daki `[err]` satırları). Hiç giriş yapmamış mağazanın
+  klasörüne ayar yazılmaz (`tenant()` çağrılmaz). Abonelik `AB.yaz(..., kaynak="yonetici")` ile yazılır.
+- İstek işlenirken beklenmeyen hata (500) mağazanın kaydına `err` olarak düşer; yönetici panelinde görünür.
 
 ### Kurulum sihirbazı ve hedef kelime yeri
 

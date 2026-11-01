@@ -88,9 +88,18 @@ docker compose ps
 
 Birkaç dakika içinde `https://app.seovisi.com.tr` açılır; HTTPS sertifikasını Caddy kendisi alır ve yeniler.
 
-## 7. Abonelikler
+## 7. Yönetici paneli ve abonelikler
 
-Ideasoft bildirimi gelene kadar abonelikler elle açılır:
+Yönetici parolasını bir kez belirleyin (en az 10 karakter; ekranda görünmez, iki kez sorulur). Canlı ve test için ayrı ayrı:
+
+```bash
+docker compose exec app python app.py --yonetici-parola
+docker compose exec app-test python app.py --yonetici-parola
+```
+
+Sonra `https://app.seovisi.com.tr/yonetim` adresinden girin: bütün mağazalar (paket, bitiş, ürün sayısı, bağlantı, son işlem),
+abonelik açma / uzatma ve son 7 günün hataları. Parolayı unutursanız aynı komutla yenisini belirleyin; açık oturumlar kapanır.
+Ideasoft bildirimi gelene kadar abonelikler buradan elle açılır. Aynı işi komutla yapmak için:
 
 ```bash
 docker compose exec app python app.py --abonelik magaza.com --paket baslangic --bitis 2027-10-31

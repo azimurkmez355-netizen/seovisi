@@ -194,7 +194,7 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Docker, Caddy ile HTTPS, app.seovisi.com.tr; test ve canlı ortam (KURULUM.md)
 - [x] (K) Günlük yedek (anahtarsız, 14 gün), sağlık adresi /saglik (dış izleme hizmetiyle alarm)
 - [ ] (K) Uygulama kaldırılınca veri silme
-- [ ] (K) Yönetici paneli: mağazalar, abonelikler, kullanım, hatalar
+- [x] (K) Yönetici paneli: mağazalar, abonelikler, kullanım, hatalar (`/yonetim`, ayrı yönetici parolası)
 
 ## Faz 4 — Yapay zekâ (2–3 hafta)
 
