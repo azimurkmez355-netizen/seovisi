@@ -46,6 +46,7 @@ import baglanti as BG  # noqa: E402
 import rapor as RP  # noqa: E402
 import yedek as YD  # noqa: E402
 import yonetim as YN  # noqa: E402
+import eknot as EN  # noqa: E402
 import platformlar as PL  # noqa: E402
 from platformlar import ApiError, store_host  # noqa: E402,F401
 from platformlar.ideasoft import Ideasoft  # noqa: E402
@@ -1624,8 +1625,12 @@ def jobs_state():
     if c["running"]:
         out.append({"t": c["label"][:1].upper() + c["label"][1:], "v": "kategori", "d": f"{c['done']} / {c['todo']} işlem",
                     "pct": pct(c["done"], c["todo"])})
+    if EKNOT.running:
+        out.append({"t": EkNot.ADLAR[EKNOT.kind], "v": "eknot", "d": f"{EKNOT.done} / {EKNOT.todo} ürün" if EKNOT.todo else "",
+                    "pct": pct(EKNOT.done, EKNOT.todo)})
     summ = (CATSCAN.report or {}).get("summary") or {}
     return {"jobs": out, "badges": {
+        "eknot": EKNOT.bekleyen(),
         "seo": DBI.q("SELECT COUNT(*) n FROM seo WHERE ok=0", one=True)["n"],
         "gorsel": DBI.q("SELECT COUNT(*) n FROM img WHERE has=0", one=True)["n"],
         "kategori": (summ.get("tasi") or 0) + (summ.get("kategorisiz") or 0)}}
@@ -1929,8 +1934,10 @@ def kurulum_gerekli():
     return not done
 
 
-def prepare_plan(pid, variant=0):
-    """Ürünü okuyup açıklama ve SEO alanlarını hazırlar; mağazaya hiçbir şey yazmaz."""
+def prepare_plan(pid, variant=0, ek_not_zorla=False):
+    """Ürünü okuyup açıklama ve SEO alanlarını hazırlar; mağazaya hiçbir şey yazmaz. Ürünün ek notu varsa açıklama notla
+    birlikte kurulur; ek_not_zorla: notu henüz olmayan ürüne de (Ek not ekranından, SEO oranı notla düşecek ürünler için)."""
+    en, notlu = eknot_param(pid, ek_not_zorla)
     prod = API.get_product(pid)
     detail = API.get_detail(prod)
     cur_kw, _ = kw_read(prod) if kw_loc() else (prod.get("targetKeyword") or "", None)
@@ -1941,7 +1948,8 @@ def prepare_plan(pid, variant=0):
                                 cur_kw or prod.get("targetKeyword") or "",
                                 sku=prod.get("sku") or "", barcode=prod.get("barcode") or "", method=method,
                                 target=float(CFG.get("target_density") or 2.5), variant=variant, prof=PROFILE(),
-                                sablon=sablon())
+                                sablon=sablon(), **en)
+    plan["ek_not"] = notlu
     kw = plan["keyword"]
     kwl = ST.tr_lower(kw)
     old_t, old_m = (prod.get("pageTitle") or "").strip(), (prod.get("metaDescription") or "").strip()
@@ -1983,9 +1991,11 @@ def repair_plan(pid):
         kw = SM.machine_keyword(fixed_name, "", PROFILE())
     method = "panel_lo,panel,panel_hi"
     prof = PR.with_brand(PROFILE(), prod)
+    en, notlu = eknot_param(pid)
     plan = SM.build_machine_seo(dict(prod, name=fixed_name), details, kw, sku=prod.get("sku") or "",
                                 barcode=prod.get("barcode") or "", method=method, target=2.5, prof=prof,
-                                sablon=sablon())
+                                sablon=sablon(), **en)
+    plan["ek_not"] = notlu
     kw = plan["keyword"]
     # etiket başlığında da özel karakter olmasın: hedef kelime + mağaza adı
     titles = [f"{kw} | {{magaza}}", f"{kw} - {{marka}} | {{magaza}}"]
@@ -2023,12 +2033,12 @@ def clean_name(name):
     return re.sub(r"[\s\u00a0\u200b]+", " ", name or "").strip()
 
 
-def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
-    """Ürünün SEO alanlarını ve açıklamasını yazar (gönderim, şablon geçişi ve geri almanın ortak yolu).
+def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None, kw_yaz=True):
+    """Ürünün SEO alanlarını ve açıklamasını yazar (gönderim, şablon geçişi, ek not ve geri almanın ortak yolu).
     alanlar: pageTitle, metaDescription, metaKeywords, details_html, keyword. prod / detail / kw_rec yazmadan hemen önce
-    okunmuş olmalı. Yazdıktan sonra korunan alanlar karşılaştırılır; biri değiştiyse ürün eski hâline yazılır ve toplu
-    işler durur. Dönüş: (yazmadan sonraki ürün, None) ya da (None, hata mesajı)."""
-    loc = kw_loc()
+    okunmuş olmalı. kw_yaz=False: hedef kelimeye dokunulmaz (ek not). Yazdıktan sonra korunan alanlar karşılaştırılır;
+    biri değiştiyse ürün eski hâline yazılır ve toplu işler durur. Dönüş: (yazmadan sonraki ürün, None) ya da (None, hata mesajı)."""
+    loc = kw_loc() if kw_yaz else {}
     fp_before = Ideasoft.fingerprint(prod)
     payload = API.yazilacak(prod)
     if yeni_ad:
@@ -2038,11 +2048,12 @@ def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
                    metaKeywords=alanlar["metaKeywords"])
     if isinstance(payload.get("detail"), dict) and detail:
         payload["detail"] = dict(payload["detail"], details=alanlar["details_html"])
-    if loc["res"] == "product":
+    if loc.get("res") == "product":
         jset(payload, loc["path"], alanlar["keyword"])
     API.urun_yaz(pid, payload)
     API.aciklama_yaz(pid, prod, detail, alanlar["details_html"])
-    kw_write(pid, alanlar["keyword"], kw_rec)
+    if loc:
+        kw_write(pid, alanlar["keyword"], kw_rec)
     after = API.get_product(pid)
     if Ideasoft.fingerprint(after) != fp_before:
         diff = [k for k, v in fp_before.items() if Ideasoft.fingerprint(after).get(k) != v]
@@ -2052,6 +2063,7 @@ def _seo_yaz(pid, prod, detail, kw_rec, alanlar, yeni_ad=None):
             pass
         SEOJOBS.stop()
         GECIS.stop()
+        EKNOT.stop()
         msg = f"Korunan alan değişti ({', '.join(diff)}); eski hâline geri yazıldı, toplu işlem durduruldu."
         log(f"Ürün {pid}: {msg}", "err")
         return None, msg
@@ -2078,6 +2090,7 @@ def seo_geri_al(pid):
         return "hata", msg
     DBI.x("UPDATE seo SET pstate='geri', pmsg=?, plan=NULL, backup=NULL, onceki=NULL, gecis=NULL, ok=-1 WHERE pid=?",
           ("Özgün hâline döndürüldü.", pid))
+    eknot_kalkti(pid, (b.get("detail") or {}).get("details") or "", "SEO özgün hâline döndürülünce not da kalktı.")
     olay("geri", pid)
     log(f"SEO geri alındı, ürün {pid}: özgün hâline döndürüldü.", "ok")
     return "uygulandi", "Ürünün SEO'su ve açıklaması seovisi'den önceki hâline döndü."
@@ -2138,6 +2151,8 @@ def send_plan(pid, edited=None):
           (state, msg, json.dumps(plan, ensure_ascii=False), pct, ok, None if pct is None else str(pct), pid))
     if state == "gonderildi":
         olay("seo", pid)
+        if plan.get("ek_not"):
+            eknot_yazildi(pid, plan["keyword"], plan["details_html"])
     log(f"SEO gönderimi ürün {pid}: {msg}", "ok" if state == "gonderildi" else "warn")
     return state, msg
 
@@ -2277,10 +2292,11 @@ def gecir(pid):
             or (kw_now or "").strip() != plan["keyword"].strip()):
         return atla("gönderildikten sonra panelde değiştirilmiş; dokunulmadı.")
     method = CFG.get("count_method") or SAFE_METHODS
+    en, notlu = eknot_param(pid)
     yeni = SM.build_machine_seo(dict(prod, name=clean_name(prod.get("name") or "")), (b.get("detail") or {}).get("details") or "",
                                 plan["keyword"], sku=prod.get("sku") or "", barcode=prod.get("barcode") or "", method=method,
                                 target=float(CFG.get("target_density") or 2.5), variant=int(plan.get("variant") or 0),
-                                prof=PROFILE(), sablon=sablon())
+                                prof=PROFILE(), sablon=sablon(), **en)
     if yeni["keyword"].strip() != plan["keyword"].strip():
         return atla("hedef kelime değişecekti.")
     if yeni["details_html"] == simdi:
@@ -2297,8 +2313,10 @@ def gecir(pid):
     if msg:
         DBI.x("UPDATE seo SET gecis='hata', pmsg=? WHERE pid=?", (msg, pid))
         return "hata"
-    plan["details_html"] = yeni["details_html"]
+    plan["details_html"], plan["ek_not"] = yeni["details_html"], notlu
     olay("gecis", pid)
+    if notlu:
+        eknot_yazildi(pid, plan["keyword"], yeni["details_html"])
     DBI.x("UPDATE seo SET gecis='gecti', plan=?, pmsg=? WHERE pid=?",
           (json.dumps(plan, ensure_ascii=False), "Açıklama yeni şablona geçirildi.", pid))
     return "gecti"
@@ -2321,12 +2339,311 @@ def gecis_geri(pid):
         return "hata"
     plan["details_html"] = onceki["details"]
     olay("geri", pid)
+    eknot_kalkti(pid, onceki["details"], "Şablon geçişi geri alınınca not da kalktı.")
     DBI.x("UPDATE seo SET gecis='geri', onceki=NULL, plan=?, pmsg=? WHERE pid=?",
           (json.dumps(plan, ensure_ascii=False), "Şablon geçişi geri alındı; önceki açıklama yazıldı.", pid))
     return "geri"
 
 
 GECIS = _Ref("gecis")
+
+
+# ============================================================ ek not
+#
+# Seçilen kategorilerdeki ürünlerin açıklamasının sonuna kısa bir not ve bağlantı (eknot.py). Mağaza ayarı `ek_not`.
+# Not yalnızca kullanıcının onayladığı ürünlere yazılır; yeni ürünler "eklenecek" listesine düşer. Hedef kelime yoğunluğu
+# kuralını bozacak ürün atlanır (açıklaması notla birlikte yeniden hazırlanabilir). Yazma _seo_yaz() ile: ürün yeniden
+# okunur, korunan alanlar denetlenir, notsuz hâl yedeklenir; not ürün ürün ya da toplu kaldırılabilir.
+# eknot.durum: '' (eklenecek) | eklendi | atlandi | hata | kaldirildi; haric: kullanıcı bu ürünü istemedi.
+
+def eknot_ayar():
+    return EN.yukle(CFG.get("ek_not"))
+
+
+def eknot_html(a, kw, ad=""):
+    return EN.uret(a, sablon()["renk"], kw or clean_name(ad))
+
+
+def eknot_param(pid, zorla=False):
+    """Açıklama üreticisine (build_machine_seo) verilecek not. Notu olan ürüne her zaman, olmayana yalnızca istenirse.
+    Dönüş: (parametreler, not ekleniyor mu)."""
+    a = eknot_ayar()
+    row = DBI.q("SELECT durum, yazilan FROM eknot WHERE pid=?", (pid,), one=True)
+    bilinen = [row["yazilan"]] if row and row["yazilan"] else []
+    if a["metin"] and (zorla or (row and row["durum"] == "eklendi")):
+        return {"ek_not": lambda kw: eknot_html(a, kw), "ek_not_bilinen": bilinen}, True
+    return {"ek_not_bilinen": bilinen}, False
+
+
+def _eknot_kaydet(pid, **alan):
+    DBI.x("INSERT OR IGNORE INTO eknot(pid, durum, haric) VALUES(?, '', 0)", (pid,))
+    DBI.x(f"UPDATE eknot SET {', '.join(k + '=?' for k in alan)} WHERE pid=?", (*alan.values(), pid))
+
+
+def eknot_yazildi(pid, kw, details):
+    """Not başka bir yoldan (notlu SEO gönderimi, şablon geçişi) yazıldıysa kayda geçer."""
+    a = eknot_ayar()
+    if EN.var_mi(details):
+        _eknot_kaydet(pid, durum="eklendi", haric=0, yazilan=eknot_html(a, kw), surum=EN.surum(a, sablon()["renk"]),
+                      mesaj="Açıklamayla birlikte yazıldı.", zaman=datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+def eknot_kalkti(pid, details, neden):
+    """Açıklama notsuz bir hâle döndürüldüyse kayıt "eklenecek"e döner."""
+    row = DBI.q("SELECT durum, yazilan FROM eknot WHERE pid=?", (pid,), one=True)
+    if row and row["durum"] == "eklendi" and not EN.var_mi(details, [row["yazilan"]]):
+        _eknot_kaydet(pid, durum="", mesaj=neden)
+
+
+def eknot_grup(kats):
+    """Seçilen kategoriler ve bütün alt kategorileri."""
+    cocuk = {}
+    for r in DBI.q("SELECT id, parent FROM cat"):
+        cocuk.setdefault(r["parent"], []).append(r["id"])
+    out, yigin = set(), list(kats)
+    while yigin:
+        c = yigin.pop()
+        if c not in out:
+            out.add(c)
+            yigin += cocuk.get(c, [])
+    return out
+
+
+def eknot_urunler(grup):
+    """Kategorilerden birindeki ürünler (yerel taramalardan: SEO taraması ve kategori analizi). {pid: bilgi}"""
+    out = {}
+    for r in DBI.q("SELECT pid, sku, name, aktif, kats FROM urunbilgi"):
+        out[r["pid"]] = {"sku": r["sku"], "name": r["name"], "aktif": r["aktif"], "kats": json.loads(r["kats"] or "[]")}
+    for r in DBI.q("SELECT pid, sku, name, cats FROM catprod"):      # kategori analizi ürün-kategori bağını daha eksiksiz okur
+        u = out.setdefault(r["pid"], {"sku": r["sku"], "name": r["name"], "aktif": None, "kats": []})
+        u["kats"] = sorted(set(u["kats"]) | set(json.loads(r["cats"] or "[]")))
+    return {pid: u for pid, u in out.items() if grup & set(u["kats"])}
+
+
+def eknot_yaz(pid, islem):
+    """Bir ürüne notu ekler (ekle), bugünkü ayarla yeniler (guncelle) ya da kaldırır (kaldir); kontrol yalnızca hesaplar.
+    Dönüş: (durum, mesaj)."""
+    a = eknot_ayar()
+    row = DBI.q("SELECT * FROM eknot WHERE pid=?", (pid,), one=True)
+    bilinen = [row["yazilan"]] if row and row["yazilan"] else []
+    prod = API.get_product(pid)
+    if not prod:
+        _eknot_kaydet(pid, durum="hata", mesaj="Ürün mağazada bulunamadı.")
+        return "hata", "Ürün mağazada bulunamadı."
+    detail = API.get_detail(prod)
+    kw, kw_rec = kw_read(prod)
+    simdi = (detail or {}).get("details") or ""
+    method = CFG.get("count_method") or SAFE_METHODS
+    simdi_zaman = datetime.now().strftime("%Y-%m-%d %H:%M")
+    if islem == "kaldir":
+        yeni, vardi = EN.cikar(simdi, bilinen)
+        if not vardi:
+            _eknot_kaydet(pid, durum="kaldirildi", mesaj="Açıklamada not bulunamadı; dokunulmadı.", zaman=simdi_zaman)
+            return "kaldirildi", "Açıklamada not bulunamadı."
+    else:
+        nh = eknot_html(a, kw, prod.get("name"))
+        notsuz = EN.cikar(simdi, bilinen)[0]
+        yeni = EN.ekle(simdi, nh, bilinen)
+        e = EN.etki(clean_name(prod.get("name") or ""), kw, notsuz, yeni, method)
+        oran = {"once": e["once"], "sonra": e["sonra"]}
+        if e["bozar"]:
+            o1, o2 = (f"{x:.2f}".replace(".", ",") for x in (e["once"], e["sonra"]))
+            msg = (f"Hedef kelime oranı %{o1} → %{o2} olurdu (%2'nin altı); Ideasoft SEO puanı düşerdi. "
+                   "Açıklamayı notla birlikte yeniden hazırlayabilirsiniz.")
+            if islem != "guncelle":
+                _eknot_kaydet(pid, durum="atlandi", mesaj=msg, zaman=simdi_zaman, **oran)
+            return "atlandi", msg
+        if islem == "kontrol":
+            _eknot_kaydet(pid, mesaj="Not eklenebilir; SEO puanı değişmez.", **oran)
+            return "", "Not eklenebilir."
+        if yeni == simdi:
+            _eknot_kaydet(pid, durum="eklendi", yazilan=nh, surum=EN.surum(a, sablon()["renk"]), mesaj="Not zaten güncel.",
+                          zaman=simdi_zaman, **oran)
+            return "eklendi", "Not zaten güncel."
+    _, msg = _seo_yaz(pid, prod, detail, kw_rec, {
+        "pageTitle": prod.get("pageTitle") or "", "metaDescription": prod.get("metaDescription") or "",
+        "metaKeywords": prod.get("metaKeywords") or "", "details_html": yeni, "keyword": kw}, kw_yaz=False)
+    if msg:
+        _eknot_kaydet(pid, durum="hata", mesaj=msg, zaman=simdi_zaman)
+        return "hata", msg
+    sonra = (API.get_detail(API.get_product(pid)) or {}).get("details") or ""
+    if (islem == "kaldir") == EN.var_mi(sonra, bilinen + ([] if islem == "kaldir" else [nh])):
+        msg = "Ideasoft açıklamayı beklenen hâliyle kaydetmedi; ürünü panelde kontrol edin."
+        _eknot_kaydet(pid, durum="hata", mesaj=msg, zaman=simdi_zaman)
+        log(f"Ek not, ürün {pid}: {msg}", "warn")
+        return "hata", msg
+    # gönderilmiş SEO planı açıklamanın bugünkü hâlini izler (şablon geçişi "panelde değiştirilmiş" saymasın)
+    r = DBI.q("SELECT plan FROM seo WHERE pid=? AND plan IS NOT NULL", (pid,), one=True)
+    if r:
+        plan = json.loads(r["plan"])
+        if ST.strip_tags(plan.get("details_html")) == ST.strip_tags(simdi):
+            plan["details_html"], plan["ek_not"] = yeni, islem != "kaldir"
+            DBI.x("UPDATE seo SET plan=? WHERE pid=?", (json.dumps(plan, ensure_ascii=False), pid))
+    if islem == "kaldir":
+        _eknot_kaydet(pid, durum="kaldirildi", mesaj="Not kaldırıldı.", zaman=simdi_zaman)
+        olay("geri", pid)
+        log(f"Ek not kaldırıldı, ürün {pid}.", "ok")
+        return "kaldirildi", "Not kaldırıldı."
+    if not row or row["yedek"] is None:
+        _eknot_kaydet(pid, yedek=notsuz)
+    _eknot_kaydet(pid, durum="eklendi", haric=0, yazilan=nh, surum=EN.surum(a, sablon()["renk"]),
+                  mesaj="Not güncellendi." if islem == "guncelle" else "Not eklendi.", zaman=simdi_zaman, **oran)
+    olay("ek_not", pid)
+    log(f"Ek not {'güncellendi' if islem == 'guncelle' else 'eklendi'}, ürün {pid}.", "ok")
+    return "eklendi", "Not eklendi."
+
+
+class EkNot:
+    """Ek not ekranının listesi ve toplu işleri: kontrol, ekle, guncelle, kaldir, kategoriler (listeyi yenile)."""
+
+    ADLAR = {"kontrol": "Ek not: ürünler kontrol ediliyor", "ekle": "Ek not ekleniyor", "guncelle": "Ek not güncelleniyor",
+             "kaldir": "Ek not kaldırılıyor", "kategoriler": "Kategori listesi yenileniyor"}
+
+    def __init__(self):
+        self.running, self.kind, self.done, self.todo, self.stop_flag = False, "", 0, 0, False
+        self.sonuc = {}
+        DBI.x("""CREATE TABLE IF NOT EXISTS eknot(pid INTEGER PRIMARY KEY, durum TEXT, mesaj TEXT, once REAL, sonra REAL,
+                 yazilan TEXT, surum TEXT, haric INTEGER DEFAULT 0, yedek TEXT, zaman TEXT)""")
+
+    def satirlar(self):
+        """Ekrandaki bütün ürünler, sekmeleriyle: eklenecek, eklendi, atlandi."""
+        a = eknot_ayar()
+        grup = eknot_grup(a["kategoriler"])
+        urunler = eknot_urunler(grup) if grup else {}
+        kayit = {r["pid"]: r for r in DBI.q("SELECT * FROM eknot")}
+        guncel = EN.surum(a, sablon()["renk"])
+        out = []
+        for pid in set(urunler) | {p for p, r in kayit.items() if r["durum"] == "eklendi"}:
+            u, r = urunler.get(pid), kayit.get(pid)
+            if u is None:                                  # kategoriden çıkmış ama notu duran ürün
+                bil = DBI.q("SELECT sku, name, aktif FROM urunbilgi WHERE pid=?", (pid,), one=True)
+                u = dict(bil) if bil else {}
+            durum = (r["durum"] if r else "") or ""
+            if durum == "eklendi":
+                sekme = "eklendi"
+            elif (r and r["haric"]) or durum in ("atlandi", "hata"):
+                sekme = "atlandi"
+            else:
+                sekme = "eklenecek"
+            out.append({"pid": pid, "sku": u.get("sku") or "", "name": u.get("name") or "", "aktif": u.get("aktif"),
+                        "sekme": sekme, "durum": durum, "haric": bool(r and r["haric"]),
+                        "mesaj": (r["mesaj"] if r else "") or "", "once": r["once"] if r else None,
+                        "sonra": r["sonra"] if r else None, "zaman": (r["zaman"] if r else "") or "",
+                        "kategoride": pid in urunler, "eski": durum == "eklendi" and (r["surum"] or "") != guncel})
+        out.sort(key=lambda x: x["pid"])
+        return out
+
+    def durum(self, sekme="eklenecek", q="", sayfa=0):
+        a = eknot_ayar()
+        rows = self.satirlar()
+        say = Counter(r["sekme"] for r in rows)
+        say["eski"] = sum(r["eski"] for r in rows)
+        say["disarida"] = sum(r["sekme"] == "eklendi" and not r["kategoride"] for r in rows)
+        sec = [r for r in rows if r["sekme"] == sekme]
+        if q:
+            ql = ST.tr_lower(q)
+            sec = [r for r in sec if ql in ST.tr_lower(r["name"]) or ql in ST.tr_lower(r["sku"]) or q == str(r["pid"])]
+        paths = category_paths()
+        ust = {r["id"]: r["parent"] for r in DBI.q("SELECT id, parent FROM cat")}
+        sayilar = Counter()                          # kategorideki ve alt kategorilerindeki ürünler (her ürün bir kez)
+        for u in eknot_urunler(set(paths)).values():
+            kats = set()
+            for c in u["kats"]:
+                while c in ust and c not in kats:
+                    kats.add(c)
+                    c = ust[c]
+            sayilar.update(kats)
+        taranmadi = not DBI.q("SELECT 1 FROM urunbilgi LIMIT 1", one=True) and not DBI.q("SELECT 1 FROM catprod LIMIT 1", one=True)
+        return {"ayar": a, "eksik": EN.eksik(a), "simgeler": EN.SIMGELER,
+                "onizleme": eknot_html(a, "Örnek Ürün") if a["metin"] else "",
+                "uzunluk": {"baslik": EN.BASLIK_UZUNLUK, "metin": EN.METIN_UZUNLUK, "link_yazi": EN.LINK_YAZI_UZUNLUK},
+                "kategoriler": sorted(({"id": i, "path": p, "n": sayilar.get(i, 0)} for i, p in paths.items()),
+                                      key=lambda x: ST.tr_lower(x["path"])),
+                "taranmadi": taranmadi, "kw_loc": bool(kw_loc()), "renk": sablon()["renk"],
+                "sayilar": {k: say.get(k, 0) for k in ("eklenecek", "eklendi", "atlandi", "eski", "disarida")},
+                "toplam": len(sec), "items": sec[sayfa * 100:(sayfa + 1) * 100], "panel": API.panel_adresleri(),
+                "running": self.running, "kind": self.kind, "done": self.done, "todo": self.todo, "sonuc": self.sonuc}
+
+    def bekleyen(self):
+        """Menüdeki sayı: not açıkken eklenmeyi bekleyen ürünler."""
+        if not eknot_ayar()["acik"]:
+            return 0
+        return sum(r["sekme"] == "eklenecek" for r in self.satirlar())
+
+    def start(self, kind, pids=None):
+        if self.running or SEOJOBS.running or GECIS.running:
+            return "Başka bir işlem sürüyor; bitmesini bekleyin."
+        a = eknot_ayar()
+        if kind == "kategoriler":
+            pids = []
+        else:
+            if kind in ("ekle", "guncelle", "kontrol") and EN.eksik(a):
+                return EN.eksik(a)
+            if kind == "ekle" and not a["acik"]:
+                return "Önce notu açın (sayfanın üstündeki düğme)."
+            secili = {int(p) for p in pids} if pids else None
+            uygun = {"kontrol": lambda r: r["sekme"] == "eklenecek",
+                     # seçilen atlanmış ürün yeniden denenebilir; toplu eklemede yalnızca eklenecekler
+                     "ekle": lambda r: r["sekme"] == "eklenecek" or (secili is not None and r["sekme"] == "atlandi"
+                                                                    and not r["haric"]),
+                     "guncelle": lambda r: r["eski"],
+                     "kaldir": lambda r: r["sekme"] == "eklendi"}[kind]
+            pids = [r["pid"] for r in self.satirlar() if uygun(r) and (secili is None or r["pid"] in secili)]
+            if not pids:
+                return "İşlenecek ürün yok."
+        self.running, self.kind, self.done, self.todo, self.stop_flag = True, kind, 0, len(pids), False
+        self.sonuc = {}
+        spawn(self._run, kind, pids)
+        return {"kontrol": f"{len(pids)} ürün kontrol ediliyor; mağazaya bir şey yazılmaz.",
+                "ekle": f"{len(pids)} ürüne not ekleniyor.", "guncelle": f"{len(pids)} üründe not güncelleniyor.",
+                "kaldir": f"{len(pids)} üründen not kaldırılıyor.", "kategoriler": "Kategori listesi Ideasoft'tan okunuyor."}[kind]
+
+    def stop(self):
+        self.stop_flag = True
+
+    def _run(self, kind, pids):
+        sonuc = Counter()
+
+        def one(pid):
+            if self.stop_flag:
+                return
+            try:
+                d, _ = eknot_yaz(pid, kind)
+            except Exception as e:  # noqa: BLE001
+                d = "hata"
+                _eknot_kaydet(pid, durum="hata", mesaj=f"Hata: {str(e)[:200]}")
+                log(f"Ek not, ürün {pid}: {e}", "err")
+            sonuc[d or "uygun"] += 1
+            self.done += 1
+        try:
+            if kind == "kategoriler":
+                cats = [(c["id"], (c.get("name") or "").strip(), _ref_id(c.get("parent")))
+                        for c in CATSCAN._pages("categories", "Kategoriler") if c.get("id")]
+                if cats:
+                    with DBI.lock:
+                        DBI.c.execute("DELETE FROM cat")
+                        DBI.c.executemany("INSERT INTO cat(id, name, parent) VALUES(?,?,?)", cats)
+                        DBI.c.commit()
+                log(f"Ek not: kategori listesi yenilendi ({len(cats)} kategori).", "ok")
+            else:
+                pmap(one, pids, 2)
+                log(f"{self.ADLAR[kind]} {'durduruldu' if self.stop_flag else 'bitti'}: "
+                    + ", ".join(f"{n} {k}" for k, n in sonuc.items()) + ".", "ok")
+        except Exception as e:  # noqa: BLE001
+            log(f"{self.ADLAR[kind]}: {e}", "err")
+        finally:
+            self.sonuc, self.running = dict(sonuc), False
+
+    def haric(self, pid, haric):
+        """Ürünü listeden çıkarır (notu eklenmez) ya da yeniden dahil eder. Notu duran ürünün durumu değişmez."""
+        row = DBI.q("SELECT durum FROM eknot WHERE pid=?", (pid,), one=True)
+        alan = {"haric": 1 if haric else 0}
+        if not row or row["durum"] != "eklendi":
+            alan.update(durum="", mesaj="Sizin isteğinizle hariç tutuldu." if haric else "")
+        _eknot_kaydet(pid, **alan)
+
+
+EKNOT = _Ref("eknot")
 
 
 # ============================================================ kırık bağlantı taraması
@@ -2908,6 +3225,7 @@ class Tenant:
             self.oto = Otopilot()
             self.links = LinkScanner()
             self.gecis = SablonGecisi()
+            self.eknot = EkNot()
             self.rapor = Raporlar()
         finally:
             _cur.t = prev
@@ -2968,6 +3286,7 @@ WRITE_ROUTES = {
     "/api/cat/create": "kategori_ac", "/api/cat/create_many": "kategori_ac",
     "/api/otopilot/onayla": "otopilot",
     "/api/sablon/gecis/start": "seo_gonder",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
+    "/api/eknot/yaz": "ek_not",                    # notu kaldırmak (/api/eknot/kaldir, geri_al) geri almadır, listede yok
 }
 
 
@@ -3656,6 +3975,9 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, {"sablon": sablon(), "secenekler": TPL.secenekler()})
         if p == "/api/otopilot":
             return self._send(200, OTO.state())
+        if p == "/api/eknot":
+            sekme = q.get("sekme") if q.get("sekme") in ("eklenecek", "eklendi", "atlandi") else "eklenecek"
+            return self._send(200, EKNOT.durum(sekme, (q.get("q") or "").strip(), max(0, int(q.get("sayfa") or 0))))
         if p == "/api/sablon/gecis":
             return self._send(200, GECIS.state())
         if p == "/api/rapor":
@@ -3935,6 +4257,36 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/linkler/stop":
             LINKS.stop()
             return self._send(200, {"msg": "Durduruluyor; önceki sonuçlar korunacak."})
+        if p == "/api/eknot/ayar":
+            CFG.update(ek_not=EN.birlestir(CFG.get("ek_not"), self._json()))
+            return self._send(200, {"ok": True, "ayar": eknot_ayar()})
+        if p in ("/api/eknot/baslat", "/api/eknot/yaz", "/api/eknot/kaldir"):
+            # baslat: kontrol ve kategori listesi (yazmaz); yaz: ekle / guncelle (paket); kaldir: geri almadır, paketten bağımsız
+            kind = {"/api/eknot/kaldir": "kaldir"}.get(p, q.get("kind"))
+            izinli = {"/api/eknot/baslat": ("kontrol", "kategoriler"), "/api/eknot/yaz": ("ekle", "guncelle"),
+                      "/api/eknot/kaldir": ("kaldir",)}[p]
+            if kind not in izinli:
+                return self._send(400, {"error": "Geçersiz işlem."})
+            pids = self._json().get("pids")
+            return self._send(200, {"msg": EKNOT.start(kind, [int(x) for x in pids] if pids else None)})
+        if p == "/api/eknot/durdur":
+            EKNOT.stop()
+            return self._send(200, {"msg": "Durduruluyor."})
+        if p == "/api/eknot/haric":
+            EKNOT.haric(int(q.get("pid") or 0), q.get("h") == "1")
+            return self._send(200, {"ok": True})
+        if p == "/api/eknot/geri_al":     # tek ürünün notunu kaldırır ve ürünü hariç tutar (yeniden eklenmez)
+            if EKNOT.running:
+                return self._send(200, {"error": "Başka bir ek not işlemi sürüyor; bitmesini bekleyin."})
+            pid = int(q.get("pid") or 0)
+            d, msg = eknot_yaz(pid, "kaldir")
+            if d == "kaldirildi":
+                EKNOT.haric(pid, True)
+            return self._send(200, {"msg": msg} if d == "kaldirildi" else {"error": msg})
+        if p == "/api/eknot/seo_hazirla":  # SEO oranı notla düşecek ürünün açıklaması notla birlikte yeniden hazırlanır
+            plan = prepare_plan(int(q.get("pid") or 0), ek_not_zorla=True)
+            oran = f"{plan['score']['density']:.2f}".replace(".", ",")
+            return self._send(200, {"msg": f"Açıklama notla birlikte hazırlandı (hedef kelime oranı %{oran}). Kontrol edip gönderin."})
         if p == "/api/otopilot/ayar":
             msg = OTO.ayarla(self._json())
             return self._send(200, {"error": msg} if msg else {"ok": True, "ayar": oto_ayar()})

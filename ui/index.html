@@ -327,6 +327,16 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
   .todo li{grid-template-columns:1fr}.todo li:before{display:none}
   .ph h1{font-size:25px}
 }
+/* ek not */
+.ek-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+.ek-prev p{margin:0 0 6px} .ek-prev p:last-child{margin:0}
+.ek-kats{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:var(--r-s);padding:4px 12px;background:var(--surface)}
+.ek-kats label{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.ek-kats label:last-of-type{border-bottom:0}
+.ek-kats input{accent-color:var(--brand)}
+.ek-kats small{margin-left:auto;color:var(--ink3);white-space:nowrap}
+.ek-acts{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width:980px){.ek-grid{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -341,6 +351,7 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <a data-v="kategori"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>Kategoriler<b class="badge" id="nb-kategori"></b></a>
     <a data-v="gorsel"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-8 9"/></svg>Görseller<b class="badge" id="nb-gorsel"></b></a>
     <a data-v="uyari"><svg viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>Uyarılar<b class="badge" id="nb-uyari"></b></a>
+    <a data-v="eknot"><svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>Ek not<b class="badge" id="nb-eknot"></b></a>
     <a data-v="otopilot"><svg viewBox="0 0 24 24"><path d="M13 3 5 14h6l-1 7 8-11h-6z"/></svg>Otopilot<b class="badge" id="nb-otopilot"></b></a>
     <a data-v="rapor"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>Rapor</a>
     <div class="grow"></div>
@@ -534,6 +545,56 @@ pre.json{background:var(--surface2);border-radius:var(--r-s);padding:10px;max-he
     <tbody id="urows"></tbody>
   </table></div>
   <div class="pager"><span id="upinfo"></span><button class="btn ghost sm" id="uprev">Önceki</button><button class="btn ghost sm" id="unext">Sonraki</button></div>
+</section>
+
+<!-- ============================ EK NOT -->
+<section class="view" id="v-eknot">
+  <header class="ph">
+    <div><h1>Ek not</h1><p class="lede">Seçtiğiniz kategorilerdeki ürünlerin açıklamasının en sonuna kısa bir not ve bağlantı ekler; örneğin üreticinin sitesinden ürün kaydıyla ek garanti. SEO puanını düşürecek ürünlere eklenmez, her not geri alınabilir.</p></div>
+    <div class="ph-act"><button class="btn ghost" id="ek-dur" hidden>Durdur</button><button class="btn" id="ek-toggle">Notu aç</button></div>
+  </header>
+  <div class="alert" id="ek-alert"></div>
+  <div class="hint" id="ek-hint" hidden></div>
+  <div class="meta" id="ek-meta"></div>
+  <div class="ek-grid">
+    <div class="step">
+      <h3>1. Not</h3>
+      <p>Müşterinin göreceği kısa metni ve bağlantıyı yazın. Metinde <code>{urun}</code> geçerse oraya ürünün hedef kelimesi gelir.</p>
+      <div class="grid2">
+        <div class="field"><label for="ek-simge">Simge</label><select id="ek-simge"></select></div>
+        <div class="field"><label for="ek-baslik">Başlık (isteğe bağlı)</label><input id="ek-baslik" placeholder="Örn. +1 yıl ek garanti"></div>
+      </div>
+      <div class="field"><label for="ek-metin">Not metni <small class="muted" id="ek-sayac"></small></label>
+        <textarea id="ek-metin" rows="3" placeholder="Örn. Bu ürünü üreticinin sitesinden kaydettirerek 1 yıl ek garanti kazanabilirsiniz. Koşullar için üreticinin sayfasına bakın."></textarea></div>
+      <div class="grid2">
+        <div class="field"><label for="ek-lyazi">Bağlantı yazısı</label><input id="ek-lyazi" placeholder="Ürününüzü kaydedin"></div>
+        <div class="field"><label for="ek-lurl">Bağlantı adresi (boş bırakılırsa bağlantı olmaz)</label><input id="ek-lurl" placeholder="https://"></div>
+      </div>
+      <div class="acts" style="margin-top:4px;align-items:center"><button class="btn" id="ek-kaydet">Notu kaydet</button><span class="muted" id="ek-kayit"></span></div>
+    </div>
+    <div class="step">
+      <h3>Önizleme</h3>
+      <p>Not açıklamanın en sonunda böyle görünür; renk açıklama şablonunuzdan, yazı tipi sitenizin temasından gelir. Bağlantı yeni sekmede açılır.</p>
+      <div class="desc ek-prev" id="ek-onizleme"></div>
+    </div>
+  </div>
+  <div class="step" style="margin-top:14px">
+    <h3>2. Kategoriler</h3>
+    <p>Not, işaretlediğiniz kategorilerdeki ve onların alt kategorilerindeki ürünlere eklenir.</p>
+    <div class="tools"><input type="search" id="ek-kq" placeholder="Kategori ara"><label class="check" style="margin:0"><input type="checkbox" id="ek-ksecili"><span>Yalnızca seçilenler</span></label>
+      <button class="btn ghost sm" id="ek-kyenile">Kategori listesini yenile</button></div>
+    <div class="ek-kats" id="ek-kats"></div>
+    <div class="acts" style="align-items:center"><button class="btn" id="ek-kkaydet">Kategorileri kaydet</button><span class="muted" id="ek-ksay"></span></div>
+  </div>
+  <h2 style="margin-top:28px">3. Ürünler</h2>
+  <div class="tabs" id="ek-tabs"></div>
+  <p class="muted" id="ek-tabinfo" style="margin:-6px 0 12px"></p>
+  <div class="tools"><input type="search" id="ek-q" placeholder="Stok kodu, ürün adı veya ürün no ile ara"><span class="ek-acts" id="ek-acts"></span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th style="width:30px"><input type="checkbox" id="ek-hepsi" aria-label="Sayfadaki ürünlerin hepsini seç"></th><th>Ürün</th><th>Hedef kelime oranı</th><th>Durum</th><th></th></tr></thead>
+    <tbody id="ek-rows"></tbody>
+  </table></div>
+  <div class="pager"><span id="ek-pinfo"></span><button class="btn ghost sm" id="ek-prev">Önceki</button><button class="btn ghost sm" id="ek-next">Sonraki</button></div>
 </section>
 
 <!-- ============================ YENİ ÜRÜN OTOPİLOTU -->
@@ -762,6 +823,7 @@ function show(v){
   if(v==='seo'){ sTick(); sRows(); }
   if(v==='kategori'){ cTick(); cRows(); }
   if(v==='otopilot') aTick();
+  if(v==='eknot') ekTick(true);
   if(v==='uyari'){ uSeg(); uRows(); }
   if(v==='rapor') rpYukle();
 }
@@ -1238,7 +1300,7 @@ async function sOpen(pid){
     ${it.pstate==='gonderildi' && it.ok!==1 ? `<div class="hint" style="margin-top:12px">Gönderildi ama hâlâ eksik. Paneldeki “Hedef kelime ... Oran: %X” değerini yazın; program hesabını panele göre ayarlar.
       <div style="display:flex;gap:8px;margin-top:8px"><input id="s-oran" placeholder="Ör. 3,00" style="width:110px;padding:7px 8px;border:1px solid var(--cizgi)"><button class="btn ghost" id="s-cal">Panele göre ayarla</button></div></div>` : ''}
     <div class="acts">
-      ${P && it.ok!==1 ? '<button class="btn go" id="s-send">Ideasoft\'a gönder</button>' : ''}
+      ${P && (it.ok!==1 || (P.ek_not && it.pstate==='hazir')) ? '<button class="btn go" id="s-send">Ideasoft\'a gönder</button>' : ''}
       ${it.ok!==1 ? `<button class="btn ghost" id="s-regen">${P ? 'Yeniden oluştur' : 'Açıklama hazırla'}</button>` : ''}
       ${it.ok!==1 ? '<button class="btn ghost" id="s-rep">İncele ve onar</button>' : ''}
       ${it.has_backup && (it.pstate === 'gonderildi' || it.pstate === 'hata') ? '<button class="btn ghost" id="s-undo">Özgün hâline döndür</button>' : ''}
@@ -1898,12 +1960,193 @@ document.querySelectorAll('input[name="a-mod"]').forEach(x => x.onchange = () =>
 for(const k of ['seo', 'kategorisiz', 'tasi']) $('#a-' + k).onchange = () => aSave({[k]: $('#a-' + k).checked});
 setInterval(() => { if(document.querySelector('#v-otopilot.on')) aTick(); }, 3000);
 
+/* ---------------- ek not: seçilen kategorilerdeki ürün açıklamalarının sonuna not ve bağlantı */
+let EK = null, ekSekme = 'eklenecek', ekSayfa = 0, ekFormDolu = false, ekKirli = false, ekCalisti = false;
+const ekSecili = new Set(), ekKat = new Set();
+const EK_SEKME = {
+  eklenecek: ['Eklenecek', 'Seçili kategorilerde olup henüz notu olmayan ürünler. “Kontrol et” her ürünün SEO oranının notla nasıl değişeceğini hesaplar; mağazaya bir şey yazmaz. Not, siz onaylayınca eklenir.'],
+  eklendi: ['Eklendi', 'Notu olan ürünler. Notun metnini ya da bağlantısını değiştirdiyseniz “Notu güncelle” ile bu ürünlere uygulayın.'],
+  atlandi: ['Atlandı', 'SEO puanını düşüreceği için eklenmeyen, hata veren ve sizin hariç tuttuğunuz ürünler.']};
+const ekOran = r => r.once == null ? (r.durum || r.mesaj ? '<span class="muted">Hedef kelime yok</span>' : '<span class="muted">Kontrol edilmedi</span>')
+  : `%${(+r.once).toFixed(2).replace('.', ',')} → <b class="${r.sonra < 2 && r.once >= 2 ? 'bad-t' : ''}">%${(+r.sonra).toFixed(2).replace('.', ',')}</b>`;
+function ekDurum(r){
+  const p = (c, t) => `<span class="pill"><i style="background:${c}"></i>${t}</span>`;
+  let s;
+  if(r.sekme === 'eklendi') s = !r.kategoride ? p('var(--warn)', 'Kategoride değil') : r.eski ? p('var(--warn)', 'Eski not') : p('var(--ok)', 'Eklendi');
+  else if(r.haric) s = p('var(--ink3)', 'Hariç');
+  else if(r.durum === 'atlandi') s = p('var(--warn)', 'SEO düşerdi');
+  else if(r.durum === 'hata') s = p('var(--bad)', 'Hata');
+  else s = p('var(--idle)', 'Eklenecek');
+  const not = r.sekme === 'eklendi' && !r.kategoride ? 'Ürün artık seçili kategorilerde değil; notu isterseniz kaldırın.' : r.mesaj;
+  return s + (not ? `<br><small>${esc(not)}</small>` : '') + (r.zaman && r.sekme === 'eklendi' ? `<br><small class="muted">${esc(r.zaman)}</small>` : '');
+}
+function ekIslem(r){
+  const b = (k, t, ghost = true) => `<button class="btn ${ghost ? 'ghost ' : ''}sm" data-${k}="${r.pid}">${t}</button>`;
+  const out = [];
+  if(r.sekme === 'eklenecek') out.push(b('haric', 'Hariç tut'));
+  if(r.sekme === 'eklendi') out.push(b('geri', 'Geri al'));
+  if(r.sekme === 'atlandi'){
+    if(r.haric) out.push(b('dahil', 'Dahil et'));
+    else {
+      if(r.durum === 'atlandi') out.push(b('seo', 'Notla SEO hazırla', false));
+      out.push(b('dene', 'Yeniden dene'), b('haric', 'Hariç tut'));
+    }
+  }
+  if(EK.panel) out.push(`<a class="btn ghost sm" href="${esc(EK.panel.urun)}${r.pid}" target="_blank" rel="noopener" style="text-decoration:none">Panelde aç</a>`);
+  return `<div class="acts" style="margin:0;flex-wrap:nowrap">${out.join('')}</div>`;
+}
+function ekOnizle(){
+  const a = ekForm(), renk = (EK && EK.renk) || '#1b4f72';
+  if(!a.metin){ $('#ek-onizleme').innerHTML = '<p class="muted">Not metnini yazınca burada görünür.</p>'; return; }
+  const bas = [a.simge, esc(a.baslik)].filter(Boolean).join(' ');
+  $('#ek-onizleme').innerHTML = `<div style="border:1px solid ${renk};border-left:4px solid ${renk};padding:8px 12px">`
+    + (bas ? `<p><strong>${bas}</strong></p>` : '') + `<p>${esc(a.metin.replaceAll('{urun}', 'Örnek Ürün'))}</p>`
+    + (a.link_url ? `<p><a href="${esc(a.link_url)}" target="_blank" rel="nofollow noopener">${esc(a.link_yazi || 'Ürününüzü kaydedin')} →</a></p>` : '') + '</div>';
+  $('#ek-sayac').textContent = `${a.metin.length} / ${EK.uzunluk.metin}`;
+}
+const ekForm = () => ({simge: $('#ek-simge').value, baslik: $('#ek-baslik').value.trim(), metin: $('#ek-metin').value.trim(),
+                       link_yazi: $('#ek-lyazi').value.trim(), link_url: $('#ek-lurl').value.trim()});
+function ekFormDoldur(){
+  const a = EK.ayar;
+  $('#ek-simge').innerHTML = Object.entries(EK.simgeler).map(([k, t]) => `<option value="${esc(k)}">${k ? k + ' ' : ''}${esc(t)}</option>`).join('');
+  $('#ek-simge').value = a.simge; $('#ek-baslik').value = a.baslik; $('#ek-metin').value = a.metin;
+  $('#ek-lyazi').value = a.link_yazi; $('#ek-lurl').value = a.link_url;
+  $('#ek-baslik').maxLength = EK.uzunluk.baslik; $('#ek-metin').maxLength = EK.uzunluk.metin; $('#ek-lyazi').maxLength = EK.uzunluk.link_yazi;
+  ekKat.clear(); a.kategoriler.forEach(k => ekKat.add(k));
+  ekFormDolu = true; ekKirli = false; $('#ek-kayit').textContent = ''; ekOnizle(); ekKatlar();
+}
+function ekKatlar(){
+  const q = $('#ek-kq').value.trim().toLocaleLowerCase('tr-TR'), sadece = $('#ek-ksecili').checked;
+  const list = EK.kategoriler.filter(k => (!q || k.path.toLocaleLowerCase('tr-TR').includes(q)) && (!sadece || ekKat.has(k.id)));
+  $('#ek-kats').innerHTML = !EK.kategoriler.length
+    ? '<p class="muted" style="margin:6px 0">Kategori listesi henüz yok. “Kategori listesini yenile”ye basın.</p>'
+    : list.length ? list.slice(0, 400).map(k => `<label><input type="checkbox" data-k="${k.id}" ${ekKat.has(k.id) ? 'checked' : ''}><span>${esc(k.path)}</span><small>${k.n ? nf(k.n) + ' ürün' : ''}</small></label>`).join('')
+      + (list.length > 400 ? `<p class="muted">${nf(list.length - 400)} kategori daha; aramayı daraltın.</p>` : '')
+    : '<p class="muted" style="margin:6px 0">Aramaya uyan kategori yok.</p>';
+  $('#ek-kats').querySelectorAll('[data-k]').forEach(c => c.onchange = () => { c.checked ? ekKat.add(+c.dataset.k) : ekKat.delete(+c.dataset.k); ekKatSay(); });
+  ekKatSay();
+}
+function ekKatSay(){
+  const kayitli = new Set(EK.ayar.kategoriler), degisti = ekKat.size !== kayitli.size || [...ekKat].some(k => !kayitli.has(k));
+  $('#ek-ksay').textContent = `${nf(ekKat.size)} kategori seçili` + (degisti ? ' · kaydedilmedi' : '');
+  $('#ek-kkaydet').disabled = !degisti;
+}
+async function ekTick(ilk){
+  const r = await api(`/api/eknot?sekme=${ekSekme}&sayfa=${ekSayfa}&q=${encodeURIComponent($('#ek-q').value.trim())}`);
+  if(!r.ayar) return;
+  EK = r;
+  if(ilk || !ekFormDolu) ekFormDoldur();
+  const a = r.ayar, say = r.sayilar;
+  $('#ek-toggle').textContent = a.acik ? 'Notu kapat' : 'Notu aç';
+  $('#ek-toggle').className = a.acik ? 'btn ghost' : 'btn';
+  $('#ek-dur').hidden = !r.running;
+  $('#ek-alert').textContent = a.acik && r.eksik ? r.eksik : ''; $('#ek-alert').classList.toggle('show', !!(a.acik && r.eksik));
+  const ipucu = r.taranmadi ? 'Ürünler mağaza taramasından okunur. Önce Genel bakış’tan “Mağazayı tara” ile mağazanızı tarayın.'
+    : !a.acik ? 'Not kapalı: ürünlere yeni not eklenmez, eklenmiş notlar olduğu gibi durur. Notu ve kategorileri hazırlayıp üstteki düğmeyle açın.' : '';
+  $('#ek-hint').textContent = ipucu; $('#ek-hint').hidden = !ipucu;
+  const sonuc = Object.entries(r.sonuc || {}).map(([k, n]) => `${nf(n)} ${({eklendi: 'eklendi', atlandi: 'atlandı', hata: 'hata', kaldirildi: 'kaldırıldı', uygun: 'eklenebilir'})[k] || k}`).join(', ');
+  $('#ek-meta').innerHTML = `<span>Durum: <b>${a.acik ? 'Açık' : 'Kapalı'}</b></span><span>Notu olan: <b>${nf(say.eklendi)}</b></span><span>Eklenecek: <b>${nf(say.eklenecek)}</b></span>`
+    + (r.running ? `<span><b>${esc(({kontrol: 'Kontrol ediliyor', ekle: 'Ekleniyor', guncelle: 'Güncelleniyor', kaldir: 'Kaldırılıyor', kategoriler: 'Kategoriler okunuyor'})[r.kind])}${r.todo ? ` ${nf(r.done)} / ${nf(r.todo)}` : '…'}</b></span>`
+      : sonuc ? `<span>Son işlem: <b>${esc(sonuc)}</b></span>` : '');
+  if(ekCalisti && !r.running && r.kind === 'kategoriler') ekKatlar();
+  ekCalisti = r.running;
+  $('#ek-tabs').innerHTML = Object.entries(EK_SEKME).map(([k, [t]]) => `<button data-s="${k}" class="${k === ekSekme ? 'on' : ''}">${t} (${nf(say[k])})</button>`).join('');
+  $('#ek-tabs').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { ekSekme = b.dataset.s; ekSayfa = 0; ekSecili.clear(); ekTick(); });
+  $('#ek-tabinfo').textContent = EK_SEKME[ekSekme][1];
+  ekDugmeler();
+  $('#ek-rows').innerHTML = r.items.length ? r.items.map(x => `<tr>
+      <td><input type="checkbox" data-sec="${x.pid}" ${ekSecili.has(x.pid) ? 'checked' : ''} aria-label="Seç"></td>
+      <td><b>${esc(x.name) || 'Ürün ' + x.pid}</b><br><small class="muted">${esc(x.sku)} · no ${x.pid}${x.aktif === 0 ? ' · yayında değil' : ''}</small></td>
+      <td style="white-space:nowrap">${ekOran(x)}</td><td>${ekDurum(x)}</td><td>${ekIslem(x)}</td></tr>`).join('')
+    : `<tr><td colspan="5" class="muted">${!a.kategoriler.length ? 'Önce yukarıdan kategori seçip kaydedin.' : r.taranmadi ? 'Henüz taranmadı.' : 'Bu sekmede ürün yok.'}</td></tr>`;
+  $('#ek-rows').querySelectorAll('[data-sec]').forEach(c => c.onchange = () => { c.checked ? ekSecili.add(+c.dataset.sec) : ekSecili.delete(+c.dataset.sec); ekDugmeler(); });
+  $('#ek-hepsi').checked = r.items.length > 0 && r.items.every(x => ekSecili.has(x.pid));
+  const ac = (sel, fn) => $('#ek-rows').querySelectorAll(`[data-${sel}]`).forEach(b => b.onclick = e => { e.stopPropagation(); fn(+b.dataset[sel], b); });
+  ac('haric', async pid => { await post(`/api/eknot/haric?pid=${pid}&h=1`); ekSecili.delete(pid); ekTick(); });
+  ac('dahil', async pid => { await post(`/api/eknot/haric?pid=${pid}&h=0`); ekTick(); });
+  ac('dene', pid => ekCalistir('/api/eknot/yaz?kind=ekle', [pid], 'Bu ürüne not eklensin mi?', 'SEO etkisi yeniden hesaplanır; puanı düşürmeyecekse not eklenir.', 'Notu ekle'));
+  ac('geri', async (pid, b) => {
+    if(!await ask('Not bu üründen kaldırılır ve ürün hariç tutulur; toplu eklemelerde yeniden eklenmez.', {title: 'Not kaldırılsın mı?', ok: 'Notu kaldır'})) return;
+    b.disabled = true; const r2 = await post(`/api/eknot/geri_al?pid=${pid}`); if(r2.msg) toast(r2.msg); ekTick();
+  });
+  ac('seo', async (pid, b) => {
+    if(!await ask('Ürünün açıklaması açıklama şablonunuzla, not dahil yeniden hazırlanır; hedef kelime oranı notla birlikte %2–3’e oturtulur. Mağazaya hiçbir şey gönderilmez: açılan pencerede kontrol edip siz gönderirsiniz.',
+                  {title: 'Açıklama notla birlikte hazırlansın mı?', ok: 'Hazırla'})) return;
+    b.disabled = true; b.textContent = 'Hazırlanıyor…';
+    const r2 = await post(`/api/eknot/seo_hazirla?pid=${pid}`); if(r2.msg) toast(r2.msg);
+    if(!r2.error) sOpen(pid);
+    ekTick();
+  });
+  $('#ek-pinfo').textContent = r.toplam ? `${nf(ekSayfa * 100 + 1)}–${nf(Math.min(r.toplam, (ekSayfa + 1) * 100))} / ${nf(r.toplam)}` : '';
+  $('#ek-prev').disabled = ekSayfa === 0; $('#ek-next').disabled = (ekSayfa + 1) * 100 >= r.toplam;
+}
+function ekDugmeler(){
+  const r = EK, say = r.sayilar, n = ekSecili.size, kapali = r.running, b = [];
+  const btn = (id, t, ghost, dis) => `<button class="btn ${ghost ? 'ghost ' : ''}sm" id="${id}" ${dis || kapali ? 'disabled' : ''}>${t}</button>`;
+  if(ekSekme === 'eklenecek'){
+    b.push(btn('ek-b-kontrol', 'Kontrol et', true, !say.eklenecek || r.eksik));
+    b.push(btn('ek-b-secekle', `Seçilenlere ekle${n ? ' (' + nf(n) + ')' : ''}`, true, !n || r.eksik || !r.ayar.acik));
+    b.push(btn('ek-b-ekle', `Hepsine ekle (${nf(say.eklenecek)})`, false, !say.eklenecek || r.eksik || !r.ayar.acik));
+  } else if(ekSekme === 'eklendi'){
+    b.push(btn('ek-b-guncelle', `Notu güncelle (${nf(say.eski)})`, false, !say.eski || r.eksik));
+    b.push(btn('ek-b-seckaldir', `Seçilenlerden kaldır${n ? ' (' + nf(n) + ')' : ''}`, true, !n));
+    b.push(btn('ek-b-kaldir', 'Hepsinden kaldır', true, !say.eklendi));
+  } else b.push(btn('ek-b-secdene', `Seçilenleri yeniden dene${n ? ' (' + nf(n) + ')' : ''}`, true, !n));
+  $('#ek-acts').innerHTML = b.join('');
+  const on = (id, fn) => { const e = $('#' + id); if(e) e.onclick = fn; };
+  const sec = () => [...ekSecili];
+  on('ek-b-kontrol', () => ekCalistir('/api/eknot/baslat?kind=kontrol', null));
+  on('ek-b-ekle', () => ekCalistir('/api/eknot/yaz?kind=ekle', null, `${nf(say.eklenecek)} ürüne not eklensin mi?`,
+    'Her ürün yeniden okunur, eski açıklaması yedeklenir; SEO puanını düşürecek ürünler atlanır. Not her üründen geri alınabilir.', 'Notu ekle'));
+  on('ek-b-secekle', () => ekCalistir('/api/eknot/yaz?kind=ekle', sec(), `${nf(n)} ürüne not eklensin mi?`,
+    'Her ürün yeniden okunur, eski açıklaması yedeklenir; SEO puanını düşürecek ürünler atlanır. Not her üründen geri alınabilir.', 'Notu ekle'));
+  on('ek-b-guncelle', () => ekCalistir('/api/eknot/yaz?kind=guncelle', null, `${nf(say.eski)} üründe not güncellensin mi?`,
+    'Bu ürünlerdeki eski not, bugünkü metin ve bağlantıyla değiştirilir. SEO puanını düşürecek üründe eski not kalır.', 'Güncelle'));
+  on('ek-b-seckaldir', () => ekCalistir('/api/eknot/kaldir', sec(), `${nf(n)} üründen not kaldırılsın mı?`, 'Açıklamanın geri kalanına dokunulmaz.', 'Notu kaldır', true));
+  on('ek-b-kaldir', () => ekCalistir('/api/eknot/kaldir', null, `${nf(say.eklendi)} üründen not kaldırılsın mı?`,
+    'Not bütün ürünlerden silinir; açıklamaların geri kalanına dokunulmaz. Ürünler “Eklenecek” listesine döner.', 'Hepsinden kaldır', true));
+  on('ek-b-secdene', () => ekCalistir('/api/eknot/yaz?kind=ekle', sec(), `${nf(n)} ürün yeniden denensin mi?`,
+    'SEO etkisi yeniden hesaplanır; puanı düşürmeyecek ürünlere not eklenir.', 'Yeniden dene'));
+}
+async function ekCalistir(yol, pids, baslik, metin, ok, tehlike){
+  if(baslik && !await ask(metin, {title: baslik, ok, danger: tehlike, go: !tehlike})) return;
+  const r = await post(yol, pids ? {pids} : {}); if(r.msg) toast(r.msg);
+  ekSecili.clear(); ekTick();
+}
+['ek-simge', 'ek-baslik', 'ek-metin', 'ek-lyazi', 'ek-lurl'].forEach(id => $('#' + id).oninput = () => {
+  ekKirli = true; $('#ek-kayit').textContent = 'Kaydedilmemiş değişiklik var.'; ekOnizle(); });
+$('#ek-kaydet').onclick = async () => {
+  const f = ekForm(), r = await post('/api/eknot/ayar', f); if(!r.ok) return;
+  if(f.link_url && !r.ayar.link_url) toast('Bağlantı adresi geçersiz; https:// ile başlayan tam adres yazın.');
+  else toast('Not kaydedildi.' + (EK.sayilar.eklendi ? ' Notu olan ürünlere uygulamak için “Eklendi” sekmesinde “Notu güncelle”.' : ''));
+  ekFormDolu = false; ekTick();
+};
+$('#ek-kkaydet').onclick = async () => {
+  const r = await post('/api/eknot/ayar', {kategoriler: [...ekKat]}); if(!r.ok) return;
+  toast('Kategoriler kaydedildi.'); ekSayfa = 0; await ekTick(); ekKatSay();
+};
+$('#ek-toggle').onclick = async () => {
+  const acik = EK.ayar.acik;
+  if(acik && !await ask('Ürünlere yeni not eklenmez ve menüde bekleyen sayısı görünmez. Eklenmiş notlar olduğu gibi durur; kaldırmak için “Eklendi” sekmesini kullanın.', {title: 'Not kapatılsın mı?', ok: 'Kapat'})) return;
+  if(!acik && ekKirli) toast('Önce “Notu kaydet”e basın.');
+  const r = await post('/api/eknot/ayar', {acik: !acik}); if(r.ok) toast(r.ayar.acik ? 'Not açıldı.' : 'Not kapatıldı.'); ekTick();
+};
+$('#ek-dur').onclick = async () => { await post('/api/eknot/durdur'); ekTick(); };
+$('#ek-kyenile').onclick = async () => { const r = await post('/api/eknot/baslat?kind=kategoriler'); if(r.msg) toast(r.msg); ekTick(); };
+$('#ek-kq').oninput = () => ekKatlar();
+$('#ek-ksecili').onchange = () => ekKatlar();
+$('#ek-hepsi').onchange = () => { (EK.items || []).forEach(x => $('#ek-hepsi').checked ? ekSecili.add(x.pid) : ekSecili.delete(x.pid)); ekTick(); };
+let ekqh; $('#ek-q').oninput = () => { clearTimeout(ekqh); ekqh = setTimeout(() => { ekSayfa = 0; ekTick(); }, 250); };
+$('#ek-prev').onclick = () => { if(ekSayfa > 0){ ekSayfa--; ekTick(); } };
+$('#ek-next').onclick = () => { ekSayfa++; ekTick(); };
+setInterval(() => { if(document.querySelector('#v-eknot.on')) ekTick(); }, 3000);
+
 oTick();
 /* ---------------- uygulama geneli */
 // menüdeki bekleyen iş sayıları ve sol alttaki arka plan işleri (her sayfada)
 async function jTick(){
   const r = await api('/api/jobs'); if(!r.jobs) return;
-  for(const k of ['seo', 'gorsel', 'kategori']){ const n = r.badges[k]; $('#nb-' + k).textContent = n ? nf(n) : ''; }
+  for(const k of ['seo', 'gorsel', 'kategori', 'eknot']){ const n = r.badges[k]; $('#nb-' + k).textContent = n ? nf(n) : ''; }
   $('#dock').innerHTML = r.jobs.map((j, i) => `<div class="job" data-j="${i}" title="${esc(j.t)}"><b>${esc(j.t)}${j.paused ? ' (duraklatıldı)' : ''}</b>
     <span>${esc(j.d || 'Sürüyor')}${j.pct != null ? ' · %' + j.pct : ''}</span>
     <div class="jb${j.pct == null ? ' ind' : ''}"><i style="${j.pct != null ? 'width:' + j.pct + '%' : ''}"></i></div></div>`).join('');

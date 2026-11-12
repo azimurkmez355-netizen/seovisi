@@ -68,6 +68,7 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
   - [x] canlı önizleme ve SEO puanı tahmini
   - [x] eski açıklamaları yeni şablona toplu geçirme (yedekli)
 - [x] Kopya ürün tespiti
+- [x] Ek not: seçilen kategorilerdeki ürünlerin açıklamasının sonuna kısa not ve bağlantı (ör. üretici sitesinden ürün kaydıyla ek garanti)
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [x] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
 - [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)
@@ -180,6 +181,10 @@ Programın geri kalanı yalnızca kapıyla konuşur. Ideasoft'un cevabı ne olur
 - [x] (K) Yeni ürün otopilotu ve iş sırası (saatlik kontrol; yayına alınıp 30 dk geçen ürün; onaylı / otomatik; şüpheli öneri her zaman onaya)
   - [ ] (?) Ideasoft yeni ürün bildirimi (webhook) varsa kontrol() bildirimle de çağrılacak (9. soru)
 - [x] (K) Kopya ürün tespiti (aynı stok kodu, barkod, ad, sayfa başlığı, meta açıklama; neredeyse aynılar v2 varyant önerisinde)
+- [x] (K) Ek not ekranı (soldaki menüde): not metni, bağlantı, kategori seçimi (alt kategoriler dahil); ürünler eklenecek / eklendi /
+  atlandı; SEO yoğunluğunu bozacak üründe eklenmez, açıklama notla birlikte yeniden hazırlanabilir; yeni ürünler onayla
+  - [ ] (S) Gerçek bağlantı adresi ve metin (Bosch ürün kaydı sayfası); ilk deneme 2-3 üründe
+  - [ ] (?) Ideasoft'un düzenleyicisi notun işaretini (id) ve nofollow'u koruyor mu: test mağazasında
 - [ ] (K) Özellik doldurma
 - [x] (K) Kırık bağlantı taraması (ana sayfa + site haritası; sayfa, görsel ve dış bağlantılar; robots.txt'ye uyar)
   - [x] (K) Haftalık otomatik tarama (ücretli paketlerde; SEO, kategori, kırık bağlantı)

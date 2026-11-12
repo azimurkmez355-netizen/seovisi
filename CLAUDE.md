@@ -39,6 +39,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_silme.py`: uygulama kaldırılınca işaretleme, iptal ve süre dolunca silme (geçici klasörde).
   - `test_platform.py`: platform adaptörü sınırı (app.py'de Ideasoft adresi ve doğrudan istek yok), Ideasoft adaptörünün arayüzü.
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
+  - `test_eknot.py`: ek not; notun üretimi, tanınması, kategori grubu, SEO koruması, ekle / güncelle / kaldır, yazma güvenliği.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -73,6 +74,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `rapor.py` | Aylık rapor hesabı: olay sayıları ve durum fotoğraflarının ay başı / ay sonu karşılaştırması. |
 | `yedek.py` | Günlük yedek: data klasörünün tutarlı zip kopyası (anahtar hariç), eski yedeklerin silinmesi. |
 | `yonetim.py` | Yönetici paneli yardımcıları: parola karması (`data/yonetici.json`), oturum çerezi, kayıtlardaki hatalar. |
+| `eknot.py` | Ek not: ürün açıklamasının sonuna eklenen not ve bağlantının HTML'i, tanınması / çıkarılması, SEO etkisi (yalnızca hesaplar). |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. |
@@ -183,6 +185,17 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   "olası" ve "ekle" önerileri onaya kalır. Yazma `send_plan` / `cat_fix` ile, her yazmadan önce `yazma_engeli` denetlenir.
 - Kategori geri alması, ürün düzeltmeden önce kategorisizse onu yine kategorisiz bırakabilir (`apply_categories(bos_olabilir=True)`).
 
+### Ek not (`eknot.py`, `app.py` "ek not" bölümü)
+
+- Mağaza ayarı `ek_not`: açık / kapalı, simge, başlık, metin (`{urun}` hedef kelime), bağlantı yazısı ve adresi, kategoriler.
+  Ürünler seçilen kategoriler ve alt kategorilerinden (`eknot_grup`), yerel taramalardan (`urunbilgi`, `catprod`). Tablo `eknot`:
+  durum ('' eklenecek | eklendi | atlandi | hata | kaldirildi), haric, yazilan (o ürüne yazılan not), surum, yedek.
+- Not `<div id="seovisi-not">`; işaret silinirse `yazilan` metniyle tanınır. Yazma `_seo_yaz(kw_yaz=False)` ile (hedef kelimeye
+  dokunmaz); hedef kelime yoğunluğu kuralını notsuz tutup notla bozacak ürüne yazılmaz (`EN.etki`). Paket özelliği `ek_not`
+  (`/api/eknot/yaz`); kaldırma geri almadır, paketten bağımsız. Yeni ürünler onaysız eklenmez.
+- Açıklama üretimi (`prepare_plan`, `repair_plan`, `gecir`) notu olan ürünün açıklamasını notla kurar (`eknot_param`);
+  "Notla SEO hazırla" (`ek_not_zorla`) atlanan ürün için. Notlu plan gönderilince `eknot_yazildi`, SEO / şablon geri alınınca `eknot_kalkti`.
+
 ### Uyarılar (`uyari.py`)
 
 - SEO taraması ürün kayıtlarından fiyat, indirim, alış fiyatı, stok, durum, seçenek ve kategori bilgisini `urunbilgi` tablosuna yazar
@@ -254,4 +267,4 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
 - Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti, kırık bağlantı taraması toplu şablon
-  geçişi, aylık rapor ve haftalık tarama bitti. Kalan: özellik doldurma, raporun e-postayla gönderimi. Ayrıntılar `YOL_HARITASI.md` içinde.
+  geçişi, aylık rapor, haftalık tarama ve ek not bitti. Kalan: özellik doldurma, raporun e-postayla gönderimi. Ayrıntılar `YOL_HARITASI.md` içinde.

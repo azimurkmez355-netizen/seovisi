@@ -12,6 +12,7 @@ import random
 import re
 from html.parser import HTMLParser
 
+import eknot as EN
 import profil as PR
 import sablon as TPL
 import seo_text as ST
@@ -227,9 +228,12 @@ def _put(template, **vals):
 
 
 def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="", method="", target=2.5,
-                      variant=0, min_words=60, prof=None, sablon=None):
-    """sablon: mağazanın açıklama şablonu (sablon.py); yoksa varsayılan sade şablon."""
+                      variant=0, min_words=60, prof=None, sablon=None, ek_not=None, ek_not_bilinen=()):
+    """sablon: mağazanın açıklama şablonu (sablon.py); yoksa varsayılan sade şablon.
+    ek_not: işlev(hedef kelime) -> açıklamanın sonuna eklenecek not (eknot.py); yoğunluk notla birlikte tutturulur.
+    Mevcut açıklamadaki eski not (ek_not_bilinen) içerik olarak okunmaz."""
     t = TPL.yukle(sablon)
+    details_html = EN.cikar(details_html, ek_not_bilinen)[0]
     name = re.sub(r"\s+", " ", (product.get("name") or "").strip())
     prof = PR.with_brand(prof, product)
     kw = machine_keyword(name, current_kw, prof)
@@ -285,6 +289,7 @@ def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="
             out.append(f"<li>{head_}{ul(kids) if kids else ''}</li>")
         return "<ul>" + "".join(out) + "</ul>"
 
+    not_html = ek_not(kw) if ek_not else ""
     uses_short = [u.split(":")[0].strip() if ":" in u and len(u) > 70 else u for u in uses]
     first = "" if ex_use else first_fill
     leads = {"spec": f"{kw} teknik özellikleri:", "use": f"{kw} kullanım alanları:", "pkg": f"{kw} paket içeriği:"}
@@ -324,6 +329,8 @@ def build_machine_seo(product, details_html="", current_kw="", sku="", barcode="
                                     + "</p>" + (f"<p>{esc(tech)}</p>" if tech else "")))
         elif tech:
             parts.append(f"<p>{esc(tech)}</p>")
+        if not_html:
+            parts.append(not_html)
         return "\n".join(parts)
 
     methods = [m for m in (method or "").split(",") if m in ST.COUNT_METHODS] or list(ST.COUNT_METHODS)
