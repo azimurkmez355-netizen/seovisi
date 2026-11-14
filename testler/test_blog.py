@@ -165,6 +165,9 @@ class BlogEkrani(Ortam):
         app.blog_hazirla(5)
         self.assertEqual(app.blog_gonder(5, JPEG)[0], "hata")              # blog kategorisi seçilmedi
         self.assertEqual(self.yazmalar(), [])
+        satir = app.DBI.q("SELECT durum, mesaj FROM blog WHERE pid=5", one=True)
+        self.assertEqual(satir["durum"], "hata")                             # kartta nedeni görünür
+        self.assertIn("blog kategorisini", satir["mesaj"])
         app.blog_ayar_yaz({"kategori": 3})
         d, msg = app.blog_gonder(5, JPEG)
         self.assertEqual(d, "gonderildi", msg)
@@ -214,6 +217,21 @@ class BlogEkrani(Ortam):
         self.assertEqual(app.WRITE_ROUTES["/api/blog/gonder"], "blog")
         self.assertNotIn("/api/blog/kaldir", app.WRITE_ROUTES)      # geri alma her zaman açık
         self.assertNotIn("/api/blog/hazirla", app.WRITE_ROUTES)     # hazırlık yalnızca okur
+
+    def test_izin_yoksa_anlasilir_mesaj(self):
+        app.blog_ayar_yaz({"kategori": 3})
+        app.blog_hazirla(6)
+        gercek = self.m.call
+
+        def izinsiz(method, path, params=None, body=None, tries=6):
+            if path.startswith("blogs"):
+                raise app.ApiError(403, "forbidden")
+            return gercek(method, path, params, body, tries)
+        self.t.api.call = izinsiz
+        d, msg = app.blog_gonder(6, JPEG)
+        self.assertEqual(d, "hata")
+        self.assertIn("izin", msg)
+        self.assertIn("izin", app.DBI.q("SELECT mesaj FROM blog WHERE pid=6", one=True)["mesaj"])
 
     def test_blog_kategorisi_acilir(self):
         kats, hata = app.BLOG.blog_kategorileri_oku()

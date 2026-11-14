@@ -2759,6 +2759,7 @@ async function blToplu(a){
     blSecili.clear();
   }
   if(a === 'gonder-sec'){
+    if(!blVeri.ayar.kategori){ toast('Önce "Masa ayarları"ndan blog kategorisini seçip kaydedin.'); $('#bl-ayarlar').open = true; $('#bl-ayarlar').scrollIntoView({behavior: 'smooth'}); return; }
     const durum = blVeri.ayar.durum ? 'yayında' : 'pasif (taslak)';
     if(!await ask(`${nf(n)} yazı, görselleriyle birlikte Ideasoft'a ${durum} olarak gönderilecek. Yalnızca SEO'su %100 olanlar gönderilir; daha önce gönderilenler güncellenir.`, {title: `${nf(n)} yazı gönderilsin mi?`, ok: 'Gönder', go: true})) return;
     let ok = 0, err = 0;

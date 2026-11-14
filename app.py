@@ -2809,6 +2809,24 @@ def blog_gorsel_coz(veri):
 
 
 def blog_gonder(pid, gorsel=None, durum=None):
+    """blog_gonder_ic + hata kaydı: gönderilemeyen yazının kartında nedeni görünür (daha önce gönderildiyse durumu korunur)."""
+    try:
+        d, msg = blog_gonder_ic(pid, gorsel, durum)
+    except ApiError as e:
+        d = "hata"
+        msg = ("Ideasoft blog izni yok. Ideasoft panelinde uygulamanın izinlerine Blog okuma, oluşturma ve güncelleme "
+               "izinlerini ekleyin." if e.status in (401, 403) else f"Ideasoft hatası: {str(e)[:200]}")
+        log(f"Blog, ürün {pid}: {e}", "err")
+    if d == "hata":
+        row = DBI.q("SELECT durum FROM blog WHERE pid=?", (pid,), one=True)
+        alan = {"mesaj": msg, "zaman": datetime.now().strftime("%Y-%m-%d %H:%M")}
+        if not row or row["durum"] not in ("gonderildi", "kaldirildi"):
+            alan["durum"] = "hata"
+        _blog_kaydet(pid, **alan)
+    return d, msg
+
+
+def blog_gonder_ic(pid, gorsel=None, durum=None):
     """Yazıyı Ideasoft'a gönderir: daha önce gönderildiyse aynı blog kaydı güncellenir, yoksa yeni kayıt açılır.
     Yalnızca Ideasoft'un 13 kuralının hepsini tutan yazı gönderilir. Dönüş: (durum, mesaj)."""
     a = blog_ayar()
