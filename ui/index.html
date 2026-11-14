@@ -2762,13 +2762,15 @@ async function blToplu(a){
     if(!blVeri.ayar.kategori){ toast('Önce "Masa ayarları"ndan blog kategorisini seçip kaydedin.'); $('#bl-ayarlar').open = true; $('#bl-ayarlar').scrollIntoView({behavior: 'smooth'}); return; }
     const durum = blVeri.ayar.durum ? 'yayında' : 'pasif (taslak)';
     if(!await ask(`${nf(n)} yazı, görselleriyle birlikte Ideasoft'a ${durum} olarak gönderilecek. Yalnızca SEO'su %100 olanlar gönderilir; daha önce gönderilenler güncellenir.`, {title: `${nf(n)} yazı gönderilsin mi?`, ok: 'Gönder', go: true})) return;
-    let ok = 0, err = 0;
+    let ok = 0, err = 0, neden = '';
     for(const pid of sec){
       toast(`Gönderiliyor: ${ok + err + 1} / ${n}`);
-      const r = await blGonderBir(pid, true);
-      if(r && r.durum === 'gonderildi'){ ok++; blSecili.delete(pid); } else { err++; if(r && r.abonelik) break; }
+      let r = null;
+      try{ r = await blGonderBir(pid, true); }catch(e){ r = {error: 'Görsel hazırlanamadı: ' + e}; }
+      if(r && r.durum === 'gonderildi'){ ok++; blSecili.delete(pid); } else { err++; neden = (r && r.error) || 'Sunucu yanıt vermedi.'; if(r && r.abonelik) break; }
     }
-    toast(`${ok} yazı gönderildi${err ? `, ${err} yazı gönderilemedi (kartlarda nedeni yazıyor)` : ''}.`);
+    if(err) await ask(`${ok} yazı gönderildi, ${err} yazı gönderilemedi.\n\nNeden: ${neden}`, {title: 'Gönderim sonucu', ok: 'Tamam', no: 'Kapat'});
+    else toast(`${ok} yazı gönderildi.`);
   }
   blImza = ''; blTick();
 }
@@ -2884,7 +2886,9 @@ async function blGonderTek(){
   if(!await ask(`"${p.title}"\n\n${gunc ? 'Ideasoft\'taki aynı blog kaydı bu hâliyle güncellenecek.' : `Yazı görseliyle birlikte "${a.kategori_ad || 'seçilen'}" kategorisine ${a.durum ? 'yayında' : 'pasif (taslak)'} olarak gönderilecek.`}`,
     {title: gunc ? 'Yazı güncellensin mi?' : 'Yazı gönderilsin mi?', ok: gunc ? 'Güncelle' : 'Gönder', go: true})) return;
   const b = $('#bl-gonder'); b.disabled = true;
-  await blGonderBir(blAcik);
+  let x = null;
+  try{ x = await blGonderBir(blAcik); }catch(e){ x = {error: 'Görsel hazırlanamadı: ' + e}; }
+  if(x && x.error) await ask(x.error, {title: 'Yazı gönderilemedi', ok: 'Tamam', no: 'Kapat'});
   blImza = ''; await blTick(); blAc(blAcik);
 }
 

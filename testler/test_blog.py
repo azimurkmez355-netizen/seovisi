@@ -233,6 +233,32 @@ class BlogEkrani(Ortam):
         self.assertIn("izin", msg)
         self.assertIn("izin", app.DBI.q("SELECT mesaj FROM blog WHERE pid=6", one=True)["mesaj"])
 
+    def test_reddedilen_alan_olmadan_yeniden_denenir(self):
+        app.blog_ayar_yaz({"kategori": 3, "kategori_ad": "Ürün Rehberleri"})
+        app.blog_hazirla(6)
+        gercek = self.m.call
+
+        def secici(method, path, params=None, body=None, tries=6):
+            if method == "POST" and path == "blogs" and "targetKeyword" in body:
+                raise app.ApiError(400, '{"errorMessage":"targetKeyword: This field was not expected."}')
+            return gercek(method, path, params, body, tries)
+        self.t.api.call = secici
+        d, msg = app.blog_gonder(6, JPEG)
+        self.assertEqual(d, "gonderildi", msg)
+        self.assertIn("hedef kelime", msg)                                  # panelden girilmesi söylenir
+        b = next(iter(self.m.bloglar.values()))
+        self.assertEqual(b["categories"], [{"id": 3, "title": "Ürün Rehberleri"}])
+
+        def hep_red(method, path, params=None, body=None, tries=6):
+            if method in ("POST", "PUT") and path.startswith("blogs"):
+                raise app.ApiError(400, '{"errorMessage":"slug zaten var"}')
+            return gercek(method, path, params, body, tries)
+        self.t.api.call = hep_red
+        app.blog_hazirla(7)
+        d, msg = app.blog_gonder(7, JPEG)
+        self.assertEqual(d, "hata")
+        self.assertIn("slug zaten var", msg)                                # Ideasoft'un kendi nedeni görünür
+
     def test_blog_kategorisi_acilir(self):
         kats, hata = app.BLOG.blog_kategorileri_oku()
         self.assertIsNone(hata)

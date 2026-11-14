@@ -2857,17 +2857,40 @@ def blog_gonder_ic(pid, gorsel=None, durum=None):
         except ApiError as e:
             if e.status != 404:
                 raise
+    if a["kategori_ad"]:
+        body["categories"] = [{"id": a["kategori"], "title": a["kategori_ad"]}]
+    resim = ("imageFileName", "imageExtension", "attachment")
+    if mevcut and not g:
+        body = {k: v for k, v in body.items() if k not in resim}
+    eksik = []
+
+    def yaz(b):
+        return API.blog_yaz(bid, API.blog_birlestir(mevcut, b)) if mevcut else API.blog_ekle(b)
+    # Ideasoft bir alanı (belgede olmayan hedef kelime alanı, görsel) reddederse o alan olmadan bir kez daha denenir
+    denemeler = [(body, [])]
+    if kw_alani in body:
+        denemeler.append(({k: v for k, v in body.items() if k != kw_alani}, ["hedef kelime"]))
+    if "attachment" in body:
+        denemeler.append(({k: v for k, v in body.items() if k != kw_alani and k not in resim}, ["hedef kelime", "görsel"]))
+    son_hata = None
+    for b, atlanan in denemeler:
+        try:
+            r = yaz(b)
+            eksik = atlanan
+            break
+        except ApiError as e:
+            if e.status not in (400, 422):
+                raise
+            son_hata = e
+            log(f"Blog, ürün {pid}: Ideasoft reddetti ({', '.join(atlanan) or 'tam kayıt'}): {e.body[:300]}", "warn")
+    else:
+        return "hata", f"Ideasoft blogu kabul etmedi: {son_hata.body[:300]}"
     if mevcut:
-        if not g:
-            body = {k: v for k, v in body.items() if k not in ("imageFileName", "imageExtension", "attachment")}
-        API.blog_yaz(bid, API.blog_birlestir(mevcut, body))
         islem = "güncellendi"
     else:
-        r = API.blog_ekle(body)
         bid = (r or {}).get("id")
         if not bid:
-            _blog_kaydet(pid, durum="hata", mesaj="Ideasoft blog kaydını açmadı (yanıtta numara yok).", zaman=zaman)
-            return "hata", "Ideasoft blog kaydını açmadı."
+            return "hata", "Ideasoft blog kaydını açmadı (yanıtta numara yok)."
         islem = "gönderildi"
     son = API.blog(bid) or {}
     uyar = []
@@ -2875,6 +2898,8 @@ def blog_gonder_ic(pid, gorsel=None, durum=None):
         uyar.append("başlık beklenen hâliyle kaydedilmedi")
     if not ST.strip_tags(son.get("content") or ""):
         uyar.append("içerik boş görünüyor")
+    if "görsel" in eksik:
+        uyar.append("görsel Ideasoft tarafından kabul edilmedi, yazı görselsiz gönderildi")
     if kw_alani and ST.tr_lower(str(son.get(kw_alani) or "")) != ST.tr_lower(plan["keyword"]):
         uyar.append(f"hedef kelime Ideasoft yanıtında görünmüyor; panelde blogun hedef kelimesine "
                     f"\"{plan['keyword']}\" yazın")
