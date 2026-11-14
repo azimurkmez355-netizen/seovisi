@@ -40,6 +40,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_platform.py`: platform adaptörü sınırı (app.py'de Ideasoft adresi ve doğrudan istek yok), Ideasoft adaptörünün arayüzü.
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_eknot.py`: ek not; notun üretimi, tanınması, kategori grubu, SEO koruması, ekle / güncelle / kaldır, yazma güvenliği.
+  - `test_blog.py`: blog yazarı (13 kural her biçimde, ürün kodu / barkod / mağaza adı, hariç kategoriler), hazırlama yazmaz, gönderim / güncelleme / yayından kaldırma, %100 olmayan ve bozuk görselli yazı gönderilmez.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -75,6 +76,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `yedek.py` | Günlük yedek: data klasörünün tutarlı zip kopyası (anahtar hariç), eski yedeklerin silinmesi. |
 | `yonetim.py` | Yönetici paneli yardımcıları: parola karması (`data/yonetici.json`), oturum çerezi, kayıtlardaki hatalar. |
 | `eknot.py` | Ek not: ürün açıklamasının sonuna eklenen not ve bağlantının HTML'i, tanınması / çıkarılması, SEO etkisi (yalnızca hesaplar). |
+| `blog.py` | Blog yazarı: ürün başına Ideasoft'un 13 blog kuralını tutan yazı (6 biçim), başlık / meta / özet, yoğunluk ayarı, blog görseli ayarları. Yalnızca hesaplar. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. |
@@ -196,6 +198,21 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Açıklama üretimi (`prepare_plan`, `repair_plan`, `gecir`) notu olan ürünün açıklamasını notla kurar (`eknot_param`);
   "Notla SEO hazırla" (`ek_not_zorla`) atlanan ürün için. Notlu plan gönderilince `eknot_yazildi`, SEO / şablon geri alınınca `eknot_kalkti`.
 
+### Blog Düzenle (`blog.py`, `app.py` "blog yazıları" bölümü)
+
+- Her ürüne bir yazı: `blog_hazirla` ürünü ve açıklamasını okur, `BL.yaz` yazıyı kurar (mağazaya yazmaz). Biçimler: rehber, inceleme,
+  ipucu, sss, bakim, senaryo; ayar "karisik"ta biçim ürüne göre döner. Teknik bilgi yalnızca ürünün mevcut açıklamasından; uydurma
+  değer yazılmaz. Künyede ürün kodu, barkod, mağaza adı; ürün sayfasına `/urun/<slug>` iç bağlantısı.
+- Hedef kelime kısa tutulur (`kelime_sec`, en çok 40 karakter); yoğunluk `{k}` anma yerleri ve ek cümlelerle bütün sayım yöntemlerinde %2-%3.
+- Gönderim (`blog_gonder`, `/api/blog/gonder`, paket özelliği `blog`) yalnızca kullanıcının isteğiyle ve SEO %100 ise; daha önce
+  gönderildiyse aynı blog kaydı PUT ile güncellenir. Hedef kelime `targetKeyword` (ürünün kw_loc alanı) ile gider; Ideasoft yanıtında
+  yoksa mesajla bildirilir. Yayından kaldırma (`/api/blog/kaldir`) blogu pasif yapar, silmez; geri almadır.
+- Görsel panelde canvas ile çizilir (`blCiz`, temalar mektup / gece / atolye / vitrin; ayar `blog.gorsel`), gönderimde 1200×630 JPEG
+  `attachment` olarak gider. Ürün fotoğrafı `/api/blog/urun_gorsel` üzerinden (aynı köken; mağaza klasöründe `blog_gorsel/` önbellek).
+- Hariç kategoriler `blog.haric`; None ise adında "bosch aksesuar" geçenler ve alt kategorileri. Pasif ürünlere yazılmaz.
+- Blog kategorisi Ideasoft `blog_categories`'ten seçilir ya da açılır. Ideasoft uygulamasında blog_read / blog_create / blog_update izinleri gerekir.
+- Sayfa `#v-blog`; stiller `bl-`, betik adları `bl` önekli. Yazı tipleri Fraunces, Caveat, Special Elite (Google Fonts).
+
 ### Uyarılar (`uyari.py`)
 
 - SEO taraması ürün kayıtlarından fiyat, indirim, alış fiyatı, stok, durum, seçenek ve kategori bilgisini `urunbilgi` tablosuna yazar
@@ -246,7 +263,7 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 
 - Panelin SEO puanı kelime sayımına HTML etiketlerini de katar. Ham HTML sayımı ile panel arasındaki oran mağaza başına `panel_factor` ayarıdır (varsayılan 1,30).
 - Açıklama HTML'i Ideasoft editöründen (TinyMCE) geçer; yalnızca basit satır içi stiller güvenli.
-- API'de kullanılan kaynaklar: `products`, `product_details`, `categories`, `category_images`, `product_images`, `product_to_categories`, `seo_settings`, `metafields`, `product_extra_fields`.
+- API'de kullanılan kaynaklar: `products`, `product_details`, `categories`, `category_images`, `product_images`, `product_to_categories`, `seo_settings`, `metafields`, `product_extra_fields`, `blogs`, `blog_categories`.
 
 ### Platform adaptörü (`platformlar/`)
 
@@ -267,4 +284,4 @@ Bu kurallar hiçbir zaman gevşetilmemeli:
 - Faz 1'in kod işleri bitti. Kalan: gerçek Ideasoft test mağazasıyla uçtan uca deneme (çerçeve içi giriş, abonelik, Ideasoft'un
   HTML kelime sayımı).
 - Faz 2 sürüyor; kurulum sihirbazı, açıklama şablonu ayarları, yeni ürün otopilotu, uyarılar, kopya ürün tespiti, kırık bağlantı taraması toplu şablon
-  geçişi, aylık rapor, haftalık tarama ve ek not bitti. Kalan: özellik doldurma, raporun e-postayla gönderimi. Ayrıntılar `YOL_HARITASI.md` içinde.
+  geçişi, aylık rapor, haftalık tarama, ek not ve Blog Düzenle bitti. Kalan: özellik doldurma, raporun e-postayla gönderimi. Ayrıntılar `YOL_HARITASI.md` içinde.

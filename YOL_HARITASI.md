@@ -69,6 +69,8 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
   - [x] eski açıklamaları yeni şablona toplu geçirme (yedekli)
 - [x] Kopya ürün tespiti
 - [x] Ek not: seçilen kategorilerdeki ürünlerin açıklamasının sonuna kısa not ve bağlantı (ör. üretici sitesinden ürün kaydıyla ek garanti)
+- [x] Blog Düzenle: her ürüne Ideasoft blog kurallarının hepsini tutan yazı (6 biçim), önizleme, görsel atölyesi (4 tema), elle gönderim
+  - [ ] (S) Gerçek mağazada ilk gönderimde hedef kelimenin blog kaydına yazıldığını panelden doğrulamak
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [x] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
 - [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)

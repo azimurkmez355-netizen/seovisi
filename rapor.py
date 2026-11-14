@@ -17,7 +17,8 @@ METRIKLER = [  # anahtar, ad, artması iyi mi
     ("kirik", "Kırık bağlantı", False),
 ]
 OLAYLAR = {"seo": "SEO açıklaması gönderildi", "kategori": "Ürünün kategorisi düzeltildi", "kategori_ac": "Yeni kategori açıldı",
-           "gecis": "Açıklama yeni şablona geçirildi", "ek_not": "Ürüne ek not eklendi", "geri": "Değişiklik geri alındı"}
+           "gecis": "Açıklama yeni şablona geçirildi", "ek_not": "Ürüne ek not eklendi", "blog": "Blog yazısı gönderildi",
+           "geri": "Değişiklik geri alındı"}
 AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"]
 
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Ideasoft Admin API adaptörü: OAuth girişi, erişim anahtarı, istek gönderme (hız sınırı, 401'de yenileme, 429 / 5xx'te
 bekleyip yeniden deneme) ve programın kullandığı kaynaklar (products, product_details, categories, category_images,
-product_images, product_to_categories, seo_settings, metafields, product_extra_fields).
+product_images, product_to_categories, seo_settings, metafields, product_extra_fields, blogs, blog_categories).
 
 Mağazaya yazma güvenliğinin kuralları (önce yeniden okuma, korunan alanların karşılaştırılması, geri yazma) app.py'dedir;
 burası yalnızca Ideasoft'a nasıl okunup yazılacağını bilir.
@@ -342,6 +342,35 @@ class Ideasoft(Platform):
             for link in self.call("GET", "product_to_categories", {"product": pid, "limit": 100}) or []:
                 if _ref_id(link.get("product")) == pid and _ref_id(link.get("category")) in rm and link.get("id"):
                     self.call("DELETE", f"product_to_categories/{link['id']}")
+
+    # ---- blog (Ideasoft Admin API: blogs, blog_categories; izinler blog_read, blog_create, blog_update)
+    BLOG_READONLY = ("id", "createdAt", "updatedAt", "imageUrl", "seoSetting")
+
+    def blog_adresi(self):
+        """Mağaza panelinde blog düzenleme sayfasının öneki."""
+        return f"{self.base()}/panel/blogs/edit/"
+
+    def blog(self, bid):
+        return self.call("GET", f"blogs/{bid}")
+
+    def blog_ekle(self, body):
+        return self.call("POST", "blogs", body=body) or {}
+
+    def blog_yaz(self, bid, body):
+        return self.call("PUT", f"blogs/{bid}", body=body) or {}
+
+    def blog_birlestir(self, mevcut, yeni):
+        """Var olan blog kaydının üzerine yeni alanlar (yazılamayan alanlar atılır)."""
+        out = {k: v for k, v in copy.deepcopy(mevcut or {}).items() if k not in self.BLOG_READONLY}
+        out.update(yeni)
+        return out
+
+    def blog_kategorileri(self):
+        return self.call("GET", "blog_categories", {"limit": 100}) or []
+
+    def blog_kategori_ekle(self, ad, slug):
+        return self.call("POST", "blog_categories", body={"title": ad, "slug": slug, "pageTitle": ad,
+                                                          "blockVisibility": 1, "status": 1, "hasChildren": 0}) or {}
 
     # ---- yazma güvenliği
     @classmethod

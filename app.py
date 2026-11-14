@@ -4,6 +4,7 @@
 Sadece Python standart kütüphanesi kullanılır (kurulum gerekmez).
 Panel: http://localhost:8765
 """
+import base64
 import copy
 import hashlib
 import hmac
@@ -47,6 +48,7 @@ import rapor as RP  # noqa: E402
 import yedek as YD  # noqa: E402
 import yonetim as YN  # noqa: E402
 import eknot as EN  # noqa: E402
+import blog as BL  # noqa: E402
 import platformlar as PL  # noqa: E402
 from platformlar import ApiError, store_host  # noqa: E402,F401
 from platformlar.ideasoft import Ideasoft  # noqa: E402
@@ -1628,9 +1630,12 @@ def jobs_state():
     if EKNOT.running:
         out.append({"t": EkNot.ADLAR[EKNOT.kind], "v": "eknot", "d": f"{EKNOT.done} / {EKNOT.todo} ürün" if EKNOT.todo else "",
                     "pct": pct(EKNOT.done, EKNOT.todo)})
+    if BLOG.running:
+        out.append({"t": "Blog yazıları hazırlanıyor", "v": "blog", "d": f"{BLOG.done} / {BLOG.todo} ürün",
+                    "pct": pct(BLOG.done, BLOG.todo)})
     summ = (CATSCAN.report or {}).get("summary") or {}
     return {"jobs": out, "badges": {
-        "eknot": EKNOT.bekleyen(),
+        "eknot": EKNOT.bekleyen(), "blog": BLOG.bekleyen(),
         "seo": DBI.q("SELECT COUNT(*) n FROM seo WHERE ok=0", one=True)["n"],
         "gorsel": DBI.q("SELECT COUNT(*) n FROM img WHERE has=0", one=True)["n"],
         "kategori": (summ.get("tasi") or 0) + (summ.get("kategorisiz") or 0)}}
@@ -2646,6 +2651,390 @@ class EkNot:
 EKNOT = _Ref("eknot")
 
 
+# ============================================================ blog yazıları
+#
+# Her ürün için Ideasoft'un blog SEO kurallarını (13 madde) tutan bir yazı hazırlanır (blog.py); mağazaya kendiliğinden
+# hiçbir şey gönderilmez. Kullanıcı yazıyı ve görselini önizler, isterse düzenler ve "Gönder"e basar. Görsel panelde
+# (tarayıcıda, canvas) üretilir ve gönderimle birlikte JPEG olarak gelir. Hariç tutulan kategoriler (varsayılan: adı
+# "Bosch Aksesuar" geçenler) ve alt kategorilerindeki ürünlere yazı hazırlanmaz.
+# blog.durum: '' (yazılmadı) | hazir | gonderildi | hata | kaldirildi. gonderilen: gönderilen planın özeti (değişti mi?).
+
+BLOG_HARIC_ORNEK = "bosch aksesuar"
+BLOG_GORSEL_MAX = 4 * 1024 * 1024
+BLOG_SAYFA = 24
+
+
+def blog_ayar():
+    """Mağaza ayarı `blog`: hariç kategoriler (None: adında "Bosch Aksesuar" geçenler), biçim, blog kategorisi,
+    yayın durumu, yazı rengi ve görsel ayarları."""
+    a = dict(CFG.get("blog") or {})
+    haric = a.get("haric")
+    oto = haric is None
+    if oto:
+        haric = [r["id"] for r in DBI.q("SELECT id, name FROM cat") if BLOG_HARIC_ORNEK in ST.tr_lower(r["name"] or "")]
+    renk = a.get("renk") if re.fullmatch(r"#[0-9a-fA-F]{6}", str(a.get("renk") or "")) else sablon()["renk"]
+    return {"haric": [int(x) for x in haric or [] if str(x).isdigit()], "haric_oto": oto,
+            "bicim": a.get("bicim") if a.get("bicim") in BL.BICIMLER else "karisik",
+            "kategori": int(a.get("kategori") or 0), "kategori_ad": a.get("kategori_ad") or "",
+            "durum": 0 if a.get("durum") == 0 else 1, "renk": renk, "gorsel": BL.gorsel_ayar(a.get("gorsel"))}
+
+
+def blog_ayar_yaz(d):
+    a = dict(CFG.get("blog") or {})
+    if "haric" in d:
+        a["haric"] = None if d["haric"] is None else sorted({int(x) for x in d["haric"] if str(x).isdigit()})
+    if d.get("bicim") in list(BL.BICIMLER) + ["karisik"]:
+        a["bicim"] = d["bicim"]
+    if "kategori" in d:
+        a["kategori"] = int(d.get("kategori") or 0)
+        a["kategori_ad"] = str(d.get("kategori_ad") or "")[:120]
+    if "durum" in d:
+        a["durum"] = 0 if str(d["durum"]) in ("0", "False", "false") else 1
+    if "renk" in d and re.fullmatch(r"#[0-9a-fA-F]{6}", str(d["renk"] or "")):
+        a["renk"] = d["renk"]
+    if "gorsel" in d:
+        a["gorsel"] = BL.gorsel_ayar(dict(BL.gorsel_ayar(a.get("gorsel")), **(d["gorsel"] or {})))
+    CFG.update(blog=a)
+    return blog_ayar()
+
+
+def blog_urunler():
+    """Blog yazılacak ürünler: yerel taramalardaki yayında (ya da durumu bilinmeyen) ürünler, hariç kategoriler dışında.
+    {pid: bilgi}"""
+    out = {}
+    for r in DBI.q("SELECT pid, sku, name, aktif, kats, barkod FROM urunbilgi"):
+        out[r["pid"]] = {"sku": r["sku"] or "", "name": r["name"] or "", "aktif": r["aktif"], "barkod": r["barkod"] or "",
+                         "kats": json.loads(r["kats"] or "[]")}
+    for r in DBI.q("SELECT pid, sku, name, cats, status FROM catprod"):
+        u = out.setdefault(r["pid"], {"sku": r["sku"] or "", "name": r["name"] or "", "aktif": r["status"], "barkod": "",
+                                      "kats": []})
+        u["kats"] = sorted(set(u["kats"]) | set(json.loads(r["cats"] or "[]")))
+        if u["aktif"] is None:
+            u["aktif"] = r["status"]
+    haric = eknot_grup(blog_ayar()["haric"])
+    return {pid: u for pid, u in out.items() if u["aktif"] != 0 and not (haric & set(u["kats"]))}
+
+
+def _blog_kaydet(pid, **alan):
+    DBI.x("INSERT OR IGNORE INTO blog(pid, durum) VALUES(?, '')", (pid,))
+    DBI.x(f"UPDATE blog SET {', '.join(k + '=?' for k in alan)} WHERE pid=?", (*alan.values(), pid))
+
+
+def _blog_ozet(plan):
+    """Gönderilen planın parmak izi: gönderildikten sonra yazı değişti mi?"""
+    return hashlib.md5(json.dumps({k: plan.get(k) for k in ("title", "slug", "excerpt", "content", "pageTitle",
+                                                            "metaDescription", "metaKeywords", "keyword")},
+                                  ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+
+
+def _blog_kategori(prod):
+    """Ürünün en özel (en derin) kategorisi: {"ad", "slug"}."""
+    yollar = category_paths()
+    en, derin = None, -1
+    for c in prod.get("categories") or []:
+        cid = _ref_id(c)
+        yol = yollar.get(cid) or (c.get("name") if isinstance(c, dict) else "") or ""
+        d = yol.count("›")
+        if cid and d > derin:
+            ad = (c.get("name") if isinstance(c, dict) else "") or yol.split("›")[-1].strip()
+            en, derin = {"ad": ad, "slug": (c.get("slug") if isinstance(c, dict) else "") or ""}, d
+    return en
+
+
+def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
+    """Ürünü okuyup blog yazısını hazırlar; mağazaya hiçbir şey yazmaz. yeni: başka bir anlatımla (varyant + 1).
+    kw: kullanıcının seçtiği hedef kelime (boşsa önceki yazınınki ya da üründen)."""
+    a = blog_ayar()
+    row = DBI.q("SELECT * FROM blog WHERE pid=?", (pid,), one=True)
+    eski = json.loads(row["plan"]) if row and row["plan"] else {}
+    prod = API.get_product(pid)
+    if not prod:
+        raise ApiError(404, "Ürün mağazada bulunamadı.")
+    detail = API.get_detail(prod)
+    urun_kw = (kw_read(prod)[0] if kw_loc() else prod.get("targetKeyword")) or ""
+    varyant = int(eski.get("varyant") or 0) + (1 if yeni else 0)
+    bicim = bicim if bicim in BL.BICIMLER else (eski.get("bicim") if eski and not yeni else a["bicim"])
+    plan = BL.yaz(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
+                  prof=PROFILE(), method=CFG.get("count_method") or SAFE_METHODS,
+                  hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=_blog_kategori(prod),
+                  kw=kw or eski.get("keyword") or "")
+    # aynı adreste (slug) başka bir yazı varsa ürün kodu eklenir
+    for r in DBI.q("SELECT pid, plan FROM blog WHERE pid<>? AND plan IS NOT NULL", (pid,)):
+        if json.loads(r["plan"]).get("slug") == plan["slug"]:
+            plan["slug"] = BL.slug(plan["slug"] + "-" + (prod.get("sku") or str(pid)))
+            break
+    durum = "gonderildi" if row and row["durum"] == "gonderildi" else "hazir"
+    _blog_kaydet(pid, plan=json.dumps(plan, ensure_ascii=False), durum=durum, duzenlendi=0,
+                 mesaj="Yazı hazır; önizleyip gönderin." if durum == "hazir" else "Yeni hâli hazır; güncellemek için gönderin.",
+                 zaman=datetime.now().strftime("%Y-%m-%d %H:%M"))
+    return plan
+
+
+def blog_duzenle(pid, d):
+    """Kullanıcının düzenlemesi. Hedef kelime değiştiyse yazı o kelimeyle yeniden kurulur (yoğunluk kuralı)."""
+    row = DBI.q("SELECT plan FROM blog WHERE pid=?", (pid,), one=True)
+    if not row or not row["plan"]:
+        return None, "Önce yazıyı hazırlayın."
+    plan = json.loads(row["plan"])
+    kw = re.sub(r"\s+", " ", str(d.get("keyword") or "")).strip()
+    if kw and kw != plan["keyword"]:
+        if not 2 <= len(kw) <= 60:
+            return None, "Hedef kelime 2-60 karakter olmalı."
+        return blog_hazirla(pid, plan.get("bicim"), kw=kw), "Yazı yeni hedef kelimeyle yeniden yazıldı."
+    for k, n in (("title", 255), ("excerpt", 1000), ("pageTitle", 255), ("metaDescription", 400), ("metaKeywords", 600),
+                 ("content", 65000)):
+        if isinstance(d.get(k), str):
+            plan[k] = d[k].strip()[:n]
+    if isinstance(d.get("slug"), str) and d["slug"].strip():
+        plan["slug"] = BL.slug(d["slug"])
+    plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
+    _blog_kaydet(pid, plan=json.dumps(plan, ensure_ascii=False), duzenlendi=1)
+    return plan, "Değişiklikler kaydedildi."
+
+
+def blog_gorsel_coz(veri):
+    """Panelin ürettiği görsel: data:image/jpeg;base64,… Dönüş: (veri, hata)."""
+    on = "data:image/jpeg;base64,"
+    if not isinstance(veri, str) or not veri.startswith(on):
+        return None, "Görsel JPEG olarak gelmedi."
+    if len(veri) > BLOG_GORSEL_MAX * 4 // 3 + 64:
+        return None, "Görsel çok büyük (en çok 4 MB)."
+    try:
+        ham = base64.b64decode(veri[len(on):], validate=True)
+    except (ValueError, TypeError):
+        return None, "Görsel bozuk."
+    if not ham.startswith(b"\xff\xd8\xff"):
+        return None, "Görsel JPEG değil."
+    return veri, None
+
+
+def blog_gonder(pid, gorsel=None, durum=None):
+    """Yazıyı Ideasoft'a gönderir: daha önce gönderildiyse aynı blog kaydı güncellenir, yoksa yeni kayıt açılır.
+    Yalnızca Ideasoft'un 13 kuralının hepsini tutan yazı gönderilir. Dönüş: (durum, mesaj)."""
+    a = blog_ayar()
+    row = DBI.q("SELECT * FROM blog WHERE pid=?", (pid,), one=True)
+    if not row or not row["plan"]:
+        return "hata", "Önce yazıyı hazırlayın."
+    if not a["kategori"]:
+        return "hata", "Önce blog kategorisini seçin (sayfadaki Ayarlar bölümü)."
+    plan = json.loads(row["plan"])
+    plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
+    if plan["score"]["yuzde"] < 100:
+        eksik = "; ".join(k["ad"] for k in plan["score"]["kurallar"] if not k["ok"])
+        return "hata", f"SEO %{plan['score']['yuzde']}; gönderilmedi. Eksik: {eksik}"
+    g = None
+    if gorsel:
+        g, hata = blog_gorsel_coz(gorsel)
+        if hata:
+            return "hata", hata
+    loc = kw_loc()
+    kw_alani = loc["path"] if loc.get("res") == "product" and "." not in loc.get("path", "") else "targetKeyword"
+    body = BL.gonderilecek(plan, a["kategori"], a["durum"] if durum is None else durum,
+                           (plan["slug"][:80] + ".jpg", g) if g else None, kw_alani)
+    zaman = datetime.now().strftime("%Y-%m-%d %H:%M")
+    bid, mevcut = row["blog_id"], None
+    if bid:
+        try:
+            mevcut = API.blog(bid)
+        except ApiError as e:
+            if e.status != 404:
+                raise
+    if mevcut:
+        if not g:
+            body = {k: v for k, v in body.items() if k not in ("imageFileName", "imageExtension", "attachment")}
+        API.blog_yaz(bid, API.blog_birlestir(mevcut, body))
+        islem = "güncellendi"
+    else:
+        r = API.blog_ekle(body)
+        bid = (r or {}).get("id")
+        if not bid:
+            _blog_kaydet(pid, durum="hata", mesaj="Ideasoft blog kaydını açmadı (yanıtta numara yok).", zaman=zaman)
+            return "hata", "Ideasoft blog kaydını açmadı."
+        islem = "gönderildi"
+    son = API.blog(bid) or {}
+    uyar = []
+    if (son.get("title") or "") != body["title"]:
+        uyar.append("başlık beklenen hâliyle kaydedilmedi")
+    if not ST.strip_tags(son.get("content") or ""):
+        uyar.append("içerik boş görünüyor")
+    if kw_alani and ST.tr_lower(str(son.get(kw_alani) or "")) != ST.tr_lower(plan["keyword"]):
+        uyar.append(f"hedef kelime Ideasoft yanıtında görünmüyor; panelde blogun hedef kelimesine "
+                    f"\"{plan['keyword']}\" yazın")
+    msg = f"Blog {islem}." + (" Dikkat: " + ", ".join(uyar) + "." if uyar else "")
+    _blog_kaydet(pid, durum="gonderildi", blog_id=int(bid), gonderilen=_blog_ozet(plan), mesaj=msg, zaman=zaman,
+                 plan=json.dumps(plan, ensure_ascii=False))
+    olay("blog", pid)
+    log(f"Blog {islem}, ürün {pid} (blog {bid}).", "ok" if not uyar else "warn")
+    return "gonderildi", msg
+
+
+def blog_kaldir(pid):
+    """Gönderilen yazıyı yayından kaldırır (Ideasoft'ta pasif yapar; silmez). Geri almadır, paketten bağımsız."""
+    row = DBI.q("SELECT blog_id FROM blog WHERE pid=?", (pid,), one=True)
+    if not row or not row["blog_id"]:
+        return "hata", "Bu ürünün gönderilmiş bir yazısı yok."
+    mevcut = API.blog(row["blog_id"])
+    if not mevcut:
+        _blog_kaydet(pid, durum="hazir", blog_id=None, mesaj="Blog Ideasoft'ta bulunamadı; yeniden gönderilebilir.")
+        return "hazir", "Blog Ideasoft'ta bulunamadı."
+    API.blog_yaz(row["blog_id"], API.blog_birlestir(mevcut, {"status": 0}))
+    _blog_kaydet(pid, durum="kaldirildi", mesaj="Yayından kaldırıldı (Ideasoft'ta pasif).",
+                 zaman=datetime.now().strftime("%Y-%m-%d %H:%M"))
+    olay("geri", pid)
+    log(f"Blog yayından kaldırıldı, ürün {pid}.", "ok")
+    return "kaldirildi", "Yazı yayından kaldırıldı; Ideasoft'ta pasif duruyor."
+
+
+def blog_urun_gorseli(pid):
+    """Ürünün ilk görseli (blog görselinin içinde kullanılır); mağaza klasöründe saklanır. Dönüş: (bayt, uzantı)."""
+    klasor = os.path.join(current().dir, "blog_gorsel")
+    for ext in ("jpg", "png", "gif", "webp", "yok"):
+        f = os.path.join(klasor, f"{pid}.{ext}")
+        if os.path.isfile(f) and (ext != "yok" or time.time() - os.path.getmtime(f) < 86400):
+            if ext == "yok":
+                return None, None
+            with open(f, "rb") as fh:
+                return fh.read(), ext
+    os.makedirs(klasor, exist_ok=True)
+    data, ext = None, None
+    try:
+        recs = sorted(API.gorseller(pid, 5), key=lambda r: r.get("sortOrder") or 0)
+        u = _image_url(recs[0]) if recs else ""
+        if u:
+            data, ext = _fetch_image(API.mutlak_url(u))
+    except (ApiError, OSError, ValueError):
+        data = None
+    with open(os.path.join(klasor, f"{pid}.{ext if data else 'yok'}"), "wb") as fh:
+        fh.write(data or b"")
+    return (data, ext) if data else (None, None)
+
+
+class BlogYazari:
+    """Blog ekranının listesi ve toplu hazırlık işi (yalnızca okur; gönderim her yazı için ayrı ve kullanıcı onaylı)."""
+
+    def __init__(self):
+        self.running, self.done, self.todo, self.stop_flag, self.sonuc = False, 0, 0, False, {}
+        DBI.x("""CREATE TABLE IF NOT EXISTS blog(pid INTEGER PRIMARY KEY, plan TEXT, durum TEXT, mesaj TEXT, blog_id INTEGER,
+                 zaman TEXT, duzenlendi INTEGER DEFAULT 0, gonderilen TEXT)""")
+        self.kategoriler = None          # Ideasoft blog kategorileri (istenince okunur)
+
+    def satirlar(self):
+        urunler = blog_urunler()
+        kayit = {r["pid"]: r for r in DBI.q("SELECT * FROM blog")}
+        out = []
+        for pid in set(urunler) | {p for p, r in kayit.items() if r["blog_id"]}:
+            u, r = urunler.get(pid), kayit.get(pid)
+            if u is None:
+                b = DBI.q("SELECT sku, name, barkod FROM urunbilgi WHERE pid=?", (pid,), one=True)
+                u = dict(b) if b else {"sku": "", "name": "", "barkod": ""}
+            plan = json.loads(r["plan"]) if r and r["plan"] else None
+            durum = (r["durum"] if r else "") or ""
+            sekme = "gonderildi" if durum in ("gonderildi", "kaldirildi") else ("hazir" if plan else "yazilacak")
+            out.append({"pid": pid, "sku": u.get("sku") or "", "name": u.get("name") or "", "barkod": u.get("barkod") or "",
+                        "sekme": sekme, "durum": durum, "mesaj": (r["mesaj"] if r else "") or "",
+                        "zaman": (r["zaman"] if r else "") or "", "blog_id": r["blog_id"] if r else None,
+                        "degisti": bool(plan and r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan)),
+                        "kapsamda": pid in urunler,
+                        "plan": {"title": plan["title"], "keyword": plan["keyword"], "rozet": plan["rozet"],
+                                 "bicim": plan["bicim"], "yuzde": plan["score"]["yuzde"],
+                                 "eski": plan.get("v") != BL.SURUM} if plan else None})
+        out.sort(key=lambda x: x["pid"])
+        return out
+
+    def durum(self, sekme="yazilacak", q="", sayfa=0):
+        a = blog_ayar()
+        rows = self.satirlar()
+        say = Counter(r["sekme"] for r in rows)
+        sec = [r for r in rows if r["sekme"] == sekme]
+        if q:
+            ql = ST.tr_lower(q)
+            sec = [r for r in sec if ql in ST.tr_lower(r["name"]) or ql in ST.tr_lower(r["sku"]) or q == str(r["pid"])
+                   or (r["plan"] and ql in ST.tr_lower(r["plan"]["title"]))]
+        paths = category_paths()
+        grup = eknot_grup(a["haric"])
+        tum = {}
+        for r in DBI.q("SELECT pid, cats FROM catprod"):
+            tum[r["pid"]] = set(json.loads(r["cats"] or "[]"))
+        haric_n = sum(1 for k in tum.values() if k & grup)
+        taranmadi = not DBI.q("SELECT 1 FROM urunbilgi LIMIT 1", one=True) and not DBI.q("SELECT 1 FROM catprod LIMIT 1", one=True)
+        return {"ayar": a, "bicimler": {k: v["ad"] for k, v in BL.BICIMLER.items()},
+                "kategoriler": sorted(({"id": i, "path": p} for i, p in paths.items()), key=lambda x: ST.tr_lower(x["path"])),
+                "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": PROFILE()["magaza"],
+                "sayilar": {k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")}, "haric_urun": haric_n,
+                "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,
+                "panel": API.blog_adresi(), "running": self.running, "done": self.done, "todo": self.todo,
+                "sonuc": self.sonuc}
+
+    def plan(self, pid):
+        r = DBI.q("SELECT * FROM blog WHERE pid=?", (pid,), one=True)
+        if not r or not r["plan"]:
+            return None
+        plan = json.loads(r["plan"])
+        plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
+        return {"plan": plan, "durum": r["durum"] or "", "mesaj": r["mesaj"] or "", "blog_id": r["blog_id"],
+                "zaman": r["zaman"] or "", "duzenlendi": bool(r["duzenlendi"]),
+                "degisti": bool(r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan))}
+
+    def bekleyen(self):
+        """Menüdeki sayı: hazırlanıp gönderilmeyen yazılar."""
+        return DBI.q("SELECT COUNT(*) n FROM blog WHERE durum='hazir'", one=True)["n"]
+
+    def start(self, pids=None, bicim=None, yeni=False):
+        if self.running:
+            return "Yazılar zaten hazırlanıyor; bitmesini bekleyin."
+        if not CFG.get("access_token") and not CFG.get("refresh_token"):
+            return "Önce mağazaya bağlanın (Ayarlar)."
+        rows = self.satirlar()
+        if pids:
+            secili = {int(p) for p in pids}
+            pids = [r["pid"] for r in rows if r["pid"] in secili and r["kapsamda"]]
+        else:
+            pids = [r["pid"] for r in rows if r["sekme"] == "yazilacak"]
+        if not pids:
+            return "Yazılacak ürün yok."
+        self.running, self.done, self.todo, self.stop_flag, self.sonuc = True, 0, len(pids), False, {}
+        spawn(self._run, pids, bicim, yeni)
+        return f"{len(pids)} ürün için blog yazısı hazırlanıyor; mağazaya bir şey gönderilmez."
+
+    def stop(self):
+        self.stop_flag = True
+
+    def _run(self, pids, bicim, yeni):
+        sonuc = Counter()
+
+        def one(pid):
+            if self.stop_flag:
+                return
+            try:
+                p = blog_hazirla(pid, bicim, yeni)
+                sonuc["hazir" if p["score"]["yuzde"] == 100 else "eksik"] += 1
+            except Exception as e:  # noqa: BLE001
+                sonuc["hata"] += 1
+                _blog_kaydet(pid, durum="hata", mesaj=f"Hazırlanamadı: {str(e)[:200]}")
+                log(f"Blog, ürün {pid}: {e}", "err")
+            self.done += 1
+        try:
+            pmap(one, pids, 2)
+            log(f"Blog yazıları {'durduruldu' if self.stop_flag else 'hazırlandı'}: "
+                + ", ".join(f"{n} {k}" for k, n in sonuc.items()) + ".", "ok")
+        finally:
+            self.sonuc, self.running = dict(sonuc), False
+
+    def blog_kategorileri_oku(self):
+        try:
+            self.kategoriler = [{"id": c.get("id"), "ad": c.get("title") or c.get("name") or ""}
+                                for c in API.blog_kategorileri() if c.get("id")]
+            return self.kategoriler, None
+        except ApiError as e:
+            if e.status in (401, 403):
+                return None, ("Ideasoft blog izni yok. Ideasoft panelinde uygulamanın izinlerine Blog okuma, oluşturma "
+                              "ve güncelleme izinlerini ekleyin.")
+            return None, f"Blog kategorileri okunamadı: {e}"
+
+
+BLOG = _Ref("blog")
+
+
 # ============================================================ kırık bağlantı taraması
 
 SITE_SINIR = 2_000_000                # bir sayfadan en çok okunan bayt
@@ -3226,6 +3615,7 @@ class Tenant:
             self.links = LinkScanner()
             self.gecis = SablonGecisi()
             self.eknot = EkNot()
+            self.blog = BlogYazari()
             self.rapor = Raporlar()
         finally:
             _cur.t = prev
@@ -3287,6 +3677,7 @@ WRITE_ROUTES = {
     "/api/otopilot/onayla": "otopilot",
     "/api/sablon/gecis/start": "seo_gonder",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
     "/api/eknot/yaz": "ek_not",                    # notu kaldırmak (/api/eknot/kaldir, geri_al) geri almadır, listede yok
+    "/api/blog/gonder": "blog", "/api/blog/kategori_ekle": "blog",   # yayından kaldırmak (/api/blog/kaldir) geri almadır
 }
 
 
@@ -3980,6 +4371,21 @@ class H(BaseHTTPRequestHandler):
             return self._send(200, EKNOT.durum(sekme, (q.get("q") or "").strip(), max(0, int(q.get("sayfa") or 0))))
         if p == "/api/sablon/gecis":
             return self._send(200, GECIS.state())
+        if p == "/api/blog":
+            sekme = q.get("sekme") if q.get("sekme") in ("yazilacak", "hazir", "gonderildi") else "yazilacak"
+            return self._send(200, BLOG.durum(sekme, (q.get("q") or "").strip(), max(0, int(q.get("sayfa") or 0))))
+        if p == "/api/blog/plan":
+            r = BLOG.plan(int(q.get("pid") or 0))
+            return self._send(200, r if r else {"error": "Bu ürünün yazısı henüz hazırlanmadı."})
+        if p == "/api/blog/kategoriler":
+            kats, hata = BLOG.blog_kategorileri_oku()
+            return self._send(200, {"error": hata} if hata else {"kategoriler": kats})
+        if p == "/api/blog/urun_gorsel":
+            data, ext = blog_urun_gorseli(int(q.get("pid") or 0))
+            if not data:
+                return self._send(404, {"error": "Görsel yok."})
+            return self._send(200, data, {"jpg": "image/jpeg", "png": "image/png", "gif": "image/gif",
+                                          "webp": "image/webp"}.get(ext, "application/octet-stream"))
         if p == "/api/rapor":
             r = rapor_al(q.get("ay"))
             son = DBI.q("SELECT v FROM kv WHERE k='haftalik_son'", one=True)
@@ -4287,6 +4693,43 @@ class H(BaseHTTPRequestHandler):
             plan = prepare_plan(int(q.get("pid") or 0), ek_not_zorla=True)
             oran = f"{plan['score']['density']:.2f}".replace(".", ",")
             return self._send(200, {"msg": f"Açıklama notla birlikte hazırlandı (hedef kelime oranı %{oran}). Kontrol edip gönderin."})
+        if p == "/api/blog/ayar":
+            return self._send(200, {"ok": True, "ayar": blog_ayar_yaz(self._json())})
+        if p == "/api/blog/hazirla":       # yalnızca okur ve hazırlar; mağazaya bir şey gönderilmez
+            d = self._json()
+            return self._send(200, {"msg": BLOG.start([int(x) for x in d["pids"]] if d.get("pids") else None,
+                                                     d.get("bicim"), bool(d.get("yeni")))})
+        if p == "/api/blog/yeniden":       # tek yazı: başka bir anlatımla ya da seçilen biçimle
+            d = self._json()
+            plan = blog_hazirla(int(d.get("pid") or 0), d.get("bicim"), yeni=True)
+            return self._send(200, {"msg": "Yazı yeniden yazıldı.", "plan": plan})
+        if p == "/api/blog/duzenle":
+            d = self._json()
+            plan, msg = blog_duzenle(int(d.get("pid") or 0), d)
+            return self._send(200, {"msg": msg, "plan": plan} if plan else {"error": msg})
+        if p == "/api/blog/gonder":       # her yazı kullanıcının onayıyla tek tek gönderilir
+            d = self._json()
+            if BLOG.running:
+                return self._send(200, {"error": "Yazılar hazırlanırken gönderim yapılamaz; bitmesini bekleyin."})
+            durum, msg = blog_gonder(int(d.get("pid") or 0), d.get("gorsel"), d.get("durum"))
+            return self._send(200, {"msg": msg, "durum": durum} if durum == "gonderildi" else {"error": msg})
+        if p == "/api/blog/kaldir":
+            durum, msg = blog_kaldir(int(q.get("pid") or 0))
+            return self._send(200, {"msg": msg} if durum != "hata" else {"error": msg})
+        if p == "/api/blog/durdur":
+            BLOG.stop()
+            return self._send(200, {"msg": "Durduruluyor."})
+        if p == "/api/blog/kategori_ekle":
+            ad = re.sub(r"\s+", " ", str(self._json().get("ad") or "")).strip()[:120]
+            if len(ad) < 2:
+                return self._send(200, {"error": "Kategori adını yazın."})
+            k = API.blog_kategori_ekle(ad, BL.slug(ad))
+            if not k.get("id"):
+                return self._send(200, {"error": "Ideasoft kategoriyi açmadı."})
+            blog_ayar_yaz({"kategori": k["id"], "kategori_ad": ad})
+            BLOG.blog_kategorileri_oku()
+            log(f"Blog kategorisi açıldı: {ad}.", "ok")
+            return self._send(200, {"msg": f"“{ad}” blog kategorisi açıldı ve seçildi.", "id": k["id"]})
         if p == "/api/otopilot/ayar":
             msg = OTO.ayarla(self._json())
             return self._send(200, {"error": msg} if msg else {"ok": True, "ayar": oto_ayar()})
