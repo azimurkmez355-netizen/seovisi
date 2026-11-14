@@ -25,7 +25,7 @@ import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 1   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 2   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
 
 BICIMLER = {
     "rehber": {"ad": "Satın alma rehberi", "rozet": "REHBER", "ek": "Rehberi"},
@@ -84,6 +84,13 @@ KW_EK = [
     "{kw} hakkındaki sorularınızı {magaza} ekibine iletebilirsiniz.",
     "{kw}, doğru kullanıldığında uzun yıllar sorunsuz hizmet verir.",
     "{kw} ile ilgili yeni içerikler için blogumuzu takip edin.",
+    "{kw} hakkında aklınıza takılan her şeyi bu yazıda topladık.",
+    "{kw} ile çalışırken güvenlik uyarılarına dikkat etmeyi unutmayın.",
+    "{kw} için doğru aksesuar seçimi sonucu doğrudan etkiler.",
+    "{kw} ürün sayfasında görselleri ve teknik bilgileri inceleyebilirsiniz.",
+    "{kw} kutusundan çıkan parçaları ilk kullanımdan önce kontrol edin.",
+    "{kw}, düzenli bakım yapıldığında performansını uzun süre korur.",
+    "{kw} hakkındaki deneyimlerinizi bizimle paylaşabilirsiniz.",
 ]
 
 # ürün adının başında hedef kelimeye katkısı olmayan sözcükler
@@ -146,33 +153,42 @@ def _e(t):
     return html.escape(t or "", quote=False)
 
 
+# okunaklı ve ferah yazı: büyük punto, geniş satır aralığı, bölümler arasında boşluk (stiller tek yerde, kısa)
+P = "margin:0 0 18px"
+LISTE = "margin:0 0 22px;padding-left:24px"
+
+
 def _render(bloklar, kw, renk, link):
-    """Bloklar: (tür, içerik). Satır içi stiller az ve kısa tutulur (Ideasoft editörü TinyMCE; kelime sayımı)."""
+    """Bloklar: (tür, içerik). Satır içi stiller kısa tutulur (Ideasoft editörü TinyMCE; kelime sayımı)."""
     out = []
     kwe = _e(kw)
     for tur, v in bloklar:
         if tur == "lead":
             t = _e(v).replace(kwe, f"<strong>{kwe}</strong>", 1)
-            out.append(f'<p style="font-size:17px;line-height:1.7">{t}</p>')
-        elif tur in ("h2", "h3"):
-            st = f' style="color:{renk}"' if tur == "h2" else ""
-            out.append(f"<{tur}{st}>{_e(v)}</{tur}>")
+            out.append(f'<p style="font-size:20px;line-height:1.75;margin:0 0 26px">{t}</p>')
+        elif tur == "h2":
+            out.append(f'<h2 style="color:{renk};font-size:27px;line-height:1.3;margin:40px 0 14px">{_e(v)}</h2>')
+        elif tur == "h3":
+            out.append(f'<h3 style="font-size:21px;line-height:1.35;margin:28px 0 10px">{_e(v)}</h3>')
         elif tur == "p":
             if v:
-                out.append(f"<p>{_e(v)}</p>")
+                out.append(f'<p style="{P}">{_e(v)}</p>')
         elif tur in ("ul", "ol"):
             if v:
-                out.append(f"<{tur}>" + "".join(f"<li>{_e(x)}</li>" for x in v) + f"</{tur}>")
+                out.append(f'<{tur} style="{LISTE}">' + "".join(f"<li>{_e(x)}</li>" for x in v) + f"</{tur}>")
         elif tur in ("check", "cross"):
             isaret = "✔" if tur == "check" else "✘"
             if v:
-                out.append('<ul style="list-style:none;padding-left:4px">' + "".join(f"<li>{isaret} {_e(x)}</li>" for x in v) + "</ul>")
+                out.append('<ul style="list-style:none;margin:0 0 22px;padding-left:4px">'
+                           + "".join(f"<li>{isaret} {_e(x)}</li>" for x in v) + "</ul>")
         elif tur == "toc":
-            out.append(f'<div style="border-left:4px solid {renk};background:#f6f7f9;padding:12px 18px;margin:18px 0">'
-                       "<p><strong>Bu yazıda</strong></p><ol>" + "".join(f"<li>{_e(x)}</li>" for x in v) + "</ol></div>")
+            out.append(f'<div style="border-left:5px solid {renk};background:#f6f7f9;padding:18px 24px;margin:26px 0 30px">'
+                       f'<p style="{P}"><strong>Bu yazıda</strong></p><ol style="margin:0;padding-left:22px">'
+                       + "".join(f"<li>{_e(x)}</li>" for x in v) + "</ol></div>")
         elif tur == "kunye":
             satir = "".join(f"<tr><td><strong>{_e(a)}</strong></td><td>{_e(b)}</td></tr>" for a, b in v if b)
-            out.append(f'<table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">{satir}</table>')
+            out.append(f'<table border="1" cellpadding="12" style="border-collapse:collapse;width:100%;margin:10px 0 28px">'
+                       f"{satir}</table>")
         elif tur == "spec":
             items = []
             for t, kids in v:
@@ -180,25 +196,26 @@ def _render(bloklar, kw, renk, link):
                 head = f"<strong>{_e(m.group(1))}:</strong> {_e(m.group(2))}" if m else _e(t)
                 alt = "<ul>" + "".join(f"<li>{_e(k)}</li>" for k in kids) + "</ul>" if kids else ""
                 items.append(f"<li>{head}{alt}</li>")
-            out.append("<ul>" + "".join(items) + "</ul>")
+            out.append(f'<ul style="{LISTE}">' + "".join(items) + "</ul>")
         elif tur == "tip":
             baslik, metin = v
-            out.append('<div style="background:#fff8e6;border:1px dashed #d9a933;padding:12px 16px;margin:18px 0">'
-                       f"<p><strong>{_e(baslik)}</strong> {_e(metin)}</p></div>")
+            out.append('<div style="background:#fff8e6;border:1px dashed #d9a933;padding:18px 22px;margin:28px 0">'
+                       f'<p style="margin:0"><strong>{_e(baslik)}</strong> {_e(metin)}</p></div>')
         elif tur == "quote":
-            out.append(f'<blockquote style="border-left:4px solid {renk};margin:18px 0;padding:6px 16px;font-style:italic">'
-                       f"<p>{_e(v)}</p></blockquote>")
+            out.append(f'<blockquote style="border-left:5px solid {renk};margin:28px 0;padding:8px 22px;font-size:20px;'
+                       f'font-style:italic"><p style="margin:0">{_e(v)}</p></blockquote>')
         elif tur == "faq":
             for q, a in v:
-                out.append(f"<h3>{_e(q)}</h3><p>{_e(a)}</p>")
+                out.append(f'<h3 style="font-size:20px;margin:26px 0 8px">{_e(q)}</h3><p style="{P}">{_e(a)}</p>')
         elif tur == "cta":
             metin, yazi = v
-            a = (f'<p><a href="{_e(link)}" style="color:#fff;font-weight:bold">{_e(yazi)} →</a></p>' if link else "")
-            out.append(f'<div style="background:{renk};color:#fff;padding:16px 20px;margin:22px 0;border-radius:8px">'
-                       f'<p style="color:#fff">{_e(metin)}</p>{a}</div>')
+            a = (f'<p style="margin:0"><a href="{_e(link)}" style="color:#fff;font-weight:bold">{_e(yazi)} →</a></p>'
+                 if link else "")
+            out.append(f'<div style="background:{renk};color:#fff;padding:22px 26px;margin:34px 0 24px;border-radius:10px">'
+                       f'<p style="color:#fff;margin:0 0 12px">{_e(metin)}</p>{a}</div>')
         elif tur == "imza":
-            out.append(f'<p style="color:#777;font-size:13px">{_e(v)}</p>')
-    return "\n".join(out)
+            out.append(f'<p style="color:#777;font-size:15px;margin:0">{_e(v)}</p>')
+    return '<div style="font-size:18px;line-height:1.85">\n' + "\n".join(out) + "\n</div>"
 
 
 # ---------------------------------------------------------------- içerik
@@ -597,33 +614,42 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     baslik = rng.choice(BASLIKLAR[bicim]).replace("{kw}", kw)
     link = f"/urun/{urun['slug']}" if urun.get("slug") else ""
 
-    ham = _doldur(_bloklar(bicim, urun, b, prof, kategori, rng), kw, b["label"])
     refs = [r.replace("{label}", b["label"]) for r in GONDERME]
-    n_yer = _yer_sayisi(ham)
     dolgu = [d for d in DOLGU if ST.count_kw(d, kw) == 0]
     rng.shuffle(dolgu)
     methods = [m for m in (method or "").split(",") if m in ST.COUNT_METHODS] or list(ST.COUNT_METHODS)
-
     ek = [PR.fill(x, prof).replace("{kw}", kw) for x in KW_EK if PR.usable(x, prof)]
     rng.shuffle(ek)
 
     en_iyi = None
-    for m_ in range(0, len(ek) + 1):
-        for n in range(0, len(dolgu) + 1):
-            for j in range(0, n_yer + 1):
-                h = _render(_uygula(ham, kw, refs, _dagit(j, n_yer), dolgu[:n], ek[:m_]), kw, renk, link)
-                c = ST.count_kw(ST.strip_tags(h), kw)
-                ws = [ST.count_words(h, m) for m in methods]
-                dens = [c / w * 100 if w else 0 for w in ws]
-                pay = min(min(d - 2.0, 3.0 - d) for d in dens)
-                ort = sum(dens) / len(dens)
-                # önce güvenli aralık, sonra hedefe yakınlık, sonra az ek cümle (doğal metin)
-                anahtar = (min(pay, 0.3), -round(abs(ort - hedef), 1), -m_, -n, -j)
-                if en_iyi is None or anahtar > en_iyi[0]:
-                    en_iyi = (anahtar, h, dens)
-            if en_iyi[0][0] >= 0.3:
+    # teknik liste çok uzunsa (yoğunluk %2'ye çıkamıyorsa) kısaltılır; önce bütün liste denenir
+    tum_spec = b["spec"]
+    for sinir in sorted({len(tum_spec), 7, 5, 3}, reverse=True):
+        if sinir > len(tum_spec):
+            continue
+        b2 = dict(b, spec=tum_spec[:sinir])
+        ham = _doldur(_bloklar(bicim, urun, b2, prof, kategori, _rng(pid, bicim, varyant)), kw, b["label"])
+        n_yer = _yer_sayisi(ham)
+        for m_ in range(0, len(ek) + 1):
+            for n in range(0, len(dolgu) + 1):
+                for j in range(0, n_yer + 1):
+                    h = _render(_uygula(ham, kw, refs, _dagit(j, n_yer), dolgu[:n], ek[:m_]), kw, renk, link)
+                    c = ST.count_kw(ST.strip_tags(h), kw)
+                    ws = [ST.count_words(h, m) for m in methods]
+                    dens = [c / w * 100 if w else 0 for w in ws]
+                    pay = min(min(d - 2.0, 3.0 - d) for d in dens)
+                    ort = sum(dens) / len(dens)
+                    # önce güvenli aralık, sonra uzun teknik liste, hedefe yakınlık, az ek cümle (doğal metin)
+                    anahtar = (min(pay, 0.25), sinir, -round(abs(ort - hedef), 1), -m_, -n, -j)
+                    if en_iyi is None or anahtar > en_iyi[0]:
+                        en_iyi = (anahtar, h, dens)
+                    if min(dens) > 3.0:          # daha çok anma yalnızca yükseltir
+                        break
+                if en_iyi[0][0] >= 0.25:
+                    break
+            if en_iyi[0][0] >= 0.25:
                 break
-        if en_iyi[0][0] >= 0.3:
+        if en_iyi[0][0] >= 0.25:
             break
     _, icerik, dens = en_iyi
 
@@ -639,6 +665,27 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
                      "link": link, "marka": prof["marka"]}}
     plan["score"] = puan(plan, method)
     return plan
+
+
+def yaz_tam(urun, details_html="", mevcut_kw="", bicim="", varyant=0, kw="", **kw_args):
+    """yaz() ile aynı; yazı 13 kuralın hepsini tutmazsa sırayla başka anlatım, başka biçim ve (hedef kelimeyi kullanıcı
+    seçmediyse) daha kısa bir hedef kelime denenir. İlk %100 olan döner; hiçbiri olmazsa en yüksek puanlı."""
+    ilk = bicim_sec(bicim, urun.get("id") or 0, varyant)
+    denemeler = [(ilk, varyant, kw), (ilk, varyant + 1, kw)] + [(b, varyant, kw) for b in SIRA if b != ilk]
+    if not kw:
+        ad = re.sub(r"\s+", " ", urun.get("name") or "").strip()
+        prof = PR.with_brand(kw_args.get("prof"), urun)
+        for uz in (30, 22):
+            kisa = kelime_sec(ad, mevcut_kw, prof, en_uzun=uz)
+            denemeler += [(ilk, varyant, kisa)] + [(b, varyant, kisa) for b in SIRA if b != ilk]
+    en_iyi = None
+    for b, v, k in denemeler:
+        p = yaz(urun, details_html, mevcut_kw, b, v, kw=k, **kw_args)
+        if en_iyi is None or p["score"]["yuzde"] > en_iyi["score"]["yuzde"]:
+            en_iyi = p
+        if p["score"]["yuzde"] == 100:
+            break
+    return en_iyi
 
 
 def puan(plan, method=""):
@@ -686,7 +733,8 @@ def gonderilecek(plan, kategori_id, durum=1, gorsel=None, kw_alani="targetKeywor
 
 # ---------------------------------------------------------------- blog görseli (panelde, canvas ile çizilir)
 
-GORSEL_TEMALAR = {"mektup": "Mektup", "gece": "Gece mavisi", "atolye": "Atölye çizimi", "vitrin": "Vitrin"}
+GORSEL_TEMALAR = {"mektup": "Mektup", "gece": "Gece mavisi", "atolye": "Atölye çizimi", "vitrin": "Vitrin", "santiye": "Şantiye",
+                  "cam": "Cam (modern)", "gazete": "Gazete manşeti", "minimal": "Minimal"}
 GORSEL_VARSAYILAN = {"tema": "mektup", "renk": "#b3261e", "renk2": "#1f2a44", "foto": True, "yazi": "serif",
                      "magaza": True, "rozet": True, "kod": True, "desen": True, "ust_metin": ""}
 

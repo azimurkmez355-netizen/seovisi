@@ -197,6 +197,26 @@ class BlogEkrani(Ortam):
         self.assertIn("Sayfa başlığı 20-60", msg)
         self.assertEqual(self.yazmalar(), [])
 
+    def test_yuzde_yuz_olmayanlar_duzeltilir(self):
+        app.blog_hazirla(6)
+        r = app.DBI.q("SELECT plan FROM blog WHERE pid=6", one=True)
+        plan = json.loads(r["plan"])
+        plan["score"]["yuzde"], plan["pageTitle"] = 92, "Kısa"
+        app.DBI.x("UPDATE blog SET plan=? WHERE pid=6", (json.dumps(plan),))
+        self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 1)
+        self.assertIn("1 ürün", app.BLOG.start(eksik=True))
+        self.bekle()
+        self.assertEqual(app.BLOG.plan(6)["plan"]["score"]["yuzde"], 100)
+        self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 0)
+
+    def test_uzun_teknik_listeli_urun_de_yuzde_yuz(self):
+        uzun = "<h3>Teknik Özellikler</h3><ul>" + "".join(f"<li>Özellik {i}: {i * 7} mm ölçü ve dayanıklı yapı</li>"
+                                                          for i in range(30)) + "</ul>"
+        for b in BL.BICIMLER:
+            p = BL.yaz_tam(dict(URUN, name="Bosch Professional GDS 18V-1600 HC Çift Akülü 8 Ah Somun Sıkma Makinesi"), uzun,
+                           bicim=b, prof={"magaza": "Ustapazar"}, method="panel")
+            self.assertEqual(p["score"]["yuzde"], 100, b)
+
     def test_hedef_kelime_degisince_yazi_yeniden_kurulur(self):
         app.blog_hazirla(6)
         plan, msg = app.blog_duzenle(6, {"keyword": "Elektrikli Matkap"})

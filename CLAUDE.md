@@ -203,11 +203,11 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Her ürüne bir yazı: `blog_hazirla` ürünü ve açıklamasını okur, `BL.yaz` yazıyı kurar (mağazaya yazmaz). Biçimler: rehber, inceleme,
   ipucu, sss, bakim, senaryo; ayar "karisik"ta biçim ürüne göre döner. Teknik bilgi yalnızca ürünün mevcut açıklamasından; uydurma
   değer yazılmaz. Künyede ürün kodu, barkod, mağaza adı; ürün sayfasına `/urun/<slug>` iç bağlantısı.
-- Hedef kelime kısa tutulur (`kelime_sec`, en çok 40 karakter); yoğunluk `{k}` anma yerleri ve ek cümlelerle bütün sayım yöntemlerinde %2-%3.
+- Hedef kelime kısa tutulur (`kelime_sec`, en çok 40 karakter); yoğunluk `{k}` anma yerleri, ek cümleler ve gerekirse teknik listenin kısaltılmasıyla bütün sayım yöntemlerinde %2-%3. `yaz_tam` %100 olmazsa başka anlatım, başka biçim ve daha kısa hedef kelime dener; panelde "%100 olmayanları düzelt".
 - Gönderim (`blog_gonder`, `/api/blog/gonder`, paket özelliği `blog`) yalnızca kullanıcının isteğiyle ve SEO %100 ise; daha önce
   gönderildiyse aynı blog kaydı PUT ile güncellenir. Hedef kelime `targetKeyword` (ürünün kw_loc alanı) ile gider; Ideasoft yanıtında
   yoksa mesajla bildirilir. Yayından kaldırma (`/api/blog/kaldir`) blogu pasif yapar, silmez; geri almadır.
-- Görsel panelde canvas ile çizilir (`blCiz`, temalar mektup / gece / atolye / vitrin; ayar `blog.gorsel`), gönderimde 1200×630 JPEG
+- Görsel panelde canvas ile çizilir (`blCiz`, temalar mektup / gece / atolye / vitrin / santiye / cam / gazete / minimal; ayar `blog.gorsel`), gönderimde 1600×840 JPEG (kalite 0,95)
   `attachment` olarak gider. Ürün fotoğrafı `/api/blog/urun_gorsel` üzerinden (aynı köken; mağaza klasöründe `blog_gorsel/` önbellek).
 - Hariç kategoriler `blog.haric`; None ise adında "bosch aksesuar" geçenler ve alt kategorileri. Pasif ürünlere yazılmaz.
 - Blog kategorisi Ideasoft `blog_categories`'ten seçilir ya da açılır. Ideasoft uygulamasında blog_read / blog_create / blog_update izinleri gerekir.

@@ -2754,7 +2754,7 @@ def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
     urun_kw = (kw_read(prod)[0] if kw_loc() else prod.get("targetKeyword")) or ""
     varyant = int(eski.get("varyant") or 0) + (1 if yeni else 0)
     bicim = bicim if bicim in BL.BICIMLER else (eski.get("bicim") if eski and not yeni else a["bicim"])
-    plan = BL.yaz(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
+    plan = BL.yaz_tam(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
                   prof=PROFILE(), method=CFG.get("count_method") or SAFE_METHODS,
                   hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=_blog_kategori(prod),
                   kw=kw or eski.get("keyword") or "")
@@ -3003,10 +3003,16 @@ class BlogYazari:
         return {"ayar": a, "bicimler": {k: v["ad"] for k, v in BL.BICIMLER.items()},
                 "kategoriler": sorted(({"id": i, "path": p} for i, p in paths.items()), key=lambda x: ST.tr_lower(x["path"])),
                 "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": PROFILE()["magaza"],
-                "sayilar": {k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")}, "haric_urun": haric_n,
+                "sayilar": dict({k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")},
+                                eksik=sum(1 for r in rows if self._eksik(r))), "haric_urun": haric_n,
                 "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,
                 "panel": API.blog_adresi(), "running": self.running, "done": self.done, "todo": self.todo,
                 "sonuc": self.sonuc}
+
+    @staticmethod
+    def _eksik(r):
+        """SEO'su %100 olmayan ya da yazarın eski sürümüyle hazırlanmış, gönderilmemiş yazı."""
+        return bool(r["plan"] and r["sekme"] == "hazir" and (r["plan"]["yuzde"] < 100 or r["plan"]["eski"]))
 
     def plan(self, pid):
         r = DBI.q("SELECT * FROM blog WHERE pid=?", (pid,), one=True)
@@ -3022,13 +3028,17 @@ class BlogYazari:
         """Menüdeki sayı: hazırlanıp gönderilmeyen yazılar."""
         return DBI.q("SELECT COUNT(*) n FROM blog WHERE durum='hazir'", one=True)["n"]
 
-    def start(self, pids=None, bicim=None, yeni=False):
+    def start(self, pids=None, bicim=None, yeni=False, eksik=False):
         if self.running:
             return "Yazılar zaten hazırlanıyor; bitmesini bekleyin."
         if not CFG.get("access_token") and not CFG.get("refresh_token"):
             return "Önce mağazaya bağlanın (Ayarlar)."
         rows = self.satirlar()
-        if pids:
+        if eksik:
+            pids = [r["pid"] for r in rows if self._eksik(r) and r["kapsamda"]]
+            if not pids:
+                return "Düzeltilecek yazı yok; hepsi %100."
+        elif pids:
             secili = {int(p) for p in pids}
             pids = [r["pid"] for r in rows if r["pid"] in secili and r["kapsamda"]]
         else:
@@ -4741,7 +4751,7 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/blog/hazirla":       # yalnızca okur ve hazırlar; mağazaya bir şey gönderilmez
             d = self._json()
             return self._send(200, {"msg": BLOG.start([int(x) for x in d["pids"]] if d.get("pids") else None,
-                                                     d.get("bicim"), bool(d.get("yeni")))})
+                                                     d.get("bicim"), bool(d.get("yeni")), bool(d.get("eksik")))})
         if p == "/api/blog/yeniden":       # tek yazı: başka bir anlatımla ya da seçilen biçimle
             d = self._json()
             plan = blog_hazirla(int(d.get("pid") or 0), d.get("bicim"), yeni=True)
