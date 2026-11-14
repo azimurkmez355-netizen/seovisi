@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="/marka/seovisi-ikon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Caveat:wght@500;600;700&family=Special+Elite&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Caveat:wght@500;600;700&family=Special+Elite&family=Rubik:wght@500;700;800&display=swap" rel="stylesheet">
 <style>
 /* seovisi tasarım sistemi (renkler logodan: ui/marka/RENKLER.txt)
    - Açık, nötr yüzeyler; tek canlı ana renk (--brand) yalnızca eyleme ve seçime işaret eder.
@@ -416,7 +416,7 @@ body.bl-on main{max-width:1560px}
 .bl-card.sel:after{content:"✓";position:absolute;left:-8px;top:-8px;width:26px;height:26px;border-radius:50%;background:var(--bl-ink);color:#fff;
   display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.3)}
 .bl-thumb{position:relative;background:#fff;padding:6px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
-.bl-thumb canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630;background:#f1e8d4}
+.bl-thumb canvas{display:block;width:100%;height:auto;aspect-ratio:3/2;background:#f1e8d4}
 .bl-tape{position:absolute;left:50%;top:-10px;width:78px;height:22px;transform:translateX(-50%) rotate(-3deg);
   background:rgba(232,194,122,.55);box-shadow:0 1px 2px rgba(0,0,0,.08);backdrop-filter:blur(1px)}
 .bl-card:nth-child(even) .bl-tape{transform:translateX(-50%) rotate(4deg);background:rgba(167,196,221,.55)}
@@ -430,7 +430,7 @@ body.bl-on main{max-width:1560px}
 .bl-note.ok{color:#2f6b3e}
 .bl-pick{position:absolute;right:6px;bottom:6px;z-index:2;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .bl-pick input{width:17px;height:17px;accent-color:var(--bl-ink);cursor:pointer}
-.bl-blank{aspect-ratio:1200/630;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--bl-ink3);
+.bl-blank{aspect-ratio:3/2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:var(--bl-ink3);
   background:repeating-linear-gradient(180deg,#fdfaf2 0 15px,rgba(70,100,150,.12) 15px 16px);font:600 22px/1 var(--bl-hand)}
 .bl-blank svg{width:34px;height:34px;stroke:var(--bl-ink3);fill:none;stroke-width:1.4}
 .bl-empty{grid-column:1/-1;text-align:center;padding:50px 20px;font:600 26px/1.3 var(--bl-hand);color:var(--bl-ink2)}
@@ -450,7 +450,7 @@ body.bl-on main{max-width:1560px}
 .bl-env .to b{color:var(--bl-ink);font-weight:400}
 .bl-env .bl-tag{font-size:12px}
 .bl-imgwrap{position:relative;background:#fff;padding:8px 8px 34px;transform:rotate(-.8deg);margin:6px 4px 22px;box-shadow:0 14px 22px -14px rgba(0,0,0,.5),0 1px 3px rgba(0,0,0,.15)}
-.bl-imgwrap canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630}
+.bl-imgwrap canvas{display:block;width:100%;height:auto;aspect-ratio:3/2}
 .bl-imgwrap figcaption{position:absolute;left:12px;right:12px;bottom:6px;font:600 19px/1 var(--bl-hand);color:var(--bl-ink2);display:flex;justify-content:space-between}
 .bl-imgwrap figcaption a{color:var(--bl-blue);cursor:pointer;text-decoration:none}
 .bl-letter h2.bl-t{font:700 30px/1.15 var(--bl-serif);letter-spacing:-.4px;margin:0 0 8px;color:var(--bl-ink)}
@@ -508,7 +508,7 @@ body.bl-on main{max-width:1560px}
 .bl-at{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.3fr);gap:28px;align-items:start;margin-top:18px}
 .bl-themes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
 .bl-theme{border:0;background:#fff;padding:6px 6px 8px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.15);border-radius:3px;text-align:left;font:13px var(--bl-type);color:var(--bl-ink2);transition:transform .15s}
-.bl-theme canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630;margin-bottom:6px}
+.bl-theme canvas{display:block;width:100%;height:auto;aspect-ratio:3/2;margin-bottom:6px}
 .bl-theme:hover{transform:translateY(-2px)}
 .bl-theme.on{outline:2.5px solid var(--bl-red);outline-offset:2px;color:var(--bl-ink)}
 .bl-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
@@ -521,13 +521,17 @@ body.bl-on main{max-width:1560px}
 .bl-seg button{border:0;background:#fffdf7;padding:7px 14px;cursor:pointer;font-size:13.5px}
 .bl-seg button.on{background:var(--bl-ink);color:#fbf6ea}
 .bl-big{background:#fff;padding:10px 10px 40px;transform:rotate(.6deg);box-shadow:0 22px 30px -18px rgba(0,0,0,.55),0 1px 4px rgba(0,0,0,.15);position:relative}
-.bl-big canvas{display:block;width:100%;height:auto;aspect-ratio:1200/630}
+.bl-big canvas{display:block;width:100%;height:auto;aspect-ratio:3/2}
 .bl-big p{position:absolute;left:14px;right:14px;bottom:9px;margin:0;font:600 20px/1 var(--bl-hand);color:var(--bl-ink2)}
 .bl-set{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px 28px;margin-top:18px}
 .bl-set .field{margin:0}
 .bl-set .field>label{font:12.5px var(--bl-type);letter-spacing:.04em;color:var(--bl-ink2)}
 .bl-set .row{display:flex;gap:8px}
 .bl-set .row>*:first-child{flex:1}
+.bl-sos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bl-sos span{display:flex;align-items:center;gap:8px}
+.bl-sos b{flex:none;width:34px;height:34px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px}
+@media (max-width:760px){.bl-sos{grid-template-columns:1fr}}
 .bl-kats{max-height:260px;overflow:auto;border:1px solid #cdbf9f;border-radius:6px;padding:2px 12px;background:#fffdf7}
 .bl-kats label{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(43,38,32,.15);cursor:pointer;font-size:14px}
 .bl-kats label:last-child{border-bottom:0}
@@ -836,7 +840,7 @@ body.bl-on main{max-width:1560px}
   <details class="bl-sheet" id="bl-atolye">
     <summary><span class="num">1</span><h2>Görsel atölyesi</h2><span class="bl-kicker">bütün yazılar aynı imzayla</span></summary>
     <div class="bl-in">
-      <p class="muted" style="margin:14px 0 0">Her yazının kendi görseli, başlığı ve ürün fotoğrafıyla bu ayarlardan üretilir ve gönderimle birlikte Ideasoft'a yüklenir (1600×840, yüksek kaliteli JPEG). Ayarı değiştirdiğinizde bütün görseller birlikte değişir; görünüm tutarlı kalır.</p>
+      <p class="muted" style="margin:14px 0 0">Her yazının kendi görseli, başlığı ve ürün fotoğrafıyla bu ayarlardan üretilir ve gönderimle birlikte Ideasoft'a yüklenir (1500×1000, yüksek kaliteli JPEG). 3:2 oranı blog kartlarında kesilmeden oturur; telefonda da bilgisayarda da tam görünür. Ayarı değiştirdiğinizde bütün görseller birlikte değişir; görünüm tutarlı kalır.</p>
       <div class="bl-at">
         <div>
           <div class="bl-themes" id="bl-themes"></div>
@@ -854,7 +858,7 @@ body.bl-on main{max-width:1560px}
           </div>
           <div class="acts"><button class="btn ink" id="bl-g-kaydet">Görsel ayarlarını kaydet</button><button class="btn ghost" id="bl-g-sifirla">Varsayılana dön</button></div>
         </div>
-        <figure class="bl-big" style="margin:0"><canvas id="bl-g-cv" width="1600" height="840"></canvas><p id="bl-g-not">Önizleme: açık olan yazı</p></figure>
+        <figure class="bl-big" style="margin:0"><canvas id="bl-g-cv" width="1500" height="1000"></canvas><p id="bl-g-not">Önizleme: açık olan yazı</p></figure>
       </div>
     </div>
   </details>
@@ -880,6 +884,15 @@ body.bl-on main{max-width:1560px}
         <div class="field">
           <label for="bl-renk">Yazının vurgu rengi (başlıklar, kutular)</label>
           <div class="bl-color"><input type="color" id="bl-renk"> <span class="muted" style="font-size:13px">Yeni hazırlanan yazılarda kullanılır.</span></div>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Sosyal medya (her yazının en altında "Bizi takip edin" alanı; boş bırakılan görünmez)</label>
+          <div class="bl-sos">
+            <span><b style="background:linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)">📸</b><input id="bl-s-instagram" placeholder="https://www.instagram.com/kullanici/"></span>
+            <span><b style="background:#ff0033">▶</b><input id="bl-s-youtube" placeholder="https://www.youtube.com/@kanal"></span>
+            <span><b style="background:#111">♪</b><input id="bl-s-tiktok" placeholder="https://www.tiktok.com/@kullanici"></span>
+            <span><b style="background:#1877f2">f</b><input id="bl-s-facebook" placeholder="https://www.facebook.com/sayfa"></span>
+          </div>
         </div>
         <div class="field" style="grid-column:1/-1">
           <label>Hariç tutulan kategoriler <span class="muted" id="bl-hk-not"></span></label>
@@ -2443,7 +2456,7 @@ setInterval(() => { if(document.querySelector('#v-eknot.on')) ekTick(); }, 3000)
 let blSekme = 'yazilacak', blSayfa = 0, blVeri = null, blAcik = null, blKayit = null, blImza = '';
 const blSecili = new Set(), blFotolar = new Map(), blBekleyen = [];
 let blFotoAkan = 0, blGor = null, blSonAtolye = null;
-const BL_W = 1200, BL_H = 630, BL_GW = 1600, BL_GH = 840;
+const BL_W = 1200, BL_H = 800, BL_GW = 1500, BL_GH = 1000;
 
 /* ürün fotoğrafı: sunucu üzerinden (aynı köken, canvas temiz kalır); en çok 3 istek aynı anda */
 function blFoto(pid){
@@ -2464,7 +2477,7 @@ function blFotoSira(){
 let blFontlar = null;
 function blFontYukle(){
   if(!blFontlar) blFontlar = Promise.all(['700 60px Fraunces', '500 40px Fraunces', '700 40px "Bricolage Grotesque"',
-    '600 30px Caveat', '20px "Special Elite"'].map(f => document.fonts.load(f).catch(() => null))).catch(() => null);
+    '600 30px Caveat', '20px "Special Elite"', '800 60px Rubik', '500 24px Rubik', '700 22px Rubik'].map(f => document.fonts.load(f).catch(() => null))).catch(() => null);
   return blFontlar;
 }
 
@@ -2499,253 +2512,150 @@ function blCiz(cv, d, a, img){
   c.textBaseline = 'alphabetic'; c.textAlign = 'left';
   const r = blRng((d.title || '') + a.tema), foto = a.foto && img, magaza = a.magaza && d.magaza ? d.magaza : '';
   const ust = a.ust_metin || '', rozet = a.rozet ? (d.rozet || '') : '', kod = a.kod && d.sku ? d.sku : '';
-  ({mektup: blTemaMektup, gece: blTemaGece, atolye: blTemaAtolye, vitrin: blTemaVitrin, santiye: blTemaSantiye, cam: blTemaCam, gazete: blTemaGazete, minimal: blTemaMinimal}[a.tema] || blTemaMektup)(c, d, a, foto ? img : null, r, {magaza, ust, rozet, kod});
+  ({lacivert_bant: blTemaLacivertBant, beyaz_bant: blTemaBeyazBant, kirmizi_bant: blTemaKirmiziBant, pano_bant: blTemaPanoBant,
+    lacivert_kutu: blTemaLacivertKutu, beyaz_kutu: blTemaBeyazKutu, bolunmus_kutu: blTemaBolunmusKutu, vitrin_kutu: blTemaVitrinKutu}[a.tema] || blTemaLacivertBant)(c, d, a, foto ? img : null, r, {magaza, ust, rozet, kod});
 }
-function blTemaMektup(c, d, a, img, r, o){
-  c.fillStyle = '#f5ecd6'; c.fillRect(0, 0, BL_W, BL_H);
-  for(let i = 0; i < 2600; i++){ c.fillStyle = `rgba(110,80,40,${r() * .06})`; c.fillRect(r() * BL_W, r() * BL_H, 1.6, 1.6); }
-  if(a.desen){
-    c.strokeStyle = 'rgba(70,100,150,.17)'; c.lineWidth = 1.6;
-    for(let y = 112; y < BL_H; y += 44){ c.beginPath(); c.moveTo(0, y); c.lineTo(BL_W, y); c.stroke(); }
-    c.strokeStyle = 'rgba(190,60,50,.42)'; c.beginPath(); c.moveTo(92, 0); c.lineTo(92, BL_H); c.stroke();
-  }
-  const g = c.createRadialGradient(BL_W / 2, BL_H / 2, 250, BL_W / 2, BL_H / 2, 760);
-  g.addColorStop(0, 'rgba(120,85,30,0)'); g.addColorStop(1, 'rgba(120,85,30,.28)'); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  // kahve lekesi
-  c.strokeStyle = 'rgba(140,95,40,.12)'; c.lineWidth = 9; c.beginPath(); c.arc(img ? 90 : 1080, img ? 560 : 90, 64, .3, 5.6); c.stroke();
-  let y = 92;
-  if(o.ust){ c.font = blDaktilo(22); c.fillStyle = a.renk2; c.fillText(o.ust.toUpperCase(), 128, y); y += 22; }
-  if(o.rozet){
-    c.save(); c.translate(128, y + 18); c.rotate(-.035); c.font = blDaktilo(28);
-    const w = c.measureText(o.rozet).width + 30;
-    c.strokeStyle = a.renk; c.lineWidth = 2.5; c.setLineDash([7, 4]); c.strokeRect(0, -26, w, 40); c.setLineDash([]);
-    c.fillStyle = a.renk; c.fillText(o.rozet, 15, 4); c.restore(); y += 52;
-  }
-  const maxW = img ? 600 : 960, t = blSar(c, d.title, maxW, blBaslikFont(a), 66, 34, 4);
-  c.font = blBaslikFont(a)(t.px); c.fillStyle = '#2b2620';
-  y += t.px + 10;
-  t.sat.forEach((l, i) => c.fillText(l, 128, y + i * t.px * 1.12));
-  const sonY = y + (t.sat.length - 1) * t.px * 1.12 + 16, sonW = Math.min(maxW, c.measureText(t.sat[t.sat.length - 1]).width);
-  c.strokeStyle = a.renk; c.lineWidth = 4; c.lineCap = 'round'; c.beginPath(); c.moveTo(126, sonY);
-  for(let x = 126; x < 126 + sonW; x += 22) c.quadraticCurveTo(x + 11, sonY + (r() - .5) * 9, x + 22, sonY + (r() - .5) * 4);
-  c.stroke();
-  if(img){
-    c.save(); c.translate(905, 300); c.rotate(.045);
-    c.shadowColor = 'rgba(60,40,10,.35)'; c.shadowBlur = 26; c.shadowOffsetY = 12;
-    c.fillStyle = '#fff'; c.fillRect(-175, -205, 350, 410); c.shadowColor = 'transparent';
-    c.fillStyle = '#fafafa'; c.fillRect(-155, -185, 310, 300); blSigdir(c, img, -150, -180, 300, 290);
-    c.font = '600 34px Caveat, "Segoe Print", cursive'; c.fillStyle = '#4b4238'; c.textAlign = 'center';
-    c.fillText(o.kod ? o.kod : (o.magaza || ''), 0, 175); c.textAlign = 'left';
-    c.fillStyle = blHex(a.renk2, .32); c.rotate(-.12); c.fillRect(-60, -232, 130, 40);
-    c.restore();
-  }
-  // posta damgası ve dalgalı iptal çizgileri
-  const px = img ? 210 : 1010, py = 540;
-  c.strokeStyle = blHex(a.renk2, .7); c.lineWidth = 3; c.beginPath(); c.arc(px, py, 56, 0, 7); c.stroke();
-  c.lineWidth = 1.4; c.setLineDash([5, 4]); c.beginPath(); c.arc(px, py, 46, 0, 7); c.stroke(); c.setLineDash([]);
-  c.fillStyle = blHex(a.renk2, .8); c.textAlign = 'center'; c.font = blDaktilo(14);
-  c.fillText((o.magaza || 'SEOVISI').toUpperCase().slice(0, 14), px, py - 4); c.fillText(new Date().getFullYear().toString(), px, py + 16);
-  c.textAlign = 'left';
-  c.strokeStyle = blHex(a.renk2, .4); c.lineWidth = 2.2;
-  for(let k = 0; k < 3; k++){
-    c.beginPath(); const sx = img ? px + 66 : px - 380, yy = py - 18 + k * 18;
-    c.moveTo(sx, yy); for(let x = 0; x < 300; x += 10) c.lineTo(sx + x, yy + Math.sin(x / 16) * 5); c.stroke();
-  }
-  if(o.kod && !img){ c.font = blDaktilo(22); c.fillStyle = '#5b5145'; c.fillText(`ÜRÜN KODU · ${o.kod}`, 128, 590); }
-  else if(o.magaza && img){ c.font = blDaktilo(20); c.fillStyle = '#5b5145'; c.fillText(o.magaza, 300, 600); }
+/* ---- kapak temaları (1200×800 tasarım alanı; 3:2 oranı blog kartlarında kırpılmadan oturur, kenarlarda güvenli boşluk) */
+const blRubik = (agir) => px => `${agir} ${px}px Rubik, "Segoe UI", Arial, sans-serif`;
+function blKodYazi(o){ return o.kod ? `Ürün Kodu: ${o.kod}` : ''; }
+function blBaslik(c, d, a, x, y, maxW, renk, buyuk = 84){
+  const f = a.yazi === 'serif' ? (px => `700 ${px}px Fraunces, Georgia, serif`) : blRubik(800);
+  const t = blSar(c, d.title, maxW, f, buyuk, 46, 5);
+  c.font = f(t.px); c.fillStyle = renk; c.textBaseline = 'alphabetic';
+  t.sat.forEach((l, i) => c.fillText(l, x, y + t.px + i * t.px * 1.1));
+  return y + t.px + (t.sat.length - 1) * t.px * 1.1;
 }
-function blTemaGece(c, d, a, img, r, o){
-  const g = c.createLinearGradient(0, 0, BL_W, BL_H); g.addColorStop(0, a.renk2); g.addColorStop(1, blKoyu(a.renk2, .45));
-  c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  const p = c.createRadialGradient(img ? 920 : 1000, 120, 10, img ? 920 : 1000, 120, 620);
-  p.addColorStop(0, blHex(a.renk, .55)); p.addColorStop(1, blHex(a.renk, 0)); c.fillStyle = p; c.fillRect(0, 0, BL_W, BL_H);
-  if(a.desen){ c.fillStyle = 'rgba(255,255,255,.09)'; for(let x = 14; x < BL_W; x += 28) for(let y = 14; y < BL_H; y += 28) c.fillRect(x, y, 2, 2); }
-  for(let i = 0; i < 60; i++){ c.fillStyle = `rgba(255,255,255,${r() * .5})`; c.beginPath(); c.arc(r() * BL_W, r() * BL_H * .6, r() * 1.6, 0, 7); c.fill(); }
-  let y = 92;
-  if(o.ust){ c.font = '600 20px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(255,255,255,.7)'; c.fillText(o.ust.toUpperCase(), 80, y); y += 18; }
-  if(o.rozet){
-    c.font = '700 20px "Bricolage Grotesque", "Segoe UI", sans-serif'; const w = c.measureText(o.rozet).width + 34;
-    c.fillStyle = a.renk; blYuvarlak(c, 80, y, w, 40, 20); c.fill(); c.fillStyle = '#fff'; c.fillText(o.rozet, 97, y + 27); y += 58;
-  }
-  const maxW = img ? 580 : 1040, t = blSar(c, d.title, maxW, blBaslikFont(a), 68, 36, 4);
-  c.font = blBaslikFont(a)(t.px); c.fillStyle = '#fff'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, 80, y + i * t.px * 1.12));
-  const by = y + (t.sat.length - 1) * t.px * 1.12 + 30;
-  c.fillStyle = a.renk; blYuvarlak(c, 80, by, 120, 7, 4); c.fill();
-  if(img){
-    c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 50; c.shadowOffsetY = 20;
-    c.fillStyle = '#fff'; blYuvarlak(c, 730, 105, 400, 400, 34); c.fill(); c.restore();
-    c.strokeStyle = blHex(a.renk, .8); c.lineWidth = 3; blYuvarlak(c, 718, 93, 424, 424, 42); c.stroke();
-    c.save(); blYuvarlak(c, 730, 105, 400, 400, 34); c.clip(); blSigdir(c, img, 760, 135, 340, 340); c.restore();
-  }
-  c.font = '600 22px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(255,255,255,.88)';
-  const alt = [o.magaza, o.kod ? 'Ürün kodu ' + o.kod : ''].filter(Boolean).join('   ·   ');
-  if(alt){ c.fillStyle = a.renk; c.fillRect(80, 566, 10, 10); c.fillStyle = 'rgba(255,255,255,.88)'; c.fillText(alt, 104, 577); }
+function blRozet(c, o, x, y, zemin, yazi, sekil){
+  if(!o.rozet) return y;
+  c.font = blRubik(700)(22); const w = c.measureText(o.rozet).width + 40;
+  if(sekil === 'cizgi'){ c.strokeStyle = zemin; c.lineWidth = 2.5; blYuvarlak(c, x, y, w, 44, 22); c.stroke(); }
+  else { c.fillStyle = zemin; blYuvarlak(c, x, y, w, 44, sekil === 'kose' ? 6 : 22); c.fill(); }
+  c.fillStyle = yazi; c.fillText(o.rozet, x + 20, y + 30);
+  return y + 70;
 }
-function blTemaAtolye(c, d, a, img, r, o){
-  c.fillStyle = a.renk2; c.fillRect(0, 0, BL_W, BL_H);
-  const g = c.createRadialGradient(BL_W / 2, BL_H / 2, 100, BL_W / 2, BL_H / 2, 800); g.addColorStop(0, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,.32)');
-  c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  if(a.desen){
-    c.lineWidth = 1;
-    for(let x = 0; x <= BL_W; x += 20){ c.strokeStyle = x % 100 ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.16)'; c.beginPath(); c.moveTo(x + .5, 0); c.lineTo(x + .5, BL_H); c.stroke(); }
-    for(let y = 0; y <= BL_H; y += 20){ c.strokeStyle = y % 100 ? 'rgba(255,255,255,.06)' : 'rgba(255,255,255,.16)'; c.beginPath(); c.moveTo(0, y + .5); c.lineTo(BL_W, y + .5); c.stroke(); }
-  }
-  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 2; c.strokeRect(24, 24, BL_W - 48, BL_H - 48);
-  let y = 86;
-  if(o.ust){ c.font = blDaktilo(20); c.fillStyle = 'rgba(255,255,255,.75)'; c.fillText(o.ust.toUpperCase(), 70, y); y += 18; }
-  if(o.rozet){
-    c.save(); c.translate(70, y + 10); c.rotate(-.03); c.font = blDaktilo(22); const w = c.measureText(o.rozet).width + 28;
-    c.strokeStyle = a.renk; c.lineWidth = 3; c.strokeRect(0, 0, w, 38); c.strokeRect(4, 4, w - 8, 30);
-    c.fillStyle = a.renk; c.fillText(o.rozet, 14, 26); c.restore(); y += 62;
-  }
-  const maxW = img ? 600 : 1040, t = blSar(c, d.title, maxW, blBaslikFont(a), 64, 34, 4);
-  c.font = blBaslikFont(a)(t.px); c.fillStyle = '#fff'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, 70, y + i * t.px * 1.12));
-  if(img){
-    const x0 = 760, y0 = 96, w = 360, h = 330;
-    c.fillStyle = 'rgba(255,255,255,.94)'; c.fillRect(x0, y0, w, h);
-    blSigdir(c, img, x0 + 18, y0 + 18, w - 36, h - 36);
-    c.strokeStyle = 'rgba(255,255,255,.85)'; c.setLineDash([8, 6]); c.lineWidth = 1.6; c.strokeRect(x0 - 10, y0 - 10, w + 20, h + 20); c.setLineDash([]);
-    // ölçü çizgileri
-    c.strokeStyle = 'rgba(255,255,255,.8)'; c.fillStyle = 'rgba(255,255,255,.85)'; c.lineWidth = 1.4;
-    const ok = (x1, y1, x2, y2) => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke(); };
-    ok(x0, y0 - 28, x0 + w, y0 - 28); ok(x0, y0 - 36, x0, y0 - 20); ok(x0 + w, y0 - 36, x0 + w, y0 - 20);
-    ok(x0 + w + 28, y0, x0 + w + 28, y0 + h); ok(x0 + w + 20, y0, x0 + w + 36, y0); ok(x0 + w + 20, y0 + h, x0 + w + 36, y0 + h);
-    c.font = blDaktilo(15); c.textAlign = 'center'; c.fillStyle = a.renk2; c.fillRect(x0 + w / 2 - 70, y0 - 38, 140, 20);
-    c.fillStyle = '#fff'; c.fillText(o.kod || 'ÜRÜN', x0 + w / 2, y0 - 23); c.textAlign = 'left';
-  }
-  // antet (teknik çizim künyesi)
-  const kx = img ? 700 : 760, ky = 486, kw = BL_W - 24 - kx, kh = BL_H - 24 - ky;
-  c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 1.5; c.strokeRect(kx, ky, kw, kh);
-  c.beginPath(); c.moveTo(kx, ky + kh / 2); c.lineTo(kx + kw, ky + kh / 2); c.moveTo(kx + 130, ky); c.lineTo(kx + 130, ky + kh); c.stroke();
-  c.font = blDaktilo(15); c.fillStyle = 'rgba(255,255,255,.6)'; c.fillText('MAĞAZA', kx + 14, ky + 38); c.fillText('ÜRÜN KODU', kx + 14, ky + 98);
-  c.font = blDaktilo(21); c.fillStyle = '#fff'; c.fillText((o.magaza || '—').slice(0, 26), kx + 146, ky + 39); c.fillText((o.kod || '—').slice(0, 26), kx + 146, ky + 99);
+function blUst(c, o, x, y, renk){
+  if(!o.ust) return y;
+  c.font = blRubik(700)(20); c.fillStyle = renk; c.fillText(o.ust.toUpperCase(), x, y + 18); return y + 40;
 }
-function blTemaVitrin(c, d, a, img, r, o){
-  const sol = img ? 690 : BL_W;
-  c.fillStyle = '#f3efe7'; c.fillRect(0, 0, BL_W, BL_H);
-  c.fillStyle = a.renk; c.beginPath(); c.moveTo(0, 0); c.lineTo(sol, 0); c.lineTo(img ? sol - 90 : sol, BL_H); c.lineTo(0, BL_H); c.closePath(); c.fill();
-  if(a.desen){
-    c.save(); c.clip(); c.strokeStyle = 'rgba(255,255,255,.08)'; c.lineWidth = 14;
-    for(let x = -BL_H; x < BL_W; x += 46){ c.beginPath(); c.moveTo(x, BL_H); c.lineTo(x + BL_H, 0); c.stroke(); }
-    c.restore();
-  }
-  c.fillStyle = blHex(a.renk2, .95); c.beginPath(); c.arc(img ? sol - 60 : BL_W - 120, 70, 130, 0, 7); c.fill();
-  c.fillStyle = 'rgba(255,255,255,.12)'; c.beginPath(); c.arc(img ? sol - 60 : BL_W - 120, 70, 90, 0, 7); c.fill();
-  let y = 90;
-  if(o.ust){ c.font = '700 20px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(255,255,255,.85)'; c.fillText(o.ust.toUpperCase(), 70, y); y += 18; }
-  if(o.rozet){
-    c.font = '700 19px "Bricolage Grotesque", "Segoe UI", sans-serif'; const w = c.measureText(o.rozet).width + 30;
-    c.fillStyle = '#fff'; c.fillRect(70, y, w, 38); c.fillStyle = a.renk; c.fillText(o.rozet, 85, y + 26); y += 58;
-  }
-  const maxW = img ? 520 : 1000, t = blSar(c, d.title, maxW, blBaslikFont(a, 800), 72, 36, 4);
-  c.font = blBaslikFont(a, 800)(t.px); c.fillStyle = '#fff'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, 70, y + i * t.px * 1.08));
-  if(img){
-    c.fillStyle = 'rgba(0,0,0,.12)'; c.beginPath(); c.ellipse(sol + 220, 545, 190, 22, 0, 0, 7); c.fill();
-    blSigdir(c, img, sol - 10, 70, 470, 460);
-  }
-  c.font = '600 21px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(255,255,255,.92)';
-  const alt = [o.magaza, o.kod ? 'Kod ' + o.kod : ''].filter(Boolean).join('  —  ');
-  if(alt){ c.fillRect(70, 560, 40, 3); c.fillText(alt, 124, 570); }
+function blAlt(c, o, x, y, renk1, renk2){
+  c.textBaseline = 'alphabetic';
+  let cx = x;
+  if(o.magaza){ c.font = blRubik(800)(26); c.fillStyle = renk1; c.fillText(o.magaza, cx, y); cx += c.measureText(o.magaza).width + 18; }
+  const k = blKodYazi(o);
+  if(k){ if(o.magaza){ c.fillStyle = renk2; c.fillRect(cx, y - 18, 3, 20); cx += 20; } c.font = blRubik(500)(23); c.fillStyle = renk2; c.fillText(k, cx, y); }
 }
+/* bantlı fotoğraf: beyaz çerçeve, iki köşede yarı saydam bant */
+function blBantli(c, img, cx, cy, w, h, aci, bant){
+  c.save(); c.translate(cx, cy); c.rotate(aci);
+  c.shadowColor = 'rgba(0,0,0,.35)'; c.shadowBlur = 34; c.shadowOffsetY = 16;
+  c.fillStyle = '#fff'; c.fillRect(-w / 2, -h / 2, w, h); c.shadowColor = 'transparent';
+  const p = 22; c.fillStyle = '#f6f7f9'; c.fillRect(-w / 2 + p, -h / 2 + p, w - 2 * p, h - 2 * p);
+  blSigdir(c, img, -w / 2 + p + 12, -h / 2 + p + 12, w - 2 * p - 24, h - 2 * p - 24);
+  const serit = (x, y, r) => { c.save(); c.translate(x, y); c.rotate(r); c.fillStyle = bant;
+    c.beginPath(); c.moveTo(-70, -19); for(let i = -70; i <= 70; i += 10) c.lineTo(i, -19 + (i / 10 % 2 ? 2 : 0)); c.lineTo(70, 19);
+    for(let i = 70; i >= -70; i -= 10) c.lineTo(i, 19 - (i / 10 % 2 ? 2 : 0)); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(-70, -19, 140, 7); c.restore(); };
+  serit(-w / 2 + 20, -h / 2 + 4, -.62); serit(w / 2 - 20, -h / 2 + 4, .62);
+  c.restore();
+}
+/* kutulu fotoğraf: yuvarlak köşeli kutu, yumuşak gölge */
+function blKutu(c, img, x, y, w, h, zemin, kenar){
+  c.save(); c.shadowColor = 'rgba(10,25,50,.28)'; c.shadowBlur = 44; c.shadowOffsetY = 18;
+  c.fillStyle = zemin; blYuvarlak(c, x, y, w, h, 34); c.fill(); c.restore();
+  if(kenar){ c.strokeStyle = kenar; c.lineWidth = 4; blYuvarlak(c, x - 12, y - 12, w + 24, h + 24, 44); c.stroke(); }
+  blSigdir(c, img, x + 34, y + 34, w - 68, h - 68);
+}
+function blNoktalar(c, renk, ad){ c.fillStyle = renk; for(let x = 20; x < BL_W; x += ad) for(let y = 20; y < BL_H; y += ad) c.fillRect(x, y, 2.4, 2.4); }
 
-function blTemaSantiye(c, d, a, img, r, o){
-  const sari = '#f5b800';
-  c.fillStyle = '#1d1f22'; c.fillRect(0, 0, BL_W, BL_H);
-  const g = c.createRadialGradient(300, 260, 40, 300, 260, 760); g.addColorStop(0, 'rgba(255,255,255,.07)'); g.addColorStop(1, 'rgba(0,0,0,.35)');
-  c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  const serit = (y, h) => { c.save(); c.beginPath(); c.rect(0, y, BL_W, h); c.clip(); c.fillStyle = sari; c.fillRect(0, y, BL_W, h); c.fillStyle = '#111';
-    for(let x = -h; x < BL_W + h; x += 56){ c.beginPath(); c.moveTo(x, y + h); c.lineTo(x + 28, y + h); c.lineTo(x + 28 + h, y); c.lineTo(x + h, y); c.closePath(); c.fill(); } c.restore(); };
-  serit(0, 26); serit(BL_H - 26, 26);
-  if(a.desen){ c.strokeStyle = 'rgba(255,255,255,.05)'; c.lineWidth = 1; for(let x = 0; x < BL_W; x += 40){ c.beginPath(); c.moveTo(x, 26); c.lineTo(x, BL_H - 26); c.stroke(); } }
-  let y = 100;
-  if(o.ust){ c.font = '700 20px "Bricolage Grotesque", "Segoe UI", sans-serif'; c.fillStyle = sari; c.fillText(o.ust.toUpperCase(), 70, y); y += 20; }
-  if(o.rozet){ c.font = '800 22px "Bricolage Grotesque", "Segoe UI", sans-serif'; const w = c.measureText(o.rozet).width + 36;
-    c.fillStyle = sari; c.beginPath(); c.moveTo(70, y); c.lineTo(70 + w, y); c.lineTo(70 + w - 12, y + 42); c.lineTo(70, y + 42); c.closePath(); c.fill();
-    c.fillStyle = '#111'; c.fillText(o.rozet, 86, y + 30); y += 62; }
-  const maxW = img ? 600 : 1040, t = blSar(c, d.title, maxW, blBaslikFont(a, 800), 70, 36, 4);
-  c.font = blBaslikFont(a, 800)(t.px); c.fillStyle = '#fff'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, 70, y + i * t.px * 1.1));
-  c.fillStyle = a.renk; c.fillRect(70, y + (t.sat.length - 1) * t.px * 1.1 + 26, 90, 8);
-  if(img){
-    c.save(); c.translate(925, 312); c.rotate(-.04); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 40; c.shadowOffsetY = 16;
-    c.fillStyle = sari; blYuvarlak(c, -205, -205, 410, 410, 26); c.fill(); c.shadowColor = 'transparent';
-    c.fillStyle = '#fff'; blYuvarlak(c, -185, -185, 370, 370, 18); c.fill(); blSigdir(c, img, -165, -165, 330, 330); c.restore();
-  }
-  c.font = '600 21px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(255,255,255,.8)';
-  const alt = [o.magaza, o.kod ? 'Ürün kodu ' + o.kod : ''].filter(Boolean).join('   |   ');
-  if(alt) c.fillText(alt, 70, 572);
+function blTemaLacivertBant(c, d, a, img, r, o){
+  const g = c.createLinearGradient(0, 0, BL_W, BL_H); g.addColorStop(0, a.renk2); g.addColorStop(1, blKoyu(a.renk2, .5)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
+  const p = c.createRadialGradient(950, 380, 20, 950, 380, 560); p.addColorStop(0, blHex(a.renk, .35)); p.addColorStop(1, blHex(a.renk, 0)); c.fillStyle = p; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen) blNoktalar(c, 'rgba(255,255,255,.07)', 30);
+  c.fillStyle = a.renk; c.fillRect(70, 70, 70, 8);
+  let y = blUst(c, o, 70, 100, 'rgba(255,255,255,.75)'); y = blRozet(c, o, 70, y, a.renk, '#fff');
+  blBaslik(c, d, a, 70, y, img ? 600 : 1060, '#fff');
+  if(img) blBantli(c, img, 915, 395, 400, 450, .045, blHex(a.renk, .7));
+  blAlt(c, o, 70, 730, '#fff', 'rgba(255,255,255,.75)');
 }
-function blTemaCam(c, d, a, img, r, o){
-  c.fillStyle = '#eef1f7'; c.fillRect(0, 0, BL_W, BL_H);
-  const leke = (x, y, rad, renk, al) => { const g = c.createRadialGradient(x, y, 0, x, y, rad); g.addColorStop(0, blHex(renk, al)); g.addColorStop(1, blHex(renk, 0)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H); };
-  leke(160, 120, 520, a.renk, .75); leke(1080, 560, 560, a.renk2, .85); leke(980, 60, 380, '#7ad3ff', .55); leke(380, 620, 420, '#ffb36b', .5);
-  if(a.desen){ for(let i = 0; i < 4000; i++){ c.fillStyle = `rgba(255,255,255,${r() * .12})`; c.fillRect(r() * BL_W, r() * BL_H, 1.5, 1.5); } }
-  const kx = 60, ky = 70, kw = img ? 680 : 1080, kh = 490;
-  c.save(); c.shadowColor = 'rgba(30,40,80,.18)'; c.shadowBlur = 50; c.shadowOffsetY = 18;
-  c.fillStyle = 'rgba(255,255,255,.58)'; blYuvarlak(c, kx, ky, kw, kh, 34); c.fill(); c.restore();
-  c.strokeStyle = 'rgba(255,255,255,.9)'; c.lineWidth = 2; blYuvarlak(c, kx, ky, kw, kh, 34); c.stroke();
-  let y = ky + 70;
-  if(o.ust){ c.font = '700 19px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = blKoyu(a.renk2, .9); c.fillText(o.ust.toUpperCase(), kx + 50, y); y += 18; }
-  if(o.rozet){ c.font = '700 19px "Bricolage Grotesque", "Segoe UI", sans-serif'; const w = c.measureText(o.rozet).width + 32;
-    c.fillStyle = a.renk2; blYuvarlak(c, kx + 50, y, w, 38, 19); c.fill(); c.fillStyle = '#fff'; c.fillText(o.rozet, kx + 66, y + 26); y += 56; }
-  const t = blSar(c, d.title, kw - 100, blBaslikFont(a, 700), 62, 32, 4);
-  c.font = blBaslikFont(a, 700)(t.px); c.fillStyle = '#15182a'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, kx + 50, y + i * t.px * 1.12));
-  c.font = '600 20px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(21,24,42,.7)';
-  const alt = [o.magaza, o.kod ? 'Kod ' + o.kod : ''].filter(Boolean).join('  ·  ');
-  if(alt) c.fillText(alt, kx + 50, ky + kh - 44);
-  if(img){
-    c.save(); c.shadowColor = 'rgba(30,40,80,.3)'; c.shadowBlur = 50; c.shadowOffsetY = 24;
-    c.fillStyle = '#fff'; blYuvarlak(c, 790, 120, 350, 390, 40); c.fill(); c.restore();
-    blSigdir(c, img, 815, 145, 300, 340);
-  }
+function blTemaBeyazBant(c, d, a, img, r, o){
+  c.fillStyle = '#f4f6f9'; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.lineWidth = 1; for(let x = 0; x <= BL_W; x += 40){ c.strokeStyle = blHex(a.renk2, x % 200 ? .05 : .1); c.beginPath(); c.moveTo(x + .5, 0); c.lineTo(x + .5, BL_H); c.stroke(); }
+    for(let y = 0; y <= BL_H; y += 40){ c.strokeStyle = blHex(a.renk2, y % 200 ? .05 : .1); c.beginPath(); c.moveTo(0, y + .5); c.lineTo(BL_W, y + .5); c.stroke(); } }
+  c.fillStyle = a.renk; c.fillRect(0, 0, BL_W, 16); c.fillStyle = a.renk2; c.fillRect(0, 16, BL_W, 6);
+  let y = blUst(c, o, 70, 90, a.renk); y = blRozet(c, o, 70, y, a.renk2, '#fff');
+  const son = blBaslik(c, d, a, 70, y, img ? 600 : 1060, a.renk2);
+  c.fillStyle = a.renk; c.fillRect(70, son + 30, 90, 8);
+  if(img) blBantli(c, img, 915, 405, 400, 450, -.05, 'rgba(232,196,120,.78)');
+  blAlt(c, o, 70, 730, a.renk2, '#5b6475');
 }
-function blTemaGazete(c, d, a, img, r, o){
-  c.fillStyle = '#f7f4ee'; c.fillRect(0, 0, BL_W, BL_H);
-  if(a.desen){ for(let i = 0; i < 3000; i++){ c.fillStyle = `rgba(0,0,0,${r() * .04})`; c.fillRect(r() * BL_W, r() * BL_H, 1.4, 1.4); } }
-  c.fillStyle = '#111'; c.fillRect(50, 46, BL_W - 100, 4); c.fillRect(50, 56, BL_W - 100, 1.5);
-  c.font = '700 30px Fraunces, Georgia, serif'; c.textAlign = 'center';
-  c.fillText((o.ust || o.magaza || 'BLOG').toUpperCase(), BL_W / 2, 100);
-  c.font = blDaktilo(15); c.fillStyle = '#555';
-  c.fillText(`${(o.rozet || 'YAZI')}  ·  ${new Date().toLocaleDateString('tr-TR', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}`, BL_W / 2, 132);
-  c.textAlign = 'left'; c.fillStyle = '#111'; c.fillRect(50, 148, BL_W - 100, 1.5);
-  const maxW = img ? 640 : 1100, t = blSar(c, d.title, maxW, px => `700 ${px}px Fraunces, Georgia, serif`, 64, 32, 4);
-  c.font = `700 ${t.px}px Fraunces, Georgia, serif`; let y = 196 + t.px * .8;
-  t.sat.forEach((l, i) => c.fillText(l, 50, y + i * t.px * 1.1));
-  const sy = y + (t.sat.length - 1) * t.px * 1.1 + 34;
-  c.fillStyle = a.renk; c.fillRect(50, sy, 60, 5);
-  c.font = 'italic 22px Fraunces, Georgia, serif'; c.fillStyle = '#444';
-  if(o.kod) c.fillText(`Ürün kodu ${o.kod}`, 126, sy + 8);
-  if(img){
-    c.fillStyle = '#111'; c.fillRect(729, 170, 1.5, 420);
-    c.fillStyle = '#fff'; c.fillRect(760, 178, 390, 360); c.strokeStyle = '#111'; c.lineWidth = 1.5; c.strokeRect(760, 178, 390, 360);
-    blSigdir(c, img, 780, 198, 350, 320);
-    c.font = 'italic 17px Fraunces, Georgia, serif'; c.fillStyle = '#555'; c.fillText((o.magaza || '') + (o.magaza ? ' arşivi' : ''), 760, 566);
-  }
-  c.fillStyle = '#111'; c.fillRect(50, BL_H - 30, BL_W - 100, 2);
+function blTemaKirmiziBant(c, d, a, img, r, o){
+  const g = c.createLinearGradient(0, 0, BL_W, BL_H); g.addColorStop(0, a.renk); g.addColorStop(1, blKoyu(a.renk, .62)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.save(); c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 16; for(let x = -BL_H; x < BL_W; x += 54){ c.beginPath(); c.moveTo(x, BL_H); c.lineTo(x + BL_H, 0); c.stroke(); } c.restore(); }
+  c.fillStyle = a.renk2; c.fillRect(0, BL_H - 120, BL_W, 120);
+  let y = blUst(c, o, 70, 80, 'rgba(255,255,255,.85)'); y = blRozet(c, o, 70, y, '#fff', a.renk);
+  blBaslik(c, d, a, 70, y, img ? 600 : 1060, '#fff');
+  if(img) blBantli(c, img, 915, 370, 400, 450, .06, 'rgba(255,255,255,.62)');
+  blAlt(c, o, 70, 742, '#fff', 'rgba(255,255,255,.78)');
 }
-function blTemaMinimal(c, d, a, img, r, o){
+function blTemaPanoBant(c, d, a, img, r, o){
+  c.fillStyle = '#2b2f36'; c.fillRect(0, 0, BL_W, BL_H);
+  const g = c.createRadialGradient(400, 300, 50, 400, 300, 900); g.addColorStop(0, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,.35)'); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ for(let x = 30; x < BL_W; x += 40) for(let y = 30; y < BL_H; y += 40){ c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill();
+    c.fillStyle = 'rgba(255,255,255,.06)'; c.beginPath(); c.arc(x, y + 1.5, 5, 0, Math.PI); c.fill(); } }
+  c.fillStyle = a.renk; c.fillRect(0, 0, 14, BL_H);
+  let y = blUst(c, o, 70, 90, '#f5c518'); y = blRozet(c, o, 70, y, '#f5c518', '#1b1d21', 'kose');
+  blBaslik(c, d, a, 70, y, img ? 600 : 1060, '#fff');
+  if(img) blBantli(c, img, 915, 400, 400, 450, -.04, 'rgba(245,197,24,.82)');
+  blAlt(c, o, 70, 730, '#fff', '#f5c518');
+}
+function blTemaLacivertKutu(c, d, a, img, r, o){
+  const g = c.createLinearGradient(0, 0, 0, BL_H); g.addColorStop(0, a.renk2); g.addColorStop(1, blKoyu(a.renk2, .55)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.strokeStyle = 'rgba(255,255,255,.06)'; c.lineWidth = 2; for(let k = 0; k < 6; k++){ c.beginPath(); c.arc(930, 400, 230 + k * 70, 0, 7); c.stroke(); } }
+  const p = c.createRadialGradient(930, 400, 30, 930, 400, 380); p.addColorStop(0, blHex(a.renk, .55)); p.addColorStop(1, blHex(a.renk, 0)); c.fillStyle = p; c.fillRect(0, 0, BL_W, BL_H);
+  let y = blUst(c, o, 70, 90, 'rgba(255,255,255,.75)'); y = blRozet(c, o, 70, y, a.renk, '#fff');
+  const son = blBaslik(c, d, a, 70, y, img ? 590 : 1060, '#fff');
+  c.fillStyle = a.renk; blYuvarlak(c, 70, son + 30, 110, 8, 4); c.fill();
+  if(img) blKutu(c, img, 720, 175, 420, 450, '#fff', blHex(a.renk, .85));
+  blAlt(c, o, 70, 730, '#fff', 'rgba(255,255,255,.75)');
+}
+function blTemaBeyazKutu(c, d, a, img, r, o){
   c.fillStyle = '#ffffff'; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.fillStyle = blHex(a.renk2, .05); c.beginPath(); c.arc(1060, 120, 300, 0, 7); c.fill(); c.fillStyle = blHex(a.renk, .06); c.beginPath(); c.arc(760, 760, 200, 0, 7); c.fill(); }
   c.fillStyle = a.renk; c.fillRect(0, 0, 18, BL_H);
-  if(a.desen){ c.font = '800 300px "Bricolage Grotesque", "Segoe UI", sans-serif'; c.fillStyle = 'rgba(0,0,0,.04)'; c.fillText((o.rozet || 'BLOG').split(' ')[0], 50, 600); }
-  if(img){ c.fillStyle = blHex(a.renk2, .08); c.beginPath(); c.arc(930, 315, 250, 0, 7); c.fill(); blSigdir(c, img, 740, 125, 380, 380); }
-  let y = 110;
-  if(o.ust || o.rozet){ c.font = '700 19px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = a.renk;
-    c.fillText([o.ust, o.rozet].filter(Boolean).join('  /  ').toUpperCase(), 80, y); y += 30; }
-  const maxW = img ? 580 : 1020, t = blSar(c, d.title, maxW, blBaslikFont(a, 800), 66, 34, 4);
-  c.font = blBaslikFont(a, 800)(t.px); c.fillStyle = '#111'; y += t.px;
-  t.sat.forEach((l, i) => c.fillText(l, 80, y + i * t.px * 1.1));
-  c.font = '500 21px "Instrument Sans", "Segoe UI", sans-serif'; c.fillStyle = '#777';
-  const alt = [o.magaza, o.kod].filter(Boolean).join('   —   ');
-  if(alt){ c.fillStyle = '#111'; c.fillRect(80, 548, 46, 2); c.fillStyle = '#777'; c.fillText(alt, 142, 556); }
+  let y = blUst(c, o, 80, 90, a.renk); y = blRozet(c, o, 80, y, a.renk, a.renk, 'cizgi');
+  blBaslik(c, d, a, 80, y, img ? 590 : 1050, a.renk2);
+  if(img) blKutu(c, img, 720, 170, 420, 460, '#eef1f5');
+  c.fillStyle = '#e6e9ef'; c.fillRect(80, 680, img ? 560 : 1040, 2);
+  blAlt(c, o, 80, 735, a.renk2, '#5b6475');
+}
+function blTemaBolunmusKutu(c, d, a, img, r, o){
+  c.fillStyle = '#eef1f5'; c.fillRect(0, 0, BL_W, BL_H);
+  const sinir = img ? 680 : BL_W;
+  const g = c.createLinearGradient(0, 0, sinir, BL_H); g.addColorStop(0, a.renk2); g.addColorStop(1, blKoyu(a.renk2, .6));
+  c.fillStyle = g; c.beginPath(); c.moveTo(0, 0); c.lineTo(sinir, 0); c.lineTo(img ? sinir - 110 : sinir, BL_H); c.lineTo(0, BL_H); c.closePath(); c.fill();
+  if(img){ c.fillStyle = a.renk; c.beginPath(); c.moveTo(sinir, 0); c.lineTo(sinir + 26, 0); c.lineTo(sinir - 84, BL_H); c.lineTo(sinir - 110, BL_H); c.closePath(); c.fill(); }
+  if(a.desen){ c.save(); c.beginPath(); c.rect(0, 0, sinir - 110, BL_H); c.clip(); blNoktalar(c, 'rgba(255,255,255,.07)', 28); c.restore(); }
+  let y = blUst(c, o, 70, 90, 'rgba(255,255,255,.75)'); y = blRozet(c, o, 70, y, a.renk, '#fff');
+  blBaslik(c, d, a, 70, y, img ? 520 : 1060, '#fff');
+  if(img) blKutu(c, img, 735, 170, 400, 460, '#fff');
+  blAlt(c, o, 70, 730, '#fff', 'rgba(255,255,255,.75)');
+}
+function blTemaVitrinKutu(c, d, a, img, r, o){
+  c.fillStyle = '#e9edf3'; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen) blNoktalar(c, blHex(a.renk2, .08), 26);
+  c.save(); c.shadowColor = 'rgba(10,25,50,.22)'; c.shadowBlur = 50; c.shadowOffsetY = 20;
+  c.fillStyle = '#fff'; blYuvarlak(c, 44, 44, BL_W - 88, BL_H - 88, 36); c.fill(); c.restore();
+  c.save(); blYuvarlak(c, 44, 44, BL_W - 88, BL_H - 88, 36); c.clip();
+  c.fillStyle = a.renk2; c.fillRect(44, BL_H - 150, BL_W - 88, 106); c.restore();
+  let y = blUst(c, o, 96, 96, a.renk); y = blRozet(c, o, 96, y, a.renk, '#fff', 'kose');
+  blBaslik(c, d, a, 96, y, img ? 520 : 1000, a.renk2, 68);
+  if(img) blKutu(c, img, 700, 92, 410, 440, '#f1f4f8');
+  blAlt(c, o, 96, 720, '#fff', 'rgba(255,255,255,.78)');
 }
 
 /* bir yazının görsel verisi ve çizimi */
 function blGorselVeri(plan, it){
-  return {title: plan ? plan.title : (it ? it.name : 'Örnek ürün için hazırlanan blog yazısının başlığı burada görünür'),
+  return {title: plan ? (plan.gorsel_baslik || plan.title) : (it ? it.name : 'Örnek ürün için hazırlanan blog yazısının başlığı burada görünür'),
           rozet: plan ? plan.rozet : 'REHBER', sku: plan ? (plan.urun || {}).sku || (it || {}).sku : (it ? it.sku : '0601217100'),
           magaza: (blVeri && blVeri.magaza) || ''};
 }
@@ -2755,7 +2665,7 @@ async function blCizFoto(cv, d, a, pid){
   if(a.foto && pid){ const img = await blFoto(pid); if(img && cv.isConnected) blCiz(cv, d, a, img); }
 }
 async function blJpeg(pid, plan){
-  const a = blVeri.ayar.gorsel, cv = document.createElement('canvas'); cv.width = BL_GW; cv.height = BL_GH;   // gönderilen görsel 1600×840
+  const a = blVeri.ayar.gorsel, cv = document.createElement('canvas'); cv.width = BL_GW; cv.height = BL_GH;   // gönderilen görsel 1500×1000 (3:2)
   await blFontYukle();
   const img = a.foto ? await blFoto(pid) : null;
   blCiz(cv, blGorselVeri(plan), a, img);
@@ -2796,7 +2706,8 @@ function blButonlar(){
   } else {
     b.push(`<button class="btn ink" data-a="gonder-sec" ${n ? '' : 'disabled'}>Seçilenleri gönder${n ? ' (' + nf(n) + ')' : ''}</button>`);
     b.push(`<button class="btn ghost" data-a="yeniden-sec" ${n ? '' : 'disabled'}>Seçilenleri yeniden yaz</button>`);
-    if(blSekme === 'hazir' && r.sayilar.eksik) b.push(`<button class="btn" style="background:#b5651d;border-color:#b5651d" data-a="eksik">%100 olmayanları düzelt (${nf(r.sayilar.eksik)})</button>`);
+    if(blSekme === 'gonderildi' && r.degisen.length) b.push(`<button class="btn ink" data-a="degisen">Değişenleri gönder (${nf(r.degisen.length)})</button>`);
+    if(r.sayilar.eksik) b.push(`<button class="btn" style="background:#b5651d;border-color:#b5651d" data-a="eksik">${blSekme === 'hazir' ? 'Eskileri ve %100 olmayanları yenile' : 'Eski yazıları yenile'} (${nf(r.sayilar.eksik)})</button>`);
   }
   $('#bl-acts').innerHTML = b.join('');
   $('#bl-acts').querySelectorAll('[data-a]').forEach(x => x.onclick = () => blToplu(x.dataset.a));
@@ -2810,7 +2721,7 @@ function blListe(){
       const p = it.plan, sec = blSecili.has(it.pid);
       const not = it.durum === 'hata' ? `<p class="bl-note">${esc(it.mesaj)}</p>` : it.degisti ? '<p class="bl-note">Değişti, yeniden gönderin</p>'
         : it.durum === 'kaldirildi' ? '<p class="bl-note">Yayından kaldırıldı</p>' : it.durum === 'gonderildi' ? `<p class="bl-note ok">Gönderildi ${esc((it.zaman || '').slice(0, 10).split('-').reverse().join('.'))}</p>` : '';
-      const ust = p ? `<div class="bl-thumb"><i class="bl-tape"></i><canvas width="640" height="336" data-c="${it.pid}"></canvas></div>`
+      const ust = p ? `<div class="bl-thumb"><i class="bl-tape"></i><canvas width="600" height="400" data-c="${it.pid}"></canvas></div>`
         : `<div class="bl-thumb"><i class="bl-tape"></i><div class="bl-blank"><svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21H3v-6z"/><path d="M12 6l6 6"/></svg>Henüz yazılmadı</div></div>`;
       return `<article class="bl-card${sec ? ' sel' : ''}${blAcik === it.pid ? ' on' : ''}" data-pid="${it.pid}">${ust}
         <div class="bl-cb">${p ? `<span class="bl-tag">${esc(p.rozet)}</span><span class="bl-seal${p.yuzde === 100 ? '' : ' no'}">%${p.yuzde}</span>` : ''}
@@ -2848,12 +2759,14 @@ async function blToplu(a){
     const r = await post('/api/blog/hazirla', {}); if(r.msg) toast(r.msg);
   }
   if(a === 'eksik'){
-    const r = await post('/api/blog/hazirla', {eksik: true}); if(r.msg) toast(r.msg);
+    if(blSekme === 'gonderildi' && !await ask(`${nf(blVeri.sayilar.eksik)} gönderilmiş yazı yeni düzenle (başlık sonunda ürün kodu, sosyal medya alanı) yeniden hazırlanacak. Siteye hemen gitmez; kartlarda "Değişti" görünür, sonra seçip "Seçilenleri gönder" ile aynı blog kayıtlarını güncellersiniz.`, {title: 'Gönderilmiş yazılar yenilensin mi?', ok: 'Yenile', go: true})) return;
+    const r = await post('/api/blog/hazirla', {eksik: true, sekme: blSekme}); if(r.msg) toast(r.msg);
   }
   if(a === 'yaz-sec' || a === 'yeniden-sec'){
     const r = await post('/api/blog/hazirla', {pids: sec, yeni: a === 'yeniden-sec'}); if(r.msg) toast(r.msg);
     blSecili.clear();
   }
+  if(a === 'degisen'){ blSecili.clear(); blVeri.degisen.forEach(p => blSecili.add(p)); return blToplu('gonder-sec'); }
   if(a === 'gonder-sec'){
     if(!blVeri.ayar.kategori){ toast('Önce "Masa ayarları"ndan blog kategorisini seçip kaydedin.'); $('#bl-ayarlar').open = true; $('#bl-ayarlar').scrollIntoView({behavior: 'smooth'}); return; }
     const durum = blVeri.ayar.durum ? 'yayında' : 'pasif (taslak)';
@@ -2914,7 +2827,7 @@ function blMektup(sekme){
   $('#bl-letter').innerHTML = `
     <div class="bl-env"><div class="to">Kime: <b>Google</b> ve <b>${esc(blVeri.magaza || host)}</b> okurları<br>Konu: <b>${esc(u.ad || '')}</b><br>Ürün kodu: <b>${esc(u.sku || '-')}</b>${u.barkod ? ` · Barkod: <b>${esc(u.barkod)}</b>` : ''}</div>
       <span class="bl-tag">${esc(p.rozet)}</span></div>
-    <figure class="bl-imgwrap"><canvas id="bl-l-cv" width="1600" height="840"></canvas><figcaption><span>${esc(durum)}</span><a id="bl-indir">Görseli indir ↓</a></figcaption></figure>
+    <figure class="bl-imgwrap"><canvas id="bl-l-cv" width="1500" height="1000"></canvas><figcaption><span>${esc(durum)}</span><a id="bl-indir">Görseli indir ↓</a></figcaption></figure>
     <h2 class="bl-t">${esc(p.title)}</h2>
     <p class="bl-ex">${esc(p.excerpt)}</p>
     <div class="bl-serp"><span class="lbl">GOOGLE'DA BÖYLE GÖRÜNÜR</span><div class="u">${esc(host)} <small>› blog › ${esc(p.slug)}</small></div><div class="t">${esc(p.pageTitle)}</div><div class="d">${esc(p.metaDescription)}</div></div>
@@ -2992,8 +2905,8 @@ async function blGonderTek(){
 function blAtolyeKur(){
   const a = blVeri.ayar.gorsel;
   if(!blGor) blGor = Object.assign({}, a);
-  $('#bl-themes').innerHTML = Object.entries({mektup: 'Mektup', gece: 'Gece mavisi', atolye: 'Atölye çizimi', vitrin: 'Vitrin', santiye: 'Şantiye', cam: 'Cam (modern)', gazete: 'Gazete manşeti', minimal: 'Minimal'})
-    .map(([k, v]) => `<button class="bl-theme" data-t="${k}"><canvas width="360" height="189"></canvas>${v}</button>`).join('');
+  $('#bl-themes').innerHTML = Object.entries({lacivert_bant: 'Lacivert · bantlı', beyaz_bant: 'Beyaz · bantlı', kirmizi_bant: 'Kırmızı · bantlı', pano_bant: 'Atölye panosu · bantlı', lacivert_kutu: 'Lacivert · kutu', beyaz_kutu: 'Beyaz · kutu', bolunmus_kutu: 'İki renk · kutu', vitrin_kutu: 'Vitrin · kutu'})
+    .map(([k, v]) => `<button class="bl-theme" data-t="${k}"><canvas width="360" height="240"></canvas>${v}</button>`).join('');
   $('#bl-themes').querySelectorAll('.bl-theme').forEach(b => b.onclick = () => { blGor.tema = b.dataset.t; blAtolyeCiz(); });
   for(const k of ['foto', 'magaza', 'rozet', 'kod', 'desen']) $('#bl-g-' + k).onchange = e => { blGor[k] = e.target.checked; blAtolyeCiz(); };
   $('#bl-g-renk').oninput = e => { blGor.renk = e.target.value; blAtolyeCiz(); };
@@ -3021,7 +2934,7 @@ $('#bl-g-kaydet').onclick = async () => {
   blGor = Object.assign({}, r.ayar.gorsel); toast('Görsel ayarları kaydedildi; bütün yazıların görseli bu ayarla çizilir.');
   blImza = ''; await blTick(); if(blAcik != null && blKayit) blMektup('onizle'); blAtolyeCiz();
 };
-$('#bl-g-sifirla').onclick = () => { blGor = {tema: 'mektup', renk: '#b3261e', renk2: '#1f2a44', foto: true, yazi: 'serif', magaza: true, rozet: true, kod: true, desen: true, ust_metin: ''}; blAtolyeCiz(); };
+$('#bl-g-sifirla').onclick = () => { blGor = {tema: 'lacivert_bant', renk: '#e30613', renk2: '#0c2c57', foto: true, yazi: 'sans', magaza: true, rozet: true, kod: true, desen: true, ust_metin: ''}; blAtolyeCiz(); };
 
 /* ---- masa ayarları */
 let blHaric = null;
@@ -3033,6 +2946,7 @@ function blAyarDoldur(){
   $('#bl-durum').querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.d === a.durum));
   if(blVeri.blog_kategorileri) blKatDoldur(blVeri.blog_kategorileri);
   else if(a.kategori) $('#bl-kat').innerHTML = `<option value="${a.kategori}">${esc(a.kategori_ad || 'Kategori ' + a.kategori)}</option>`;
+  for(const k of ['instagram', 'youtube', 'tiktok', 'facebook']) $('#bl-s-' + k).value = (a.sosyal || {})[k] || '';
   blHaric = new Set(a.haric);
   $('#bl-hk-not').textContent = a.haric_oto ? '(otomatik: adında "Bosch Aksesuar" geçenler ve alt kategorileri)' : '(sizin seçiminiz)';
   blKatListe();
@@ -3057,11 +2971,14 @@ $('#bl-kat-ac').onclick = async () => {
   const r = await post('/api/blog/kategori_ekle', {ad}); if(r.msg){ toast(r.msg); $('#bl-kat-ad').value = ''; blImza = ''; await blTick(true); }
 };
 $('#bl-ayar-kaydet').onclick = async () => {
-  const sel = $('#bl-kat'), d = {bicim: $('#bl-bicim').value, renk: $('#bl-renk').value, haric: [...blHaric],
+  const sosyal = {}; for(const k of ['instagram', 'youtube', 'tiktok', 'facebook']) sosyal[k] = $('#bl-s-' + k).value.trim();
+  const sel = $('#bl-kat'), d = {sosyal, bicim: $('#bl-bicim').value, renk: $('#bl-renk').value, haric: [...blHaric],
     durum: +($('#bl-durum .on') || {dataset: {d: 1}}).dataset.d};
   if(sel.value) Object.assign(d, {kategori: +sel.value, kategori_ad: sel.options[sel.selectedIndex].text});
   const r = await post('/api/blog/ayar', d); if(!r.ok) return;
-  toast('Ayarlar kaydedildi.'); blImza = ''; blSayfa = 0; await blTick(true);
+  const red = Object.entries(sosyal).filter(([k, v]) => v && !(r.ayar.sosyal || {})[k]).map(([k]) => k);
+  if(red.length) toast('Şu adresler geçersiz, kaydedilmedi: ' + red.join(', ') + '. Adresi tarayıcıdan kopyalayın (https:// ile).');
+  else toast('Ayarlar kaydedildi. Sosyal medya alanı değiştiyse "Eski yazıları yenile" ile yazılara ekleyin.'); blImza = ''; blSayfa = 0; await blTick(true);
 };
 $('#bl-hk-oto').onclick = async () => { const r = await post('/api/blog/ayar', {haric: null}); if(r.ok){ toast('Hariç tutma otomatiğe döndü.'); blImza = ''; await blTick(true); } };
 

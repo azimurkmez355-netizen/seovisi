@@ -207,8 +207,12 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Gönderim (`blog_gonder`, `/api/blog/gonder`, paket özelliği `blog`) yalnızca kullanıcının isteğiyle ve SEO %100 ise; daha önce
   gönderildiyse aynı blog kaydı PUT ile güncellenir. Hedef kelime `targetKeyword` (ürünün kw_loc alanı) ile gider; Ideasoft yanıtında
   yoksa mesajla bildirilir. Yayından kaldırma (`/api/blog/kaldir`) blogu pasif yapar, silmez; geri almadır.
-- Görsel panelde canvas ile çizilir (`blCiz`, temalar mektup / gece / atolye / vitrin / santiye / cam / gazete / minimal; ayar `blog.gorsel`), gönderimde 1600×840 JPEG (kalite 0,95)
+- Görsel panelde canvas ile çizilir (`blCiz`, mağazanın lacivert / kırmızı / beyaz çizgisine uyan 8 tema: dördü bantlı fotoğraflı `*_bant`, dördü kutulu `*_kutu`; ayar `blog.gorsel`). Oran 3:2 (tasarım 1200×800, gönderim 1500×1000 JPEG, kalite 0,95): Ideasoft blog kartında kesilmez; kenarlarda güvenli boşluk. Görselde ürün kodu "Ürün Kodu: …"
   `attachment` olarak gider. Ürün fotoğrafı `/api/blog/urun_gorsel` üzerinden (aynı köken; mağaza klasöründe `blog_gorsel/` önbellek).
+- Blog başlığının sonunda ürün kodu (stok kodu) yer alır (`plan.title`); hedef kelime ve görseldeki başlık (`gorsel_baslik`) kodsuzdur (`BL.kodsuz`).
+- Yazının en altında sosyal medya kartı (`blog.sosyal`: instagram, youtube, tiktok, facebook; `BL.sosyal_ayar` yalnızca o ağın https adresini kabul eder).
+  Ayar ya da yazar sürümü (`BL.SURUM`) değişince yazılar "eski" sayılır; "Eski yazıları yenile" yeniden hazırlar, gönderilenler "Değişenleri gönder" ile güncellenir.
+- Paragraf ve listelere ayrı stil yazılmaz (Ideasoft stilleri de kelime sayar; fazla stil hedef kelimeyi tekrarlatır). Hedef kelimeli ek cümleler paragraflara dağıtılır.
 - Hariç kategoriler `blog.haric`; None ise adında "bosch aksesuar" geçenler ve alt kategorileri. Pasif ürünlere yazılmaz.
 - Blog kategorisi Ideasoft `blog_categories`'ten seçilir ya da açılır. Ideasoft uygulamasında blog_read / blog_create / blog_update izinleri gerekir.
 - Sayfa `#v-blog`; stiller `bl-`, betik adları `bl` önekli. Yazı tipleri Fraunces, Caveat, Special Elite (Google Fonts).

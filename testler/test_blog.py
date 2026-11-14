@@ -73,7 +73,32 @@ class Yazar(unittest.TestCase):
 
     def test_gorsel_ayari_temizlenir(self):
         g = BL.gorsel_ayar({"tema": "yok", "renk": "kirmizi", "renk2": "#ABCDEF", "foto": "0", "ust_metin": "x" * 99})
-        self.assertEqual((g["tema"], g["renk"], g["renk2"], g["foto"], len(g["ust_metin"])), ("mektup", "#b3261e", "#abcdef", False, 40))
+        self.assertEqual((g["tema"], g["renk"], g["renk2"], g["foto"], len(g["ust_metin"])), ("lacivert_bant", "#e30613", "#abcdef", False, 40))
+        self.assertEqual(len(BL.GORSEL_TEMALAR), 8)
+        self.assertEqual(BL.gorsel_ayar({"tema": "pano_bant"})["tema"], "pano_bant")
+
+    def test_urun_kodu_basligin_sonunda_hedef_kelimede_yok(self):
+        u = dict(URUN, name="0603688001 Universal Humid Nem Ölçer", sku="0603688001")
+        for b in BL.BICIMLER:
+            p = BL.yaz_tam(u, "", bicim=b, prof={"magaza": "Ustapazar"}, method="panel")
+            self.assertTrue(p["title"].endswith(" 0603688001"), p["title"])
+            self.assertEqual(p["title"].count("0603688001"), 1)
+            self.assertNotIn("0603688001", p["keyword"])
+            self.assertNotIn("0603688001", p["gorsel_baslik"])       # görselde kod ayrıca "Ürün Kodu:" diye yazar
+            self.assertEqual(p["score"]["yuzde"], 100)
+        p = BL.yaz(u, "", kw="0603688001 Universal Humid", prof={"magaza": "Ustapazar"}, method="panel")   # eski kelime
+        self.assertEqual(p["keyword"], "Universal Humid")
+
+    def test_sosyal_medya_alani(self):
+        s = {"instagram": "https://www.instagram.com/usta.pazar/", "youtube": "https://www.youtube.com/@UstaPazar",
+             "tiktok": "javascript:alert(1)", "facebook": "https://evil.com/x"}
+        self.assertEqual(set(BL.sosyal_ayar(s)), {"instagram", "youtube"})
+        p = BL.yaz_tam(URUN, DETAY, prof={"magaza": "Ustapazar"}, method="panel", sosyal=s)
+        self.assertIn('href="https://www.instagram.com/usta.pazar/"', p["content"])
+        self.assertIn("@UstaPazar", p["content"])
+        self.assertNotIn("javascript", p["content"])
+        self.assertGreater(p["content"].index("Bizi takip edin"), p["content"].index("ekibi tarafından"))   # en altta
+        self.assertEqual(p["score"]["yuzde"], 100)
 
     def test_gonderilecek_kayit(self):
         p = BL.yaz(URUN, DETAY, bicim="inceleme", prof={"magaza": "Ustapazar"}, method="panel")
@@ -207,6 +232,16 @@ class BlogEkrani(Ortam):
         self.assertIn("1 ürün", app.BLOG.start(eksik=True))
         self.bekle()
         self.assertEqual(app.BLOG.plan(6)["plan"]["score"]["yuzde"], 100)
+        self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 0)
+
+    def test_sosyal_degisince_yazilar_yenilenir(self):
+        app.blog_hazirla(6)
+        self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 0)
+        app.blog_ayar_yaz({"sosyal": {"instagram": "https://www.instagram.com/usta.pazar/"}})
+        self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 1)
+        app.BLOG.start(eksik=True)
+        self.bekle()
+        self.assertIn("instagram.com/usta.pazar", app.BLOG.plan(6)["plan"]["content"])
         self.assertEqual(app.BLOG.durum("hazir")["sayilar"]["eksik"], 0)
 
     def test_uzun_teknik_listeli_urun_de_yuzde_yuz(self):

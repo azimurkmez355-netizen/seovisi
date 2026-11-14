@@ -2676,7 +2676,8 @@ def blog_ayar():
     return {"haric": [int(x) for x in haric or [] if str(x).isdigit()], "haric_oto": oto,
             "bicim": a.get("bicim") if a.get("bicim") in BL.BICIMLER else "karisik",
             "kategori": int(a.get("kategori") or 0), "kategori_ad": a.get("kategori_ad") or "",
-            "durum": 0 if a.get("durum") == 0 else 1, "renk": renk, "gorsel": BL.gorsel_ayar(a.get("gorsel"))}
+            "durum": 0 if a.get("durum") == 0 else 1, "renk": renk, "gorsel": BL.gorsel_ayar(a.get("gorsel")),
+            "sosyal": BL.sosyal_ayar(a.get("sosyal"))}
 
 
 def blog_ayar_yaz(d):
@@ -2694,6 +2695,8 @@ def blog_ayar_yaz(d):
         a["renk"] = d["renk"]
     if "gorsel" in d:
         a["gorsel"] = BL.gorsel_ayar(dict(BL.gorsel_ayar(a.get("gorsel")), **(d["gorsel"] or {})))
+    if "sosyal" in d:
+        a["sosyal"] = BL.sosyal_ayar(d["sosyal"])
     CFG.update(blog=a)
     return blog_ayar()
 
@@ -2757,7 +2760,7 @@ def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
     plan = BL.yaz_tam(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
                   prof=PROFILE(), method=CFG.get("count_method") or SAFE_METHODS,
                   hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=_blog_kategori(prod),
-                  kw=kw or eski.get("keyword") or "")
+                  kw=kw or eski.get("keyword") or "", sosyal=a["sosyal"])
     # aynı adreste (slug) başka bir yazı varsa ürün kodu eklenir
     for r in DBI.q("SELECT pid, plan FROM blog WHERE pid<>? AND plan IS NOT NULL", (pid,)):
         if json.loads(r["plan"]).get("slug") == plan["slug"]:
@@ -2964,7 +2967,7 @@ class BlogYazari:
     def satirlar(self):
         urunler = blog_urunler()
         kayit = {r["pid"]: r for r in DBI.q("SELECT * FROM blog")}
-        out = []
+        out, iz = [], BL.sosyal_izi(BL.sosyal_listesi(blog_ayar()["sosyal"]))
         for pid in set(urunler) | {p for p, r in kayit.items() if r["blog_id"]}:
             u, r = urunler.get(pid), kayit.get(pid)
             if u is None:
@@ -2978,9 +2981,10 @@ class BlogYazari:
                         "zaman": (r["zaman"] if r else "") or "", "blog_id": r["blog_id"] if r else None,
                         "degisti": bool(plan and r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan)),
                         "kapsamda": pid in urunler,
-                        "plan": {"title": plan["title"], "keyword": plan["keyword"], "rozet": plan["rozet"],
-                                 "bicim": plan["bicim"], "yuzde": plan["score"]["yuzde"],
-                                 "eski": plan.get("v") != BL.SURUM} if plan else None})
+                        "plan": {"title": plan["title"], "gorsel_baslik": plan.get("gorsel_baslik") or plan["title"],
+                                 "keyword": plan["keyword"], "rozet": plan["rozet"], "bicim": plan["bicim"],
+                                 "yuzde": plan["score"]["yuzde"],
+                                 "eski": plan.get("v") != BL.SURUM or (plan.get("sosyal_iz") or "") != iz} if plan else None})
         out.sort(key=lambda x: x["pid"])
         return out
 
@@ -3004,15 +3008,17 @@ class BlogYazari:
                 "kategoriler": sorted(({"id": i, "path": p} for i, p in paths.items()), key=lambda x: ST.tr_lower(x["path"])),
                 "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": PROFILE()["magaza"],
                 "sayilar": dict({k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")},
-                                eksik=sum(1 for r in rows if self._eksik(r))), "haric_urun": haric_n,
+                                eksik=sum(1 for r in rows if self._eksik(r) and r["sekme"] == sekme)), "haric_urun": haric_n,
                 "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,
+                "degisen": [r["pid"] for r in rows if r["degisti"] and r["sekme"] == "gonderildi"
+                            and r["durum"] == "gonderildi" and r["plan"] and r["plan"]["yuzde"] == 100],
                 "panel": API.blog_adresi(), "running": self.running, "done": self.done, "todo": self.todo,
                 "sonuc": self.sonuc}
 
     @staticmethod
     def _eksik(r):
-        """SEO'su %100 olmayan ya da yazarın eski sürümüyle hazırlanmış, gönderilmemiş yazı."""
-        return bool(r["plan"] and r["sekme"] == "hazir" and (r["plan"]["yuzde"] < 100 or r["plan"]["eski"]))
+        """SEO'su %100 olmayan ya da yazarın eski sürümüyle (ya da eski sosyal medya alanıyla) hazırlanmış yazı."""
+        return bool(r["plan"] and r["durum"] != "kaldirildi" and (r["plan"]["yuzde"] < 100 or r["plan"]["eski"]))
 
     def plan(self, pid):
         r = DBI.q("SELECT * FROM blog WHERE pid=?", (pid,), one=True)
@@ -3028,14 +3034,14 @@ class BlogYazari:
         """Menüdeki sayı: hazırlanıp gönderilmeyen yazılar."""
         return DBI.q("SELECT COUNT(*) n FROM blog WHERE durum='hazir'", one=True)["n"]
 
-    def start(self, pids=None, bicim=None, yeni=False, eksik=False):
+    def start(self, pids=None, bicim=None, yeni=False, eksik=False, sekme="hazir"):
         if self.running:
             return "Yazılar zaten hazırlanıyor; bitmesini bekleyin."
         if not CFG.get("access_token") and not CFG.get("refresh_token"):
             return "Önce mağazaya bağlanın (Ayarlar)."
         rows = self.satirlar()
         if eksik:
-            pids = [r["pid"] for r in rows if self._eksik(r) and r["kapsamda"]]
+            pids = [r["pid"] for r in rows if self._eksik(r) and r["kapsamda"] and r["sekme"] == sekme]
             if not pids:
                 return "Düzeltilecek yazı yok; hepsi %100."
         elif pids:
@@ -4751,7 +4757,8 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/blog/hazirla":       # yalnızca okur ve hazırlar; mağazaya bir şey gönderilmez
             d = self._json()
             return self._send(200, {"msg": BLOG.start([int(x) for x in d["pids"]] if d.get("pids") else None,
-                                                     d.get("bicim"), bool(d.get("yeni")), bool(d.get("eksik")))})
+                                                     d.get("bicim"), bool(d.get("yeni")), bool(d.get("eksik")),
+                                                     "gonderildi" if d.get("sekme") == "gonderildi" else "hazir")})
         if p == "/api/blog/yeniden":       # tek yazı: başka bir anlatımla ya da seçilen biçimle
             d = self._json()
             plan = blog_hazirla(int(d.get("pid") or 0), d.get("bicim"), yeni=True)

@@ -25,7 +25,7 @@ import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 2   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 3   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
 
 BICIMLER = {
     "rehber": {"ad": "Satın alma rehberi", "rozet": "REHBER", "ek": "Rehberi"},
@@ -117,10 +117,20 @@ def bicim_sec(bicim, pid, varyant=0):
     return SIRA[(int(pid or 0) + int(varyant or 0)) % len(SIRA)]
 
 
-def kelime_sec(ad, mevcut="", prof=None, en_uzun=40):
+def kodsuz(metin, sku):
+    """Ürün kodunu (stok kodu) hedef kelimeden ve başlık gövdesinden çıkarır; kod başlığın sonuna ayrıca eklenir."""
+    sku = (sku or "").strip()
+    if not sku:
+        return metin
+    kalan = [w for w in (metin or "").split() if ST.tr_lower(w.strip(",.;:()[]")) != ST.tr_lower(sku)]
+    return " ".join(kalan).strip(" ,-") if kalan else metin
+
+
+def kelime_sec(ad, mevcut="", prof=None, en_uzun=40, sku=""):
     """Blogun hedef kelimesi: ürünün hedef kelimesi kısa ve adında geçiyorsa o, değilse addan kısa bir parça.
     Kısa kelime, yazının doğal okunmasını sağlar (%2-%3 yoğunlukta uzun bir ifade metni bozar)."""
-    cur = (mevcut or "").strip()
+    ad = kodsuz(ad, sku)
+    cur = kodsuz((mevcut or "").strip(), sku)
     if cur and len(cur) <= en_uzun and ST.tr_lower(cur) in ST.tr_lower(ad) and not any(c in cur for c in SM.RISKY):
         return cur
     kw = SM.machine_keyword(ad, "", prof)
@@ -153,9 +163,8 @@ def _e(t):
     return html.escape(t or "", quote=False)
 
 
-# okunaklı ve ferah yazı: büyük punto, geniş satır aralığı, bölümler arasında boşluk (stiller tek yerde, kısa)
-P = "margin:0 0 18px"
-LISTE = "margin:0 0 22px;padding-left:24px"
+# okunaklı ve ferah yazı: büyük punto ve geniş satır aralığı sarmalayıcıda, boşluk başlıklarda ve kutularda. Paragraf ve
+# listelere ayrı stil yazılmaz: Ideasoft HTML'deki stilleri de kelime sayar, fazla stil hedef kelimeyi gereksiz tekrarlatır.
 
 
 def _render(bloklar, kw, renk, link):
@@ -167,15 +176,15 @@ def _render(bloklar, kw, renk, link):
             t = _e(v).replace(kwe, f"<strong>{kwe}</strong>", 1)
             out.append(f'<p style="font-size:20px;line-height:1.75;margin:0 0 26px">{t}</p>')
         elif tur == "h2":
-            out.append(f'<h2 style="color:{renk};font-size:27px;line-height:1.3;margin:40px 0 14px">{_e(v)}</h2>')
+            out.append(f'<h2 style="color:{renk};margin:40px 0 14px">{_e(v)}</h2>')
         elif tur == "h3":
-            out.append(f'<h3 style="font-size:21px;line-height:1.35;margin:28px 0 10px">{_e(v)}</h3>')
+            out.append(f'<h3 style="margin:28px 0 10px">{_e(v)}</h3>')
         elif tur == "p":
             if v:
-                out.append(f'<p style="{P}">{_e(v)}</p>')
+                out.append(f"<p>{_e(v)}</p>")
         elif tur in ("ul", "ol"):
             if v:
-                out.append(f'<{tur} style="{LISTE}">' + "".join(f"<li>{_e(x)}</li>" for x in v) + f"</{tur}>")
+                out.append(f"<{tur}>" + "".join(f"<li>{_e(x)}</li>" for x in v) + f"</{tur}>")
         elif tur in ("check", "cross"):
             isaret = "✔" if tur == "check" else "✘"
             if v:
@@ -183,7 +192,7 @@ def _render(bloklar, kw, renk, link):
                            + "".join(f"<li>{isaret} {_e(x)}</li>" for x in v) + "</ul>")
         elif tur == "toc":
             out.append(f'<div style="border-left:5px solid {renk};background:#f6f7f9;padding:18px 24px;margin:26px 0 30px">'
-                       f'<p style="{P}"><strong>Bu yazıda</strong></p><ol style="margin:0;padding-left:22px">'
+                       "<p><strong>Bu yazıda</strong></p><ol>"
                        + "".join(f"<li>{_e(x)}</li>" for x in v) + "</ol></div>")
         elif tur == "kunye":
             satir = "".join(f"<tr><td><strong>{_e(a)}</strong></td><td>{_e(b)}</td></tr>" for a, b in v if b)
@@ -196,7 +205,7 @@ def _render(bloklar, kw, renk, link):
                 head = f"<strong>{_e(m.group(1))}:</strong> {_e(m.group(2))}" if m else _e(t)
                 alt = "<ul>" + "".join(f"<li>{_e(k)}</li>" for k in kids) + "</ul>" if kids else ""
                 items.append(f"<li>{head}{alt}</li>")
-            out.append(f'<ul style="{LISTE}">' + "".join(items) + "</ul>")
+            out.append("<ul>" + "".join(items) + "</ul>")
         elif tur == "tip":
             baslik, metin = v
             out.append('<div style="background:#fff8e6;border:1px dashed #d9a933;padding:18px 22px;margin:28px 0">'
@@ -206,16 +215,66 @@ def _render(bloklar, kw, renk, link):
                        f'font-style:italic"><p style="margin:0">{_e(v)}</p></blockquote>')
         elif tur == "faq":
             for q, a in v:
-                out.append(f'<h3 style="font-size:20px;margin:26px 0 8px">{_e(q)}</h3><p style="{P}">{_e(a)}</p>')
+                out.append(f'<h3 style="margin:26px 0 8px">{_e(q)}</h3><p>{_e(a)}</p>')
         elif tur == "cta":
             metin, yazi = v
             a = (f'<p style="margin:0"><a href="{_e(link)}" style="color:#fff;font-weight:bold">{_e(yazi)} →</a></p>'
                  if link else "")
             out.append(f'<div style="background:{renk};color:#fff;padding:22px 26px;margin:34px 0 24px;border-radius:10px">'
                        f'<p style="color:#fff;margin:0 0 12px">{_e(metin)}</p>{a}</div>')
+        elif tur == "sosyal":
+            out.append(_sosyal_html(v[0], v[1], renk))
         elif tur == "imza":
             out.append(f'<p style="color:#777;font-size:15px;margin:0">{_e(v)}</p>')
     return '<div style="font-size:18px;line-height:1.85">\n' + "\n".join(out) + "\n</div>"
+
+
+# ---------------------------------------------------------------- sosyal medya alanı (yazının en altı)
+
+SOSYAL = {   # ağ: (ad, simge, düğme yazısı, düğme zemini)
+    "instagram": ("Instagram", "📸", "Instagram'da takip et", "linear-gradient(45deg,#f9ce34,#ee2a7b 55%,#6228d7)"),
+    "youtube": ("YouTube", "▶", "YouTube'da abone ol", "#ff0033"),
+    "tiktok": ("TikTok", "♪", "TikTok'ta izle", "#111111"),
+    "facebook": ("Facebook", "f", "Facebook'ta beğen", "#1877f2"),
+}
+_SOSYAL_ADRES = {"instagram": r"https://(www\.)?instagram\.com/[A-Za-z0-9_.]+/?", "youtube": r"https://(www\.)?youtube\.com/[@A-Za-z0-9_./-]+",
+                 "tiktok": r"https://(www\.)?tiktok\.com/@[A-Za-z0-9_.]+/?", "facebook": r"https://(www\.)?facebook\.com/[A-Za-z0-9_.-]+/?"}
+
+
+def sosyal_ayar(d):
+    """{ağ: adres}; yalnızca o ağın https adresleri kabul edilir."""
+    d = d if isinstance(d, dict) else {}
+    out = {}
+    for k, desen in _SOSYAL_ADRES.items():
+        u = str(d.get(k) or "").strip().split("?")[0]
+        if u and re.fullmatch(desen, u):
+            out[k] = u
+    return out
+
+
+def sosyal_listesi(d):
+    """[(ağ, adres, kullanıcı adı)] — ayar sırasıyla."""
+    out = []
+    for k, u in sosyal_ayar(d).items():
+        tutamak = u.rstrip("/").rsplit("/", 1)[-1]
+        out.append((k, u, tutamak if tutamak.startswith("@") else "@" + tutamak))
+    return out
+
+
+def sosyal_izi(liste):
+    return "|".join(u for _, u, _ in liste or [])
+
+
+def _sosyal_html(magaza, liste, renk):
+    """Kısa stilli kart (Ideasoft stilleri de kelime sayar): başlık, bir cümle, ağ düğmeleri."""
+    dugmeler = " ".join(
+        f'<a href="{_e(u)}" style="display:inline-block;margin:6px;padding:12px 24px;border-radius:99px;'
+        f'background:{SOSYAL[k][3]};color:#fff;font-weight:bold">{SOSYAL[k][1]} {_e(SOSYAL[k][2])} {_e(t)}</a>'
+        for k, u, t in liste)
+    kim = f"{magaza} hesaplarını" if magaza else "hesaplarımızı"
+    return (f'<div style="margin:44px 0 8px;padding:28px 22px;border-radius:18px;text-align:center;color:#fff;'
+            f'background:linear-gradient(135deg,{renk},#0b1f3a)"><h3 style="color:#fff;margin:0 0 8px">Bizi takip edin</h3>'
+            f'<p>Yeni ürünler, videolar ve pratik ipuçları için {_e(kim)} takip edin.</p><p>{dugmeler}</p></div>')
 
 
 # ---------------------------------------------------------------- içerik
@@ -272,9 +331,9 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
                   "yanlış ürün almanızı ve sonradan pişmanlık yaşamanızı önler."),
             ("ol", ["İhtiyacınızı yazın: hangi işler, ne sıklıkla, hangi ortamda?",
                     "Teknik değerleri ürün açıklamasıyla karşılaştırın; kendi işinize yetip yetmediğini kontrol edin.",
-                    "Ürün kodu ve barkodu doğrulayarak tam olarak aradığınız modeli aldığınızdan emin olun.",
-                    "Elinizdeki aksesuarlarla uyumluluğu ve yedek parça bulunabilirliğini düşünün.",
-                    "Garanti ve satış sonrası destek koşullarını ürün sayfasından okuyun."]),
+                    "{k} için ürün kodu ve barkodu doğrulayarak tam olarak aradığınız modeli aldığınızdan emin olun.",
+                    "{k} ile elinizdeki aksesuarların uyumunu ve yedek parça bulunabilirliğini düşünün.",
+                    "{k} için garanti ve satış sonrası destek koşullarını ürün sayfasından okuyun."]),
             ("tip", ("İpucu:", f"{{k}} için kullanım senaryonuzu önceden belirlemek, gereksiz özelliklere para ödemenizi "
                                "engeller ve ürünün gerçek performansını görmenizi sağlar.")),
             ("h2", h[2]),
@@ -406,12 +465,12 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
             ("p", f"Bakım, ürünün performansını korumanın en ucuz yoludur. {{k}} düzenli bakıldığında hem daha güvenli "
                   "çalışır hem de beklenmedik arızaların önüne geçilir."),
             ("h2", h[1]),
-            ("ol", [f"Ürünü kapatın ve varsa güç bağlantısını ayırın.", "Yüzeydeki toz ve kalıntıları kuru bir bezle alın.",
+            ("ol", ["İşiniz bitince {k} ile çalışmayı bırakın ve varsa güç bağlantısını ayırın.", "{k} yüzeyindeki toz ve kalıntıları kuru bir bezle alın.",
                     "Hava kanallarını ve hareketli parçaları yumuşak bir fırçayla temizleyin.",
-                    "Aksesuarları ayrı ayrı temizleyip yerlerine yerleştirin."]),
+                    "{k} aksesuarlarını ayrı ayrı temizleyip yerlerine yerleştirin."]),
             ("tip", ("İpucu:", f"{{k}} temizliğinde sert kimyasallar yerine kuru bez ve yumuşak fırça kullanın.")),
             ("h2", h[2]),
-            ("check", ["Kablo, fiş ve bağlantı noktalarında hasar olup olmadığını kontrol edin.",
+            ("check", ["{k} üzerindeki kablo, fiş ve bağlantı noktalarında hasar olup olmadığını kontrol edin.",
                        "Vida ve bağlantı elemanlarının sıkılığını gözden geçirin.",
                        "Aşınan aksesuarları zamanında yenileyin.",
                        "Alışılmadık ses ya da titreşim fark ederseniz kullanımı durdurun."]),
@@ -525,9 +584,18 @@ def _uygula(bloklar, kw, refs, secili, dolgu, ek=()):
     out = []
     for tur, v in bloklar:
         if tur == "fill":
-            out.append(("p", " ".join(list(ek) + list(dolgu))))
+            out.append(("p", " ".join(dolgu)))
         else:
             out.append((tur, g(v)))
+    # hedef kelimeli ek cümleler tek paragrafa yığılmaz; yazının paragraflarına sırayla dağıtılır (doğal okunur)
+    yerler = [i for i, (tur, v) in enumerate(out) if tur == "p" and v and i > 1]
+    if ek and yerler:
+        adim = max(1, len(yerler) // len(ek))
+        for n, cumle in enumerate(ek):
+            i = yerler[(n * adim) % len(yerler)]
+            out[i] = ("p", out[i][1].rstrip() + " " + cumle)
+    elif ek:
+        out.append(("p", " ".join(ek)))
     return out
 
 
@@ -600,18 +668,22 @@ def anahtar_kelimeler(kw, label, bicim, prof):
 # ---------------------------------------------------------------- yazar
 
 def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, method="", hedef=2.5, renk="#1b4f72",
-        kategori=None, kw=""):
+        kategori=None, kw="", sosyal=None):
     """urun: Ideasoft ürün kaydı (id, name, sku, barcode, slug, brand, categories). kategori: {"ad", "slug"} (isteğe bağlı).
     kw verilirse o hedef kelime kullanılır (kullanıcının düzenlediği). Dönüş: blog planı (mağazaya yazılmaz)."""
     prof = PR.with_brand(prof, urun)
     pid = urun.get("id") or 0
     bicim = bicim_sec(bicim, pid, varyant)
     ad = re.sub(r"\s+", " ", urun.get("name") or "").strip()
-    kw = re.sub(r"\s+", " ", kw or "").strip() or kelime_sec(ad, mevcut_kw, prof)
+    sku = (urun.get("sku") or "").strip()
+    kw = kodsuz(re.sub(r"\s+", " ", kw or "").strip(), sku) or kelime_sec(ad, mevcut_kw, prof, sku=sku)
     rng = _rng(pid, bicim, varyant)
     renk = renk if re.fullmatch(r"#[0-9a-fA-F]{6}", renk or "") else "#1b4f72"
     b = _bilgi(urun, details_html, kw, prof)
-    baslik = rng.choice(BASLIKLAR[bicim]).replace("{kw}", kw)
+    gorsel_baslik = rng.choice(BASLIKLAR[bicim]).replace("{kw}", kw)
+    # ürün kodu başlığın sonunda: kodla yapılan aramalarda yazı bulunur (görselde kod ayrıca yazdığı için orada yok)
+    baslik = f"{gorsel_baslik} {sku}" if sku and ST.tr_lower(sku) not in ST.tr_lower(gorsel_baslik) else gorsel_baslik
+    sosyal = sosyal_listesi(sosyal)
     link = f"/urun/{urun['slug']}" if urun.get("slug") else ""
 
     refs = [r.replace("{label}", b["label"]) for r in GONDERME]
@@ -629,6 +701,8 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
             continue
         b2 = dict(b, spec=tum_spec[:sinir])
         ham = _doldur(_bloklar(bicim, urun, b2, prof, kategori, _rng(pid, bicim, varyant)), kw, b["label"])
+        if sosyal:
+            ham.append(("sosyal", (prof["magaza"], sosyal)))
         n_yer = _yer_sayisi(ham)
         for m_ in range(0, len(ek) + 1):
             for n in range(0, len(dolgu) + 1):
@@ -656,7 +730,7 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     magaza = prof["magaza"]
     pt = sayfa_basligi(kw, bicim, magaza)
     md = meta_aciklama(kw, bicim, magaza, _rng(pid, "meta", varyant))
-    plan = {"v": SURUM, "keyword": kw, "title": baslik, "slug": slug(baslik), "excerpt": ozet(kw, bicim, magaza),
+    plan = {"v": SURUM, "keyword": kw, "title": baslik, "gorsel_baslik": gorsel_baslik, "sosyal_iz": sosyal_izi(sosyal), "slug": slug(baslik), "excerpt": ozet(kw, bicim, magaza),
             "content": icerik, "pageTitle": pt, "metaDescription": md,
             "metaKeywords": anahtar_kelimeler(kw, b["label"], bicim, prof), "bicim": bicim, "varyant": varyant,
             "rozet": BICIMLER[bicim]["rozet"], "label": b["label"],
@@ -676,7 +750,7 @@ def yaz_tam(urun, details_html="", mevcut_kw="", bicim="", varyant=0, kw="", **k
         ad = re.sub(r"\s+", " ", urun.get("name") or "").strip()
         prof = PR.with_brand(kw_args.get("prof"), urun)
         for uz in (30, 22):
-            kisa = kelime_sec(ad, mevcut_kw, prof, en_uzun=uz)
+            kisa = kelime_sec(ad, mevcut_kw, prof, en_uzun=uz, sku=urun.get("sku") or "")
             denemeler += [(ilk, varyant, kisa)] + [(b, varyant, kisa) for b in SIRA if b != ilk]
     en_iyi = None
     for b, v, k in denemeler:
@@ -733,9 +807,10 @@ def gonderilecek(plan, kategori_id, durum=1, gorsel=None, kw_alani="targetKeywor
 
 # ---------------------------------------------------------------- blog görseli (panelde, canvas ile çizilir)
 
-GORSEL_TEMALAR = {"mektup": "Mektup", "gece": "Gece mavisi", "atolye": "Atölye çizimi", "vitrin": "Vitrin", "santiye": "Şantiye",
-                  "cam": "Cam (modern)", "gazete": "Gazete manşeti", "minimal": "Minimal"}
-GORSEL_VARSAYILAN = {"tema": "mektup", "renk": "#b3261e", "renk2": "#1f2a44", "foto": True, "yazi": "serif",
+GORSEL_TEMALAR = {"lacivert_bant": "Lacivert · bantlı", "beyaz_bant": "Beyaz · bantlı", "kirmizi_bant": "Kırmızı · bantlı",
+                  "pano_bant": "Atölye panosu · bantlı", "lacivert_kutu": "Lacivert · kutu", "beyaz_kutu": "Beyaz · kutu",
+                  "bolunmus_kutu": "İki renk · kutu", "vitrin_kutu": "Vitrin · kutu"}
+GORSEL_VARSAYILAN = {"tema": "lacivert_bant", "renk": "#e30613", "renk2": "#0c2c57", "foto": True, "yazi": "sans",
                      "magaza": True, "rozet": True, "kod": True, "desen": True, "ust_metin": ""}
 
 
