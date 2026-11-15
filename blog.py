@@ -25,7 +25,7 @@ import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 3   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 4   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
 
 BICIMLER = {
     "rehber": {"ad": "Satın alma rehberi", "rozet": "REHBER", "ek": "Rehberi"},
@@ -231,11 +231,13 @@ def _render(bloklar, kw, renk, link):
 
 # ---------------------------------------------------------------- sosyal medya alanı (yazının en altı)
 
-SOSYAL = {   # ağ: (ad, simge, düğme yazısı, düğme zemini)
-    "instagram": ("Instagram", "📸", "Instagram'da takip et", "linear-gradient(45deg,#f9ce34,#ee2a7b 55%,#6228d7)"),
-    "youtube": ("YouTube", "▶", "YouTube'da abone ol", "#ff0033"),
-    "tiktok": ("TikTok", "♪", "TikTok'ta izle", "#111111"),
-    "facebook": ("Facebook", "f", "Facebook'ta beğen", "#1877f2"),
+# ağ: (ad, düğme yazısı, yazı rengi, kartın geçiş renkleri). Simgeler emoji değil, CSS ile çizilir: Ideasoft blog içeriği
+# 4 baytlık karakterleri (📸 gibi) "????" olarak kaydediyor.
+SOSYAL = {
+    "instagram": ("Instagram", "Takip et", "#c13584", "#4f5bd5,#962fbf,#d62976"),
+    "youtube": ("YouTube", "Abone ol", "#ff0000", "#ee2a3c,#e60000"),
+    "tiktok": ("TikTok", "Takip et", "#111111", "#25f4ee,#111111,#fe2c55"),
+    "facebook": ("Facebook", "Beğen", "#1877f2", "#1877f2,#0b5fcc"),
 }
 _SOSYAL_ADRES = {"instagram": r"https://(www\.)?instagram\.com/[A-Za-z0-9_.]+/?", "youtube": r"https://(www\.)?youtube\.com/[@A-Za-z0-9_./-]+",
                  "tiktok": r"https://(www\.)?tiktok\.com/@[A-Za-z0-9_.]+/?", "facebook": r"https://(www\.)?facebook\.com/[A-Za-z0-9_.-]+/?"}
@@ -265,16 +267,49 @@ def sosyal_izi(liste):
     return "|".join(u for _, u, _ in liste or [])
 
 
+_Z = "&#8203;"     # boş span'ı editör silmesin diye görünmez karakter
+
+
+def _simge(k):
+    """Ağın simgesi, yalnızca satır içi stillerle (resim ve emoji yok)."""
+    if k == "instagram":
+        return ('<span style="display:inline-block;position:relative;width:22px;height:22px;border:2.5px solid #c13584;'
+                f'border-radius:7px;vertical-align:middle;box-sizing:border-box;font-size:0">{_Z}'
+                '<span style="position:absolute;left:4px;top:4px;width:9px;height:9px;border:2.5px solid #c13584;'
+                f'border-radius:50%;box-sizing:border-box">{_Z}</span><span style="position:absolute;right:2px;top:2px;'
+                f'width:3px;height:3px;border-radius:50%;background:#c13584">{_Z}</span></span>')
+    if k == "youtube":
+        return ('<span style="display:inline-block;position:relative;width:28px;height:20px;border-radius:6px;'
+                f'background:#ff0000;vertical-align:middle;font-size:0">{_Z}<span style="position:absolute;left:11px;'
+                'top:5px;width:0;height:0;border-left:8px solid #fff;border-top:5px solid transparent;'
+                f'border-bottom:5px solid transparent">{_Z}</span></span>')
+    if k == "tiktok":
+        return ('<span style="display:inline-block;width:24px;height:24px;line-height:24px;border-radius:7px;'
+                'background:#111;color:#fff;text-align:center;font-size:15px;font-weight:bold;vertical-align:middle;'
+                'text-shadow:-1px -1px 0 #25f4ee,1px 1px 0 #fe2c55">&#9834;</span>')
+    return ('<span style="display:inline-block;width:24px;height:24px;line-height:26px;border-radius:50%;'
+            'background:#1877f2;color:#fff;text-align:center;font:bold 17px Arial,sans-serif;vertical-align:middle">f</span>')
+
+
 def _sosyal_html(magaza, liste, renk):
-    """Kısa stilli kart (Ideasoft stilleri de kelime sayar): başlık, bir cümle, ağ düğmeleri."""
+    """Instagram'dan YouTube'a yatay renk geçişli kart: küçük üst yazı, başlık, bir cümle, sade beyaz düğmeler.
+    Yazı tipi sitenin kendi yazı tipi (inherit)."""
+    renkler = ",".join(SOSYAL[k][3] for k, _, _ in liste)
     dugmeler = " ".join(
-        f'<a href="{_e(u)}" style="display:inline-block;margin:6px;padding:12px 24px;border-radius:99px;'
-        f'background:{SOSYAL[k][3]};color:#fff;font-weight:bold">{SOSYAL[k][1]} {_e(SOSYAL[k][2])} {_e(t)}</a>'
+        f'<a href="{_e(u)}" target="_blank" rel="noopener" title="{_e(SOSYAL[k][0])} {_e(t)}" style="display:inline-block;'
+        'margin:6px;padding:12px 26px 12px 18px;border-radius:14px;background:#fff;color:#1d1d1f;font-weight:700;'
+        f'font-size:16px;text-decoration:none;box-shadow:0 8px 20px rgba(0,0,0,.18)">{_simge(k)}'
+        f'<span style="vertical-align:middle;margin-left:10px">{_e(SOSYAL[k][0])}</span>'
+        f'<span style="vertical-align:middle;margin-left:8px;color:{SOSYAL[k][2]};font-weight:600">{_e(SOSYAL[k][1])}</span></a>'
         for k, u, t in liste)
     kim = f"{magaza} hesaplarını" if magaza else "hesaplarımızı"
-    return (f'<div style="margin:44px 0 8px;padding:28px 22px;border-radius:18px;text-align:center;color:#fff;'
-            f'background:linear-gradient(135deg,{renk},#0b1f3a)"><h3 style="color:#fff;margin:0 0 8px">Bizi takip edin</h3>'
-            f'<p>Yeni ürünler, videolar ve pratik ipuçları için {_e(kim)} takip edin.</p><p>{dugmeler}</p></div>')
+    return (f'<div style="margin:48px 0 10px;padding:34px 24px 30px;border-radius:24px;text-align:center;color:#fff;'
+            f'font-family:inherit;background:linear-gradient(90deg,{renkler})">'
+            '<p style="display:inline-block;margin:0 0 12px;padding:5px 14px;border-radius:99px;background:rgba(255,255,255,.2);'
+            'font-size:12px;font-weight:700;letter-spacing:2px;color:#fff">SOSYAL MEDYA</p>'
+            '<h3 style="margin:0 0 8px;color:#fff;font-size:28px;font-weight:800;letter-spacing:-.3px">Bizi takip edin</h3>'
+            f'<p style="margin:0 auto 20px;max-width:520px;color:rgba(255,255,255,.92);font-size:16px">Yeni ürünler, kullanım '
+            f'videoları ve pratik ipuçları için {_e(kim)} takip edin.</p><p style="margin:0">{dugmeler}</p></div>')
 
 
 # ---------------------------------------------------------------- içerik

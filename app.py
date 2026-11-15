@@ -2744,6 +2744,16 @@ def _blog_kategori(prod):
     return en
 
 
+def blog_profil():
+    """Mağaza profili; mağaza adı girilmemişse adresten (ustapazar.myideasoft.com → Ustapazar), yazıda "mağazamız" kalmasın."""
+    p = dict(PROFILE())
+    if not p.get("magaza"):
+        parca = [x for x in store_host(CFG.get("store") or "").split(".") if x and x not in ("www", "myideasoft")]
+        if parca:
+            p["magaza"] = parca[0].replace("-", " ").title()
+    return p
+
+
 def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
     """Ürünü okuyup blog yazısını hazırlar; mağazaya hiçbir şey yazmaz. yeni: başka bir anlatımla (varyant + 1).
     kw: kullanıcının seçtiği hedef kelime (boşsa önceki yazınınki ya da üründen)."""
@@ -2758,7 +2768,7 @@ def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
     varyant = int(eski.get("varyant") or 0) + (1 if yeni else 0)
     bicim = bicim if bicim in BL.BICIMLER else (eski.get("bicim") if eski and not yeni else a["bicim"])
     plan = BL.yaz_tam(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
-                  prof=PROFILE(), method=CFG.get("count_method") or SAFE_METHODS,
+                  prof=blog_profil(), method=CFG.get("count_method") or SAFE_METHODS,
                   hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=_blog_kategori(prod),
                   kw=kw or eski.get("keyword") or "", sosyal=a["sosyal"])
     # aynı adreste (slug) başka bir yazı varsa ürün kodu eklenir
@@ -3006,7 +3016,7 @@ class BlogYazari:
         taranmadi = not DBI.q("SELECT 1 FROM urunbilgi LIMIT 1", one=True) and not DBI.q("SELECT 1 FROM catprod LIMIT 1", one=True)
         return {"ayar": a, "bicimler": {k: v["ad"] for k, v in BL.BICIMLER.items()},
                 "kategoriler": sorted(({"id": i, "path": p} for i, p in paths.items()), key=lambda x: ST.tr_lower(x["path"])),
-                "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": PROFILE()["magaza"],
+                "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": blog_profil()["magaza"],
                 "sayilar": dict({k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")},
                                 eksik=sum(1 for r in rows if self._eksik(r) and r["sekme"] == sekme)), "haric_urun": haric_n,
                 "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,

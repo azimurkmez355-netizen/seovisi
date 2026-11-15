@@ -65,6 +65,15 @@ class Yazar(unittest.TestCase):
         self.assertFalse(ST.tr_lower(kw).startswith("professional"))
         self.assertEqual(BL.kelime_sec(URUN["name"], "Darbeli Matkap"), "Darbeli Matkap")   # ürünün kendi kelimesi
 
+    def test_dort_baytlik_karakter_yok(self):
+        """Ideasoft blog içeriği 4 baytlık karakterleri (emoji) "????" olarak kaydediyor."""
+        s = {"instagram": "https://www.instagram.com/a/", "youtube": "https://www.youtube.com/@b",
+             "tiktok": "https://www.tiktok.com/@c", "facebook": "https://www.facebook.com/d"}
+        for b in BL.BICIMLER:
+            p = BL.yaz_tam(URUN, DETAY, bicim=b, prof={"magaza": "Ustapazar"}, method="panel", sosyal=s)
+            for k in ("title", "content", "excerpt", "pageTitle", "metaDescription", "metaKeywords"):
+                self.assertFalse([c for c in p[k] if ord(c) > 0xFFFF], (b, k))
+
     def test_ozel_karakterler_kacislidir(self):
         u = dict(URUN, name='Bosch <b>"Test"</b> & Matkap', sku="<x>")
         p = BL.yaz(u, "", bicim="sss", prof={"magaza": "A&B"}, method="panel")
@@ -97,7 +106,9 @@ class Yazar(unittest.TestCase):
         self.assertIn('href="https://www.instagram.com/usta.pazar/"', p["content"])
         self.assertIn("@UstaPazar", p["content"])
         self.assertNotIn("javascript", p["content"])
-        self.assertGreater(p["content"].index("Bizi takip edin"), p["content"].index("ekibi tarafından"))   # en altta
+        self.assertGreater(p["content"].index("Bizi takip edin"), p["content"].index("ekibi tarafından"))
+        self.assertIn("linear-gradient(90deg,#4f5bd5", p["content"])      # Instagram'dan YouTube'a yatay geçiş
+        self.assertIn('target="_blank"', p["content"])   # en altta
         self.assertEqual(p["score"]["yuzde"], 100)
 
     def test_gonderilecek_kayit(self):
@@ -174,6 +185,10 @@ class BlogEkrani(Ortam):
         self.assertEqual(len(pids), len(self.m.urunler) - 3)
         app.blog_ayar_yaz({"haric": []})            # kullanıcı hariç tutmayı kaldırırsa aksesuarlar da gelir
         self.assertIn(1, app.blog_urunler())
+
+    def test_magaza_adi_yoksa_adresten(self):
+        app.CFG.update(profil={"magaza": "", "marka": ""}, store="ustapazar.myideasoft.com")
+        self.assertEqual(app.blog_profil()["magaza"], "Ustapazar")
 
     def test_hazirlama_magazaya_yazmaz(self):
         self.assertIn("hazırlanıyor", app.BLOG.start([4, 5, 6]))

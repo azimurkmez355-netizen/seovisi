@@ -210,7 +210,9 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Görsel panelde canvas ile çizilir (`blCiz`, mağazanın lacivert / kırmızı / beyaz çizgisine uyan 8 tema: dördü bantlı fotoğraflı `*_bant`, dördü kutulu `*_kutu`; ayar `blog.gorsel`). Oran 3:2 (tasarım 1200×800, gönderim 1500×1000 JPEG, kalite 0,95): Ideasoft blog kartında kesilmez; kenarlarda güvenli boşluk. Görselde ürün kodu "Ürün Kodu: …"
   `attachment` olarak gider. Ürün fotoğrafı `/api/blog/urun_gorsel` üzerinden (aynı köken; mağaza klasöründe `blog_gorsel/` önbellek).
 - Blog başlığının sonunda ürün kodu (stok kodu) yer alır (`plan.title`); hedef kelime ve görseldeki başlık (`gorsel_baslik`) kodsuzdur (`BL.kodsuz`).
-- Yazının en altında sosyal medya kartı (`blog.sosyal`: instagram, youtube, tiktok, facebook; `BL.sosyal_ayar` yalnızca o ağın https adresini kabul eder).
+- Yazının en altında sosyal medya kartı (`blog.sosyal`: instagram, youtube, tiktok, facebook; `BL.sosyal_ayar` yalnızca o ağın https adresini kabul eder):
+  ağ renkleriyle yatay geçişli zemin, simgeler satır içi CSS ile (emoji yok: Ideasoft blog içeriği 4 baytlık karakterleri "????" kaydediyor).
+  Mağaza adı girilmemişse adresten alınır (`blog_profil`).
   Ayar ya da yazar sürümü (`BL.SURUM`) değişince yazılar "eski" sayılır; "Eski yazıları yenile" yeniden hazırlar, gönderilenler "Değişenleri gönder" ile güncellenir.
 - Paragraf ve listelere ayrı stil yazılmaz (Ideasoft stilleri de kelime sayar; fazla stil hedef kelimeyi tekrarlatır). Hedef kelimeli ek cümleler paragraflara dağıtılır.
 - Hariç kategoriler `blog.haric`; None ise adında "bosch aksesuar" geçenler ve alt kategorileri. Pasif ürünlere yazılmaz.
