@@ -3022,6 +3022,9 @@ class BlogYazari:
                 "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,
                 "degisen": [r["pid"] for r in rows if r["degisti"] and r["sekme"] == "gonderildi"
                             and r["durum"] == "gonderildi" and r["plan"] and r["plan"]["yuzde"] == 100],
+                # "Hepsini gönder": hazır sekmesindeki SEO'su %100 yazıların hepsi (aramadan bağımsız)
+                "hazir_tam": [r["pid"] for r in rows if r["sekme"] == "hazir" and r["plan"] and r["plan"]["yuzde"] == 100]
+                if sekme == "hazir" else [],
                 "panel": API.blog_adresi(), "running": self.running, "done": self.done, "todo": self.todo,
                 "sonuc": self.sonuc}
 

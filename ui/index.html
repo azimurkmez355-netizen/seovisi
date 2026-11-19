@@ -2698,13 +2698,22 @@ async function blTick(ilk){
   if(ilk || !once) blAyarDoldur();
   if(ilk && blAcik == null){ const ilkPlan = r.items.find(i => i.plan); if(ilkPlan) blAc(ilkPlan.pid); else blMektupBos(); }
 }
+let blGonderim = null;     // süren toplu gönderim: {n, ok, err, dur}
 function blButonlar(){
   const r = blVeri, n = blSecili.size, b = [];
+  if(blGonderim){
+    const g = blGonderim;
+    $('#bl-acts').innerHTML = `<span class="muted" style="align-self:center">Gönderiliyor: ${nf(g.ok + g.err)} / ${nf(g.n)}${g.err ? ` · ${nf(g.err)} gönderilemedi` : ''}</span>`
+      + `<button class="btn ghost" id="bl-gon-dur" ${g.dur ? 'disabled' : ''}>${g.dur ? 'Durduruluyor…' : 'Gönderimi durdur'}</button>`;
+    $('#bl-gon-dur').onclick = () => { g.dur = true; blButonlar(); };
+    return;
+  }
   if(blSekme === 'yazilacak'){
     b.push(`<button class="btn ink" data-a="yaz-sec" ${n ? '' : 'disabled'}>Seçilenleri yaz${n ? ' (' + nf(n) + ')' : ''}</button>`);
     b.push(`<button class="btn ghost" data-a="yaz-hepsi" ${r.sayilar.yazilacak ? '' : 'disabled'}>Hepsini yaz (${nf(r.sayilar.yazilacak)})</button>`);
   } else {
     b.push(`<button class="btn ink" data-a="gonder-sec" ${n ? '' : 'disabled'}>Seçilenleri gönder${n ? ' (' + nf(n) + ')' : ''}</button>`);
+    if(blSekme === 'hazir') b.push(`<button class="btn ink" data-a="gonder-hepsi" ${(r.hazir_tam || []).length ? '' : 'disabled'}>Hepsini gönder (${nf((r.hazir_tam || []).length)})</button>`);
     b.push(`<button class="btn ghost" data-a="yeniden-sec" ${n ? '' : 'disabled'}>Seçilenleri yeniden yaz</button>`);
     if(blSekme === 'gonderildi' && r.degisen.length) b.push(`<button class="btn ink" data-a="degisen">Değişenleri gönder (${nf(r.degisen.length)})</button>`);
     if(r.sayilar.eksik) b.push(`<button class="btn" style="background:#b5651d;border-color:#b5651d" data-a="eksik">${blSekme === 'hazir' ? 'Eskileri ve %100 olmayanları yenile' : 'Eski yazıları yenile'} (${nf(r.sayilar.eksik)})</button>`);
@@ -2767,19 +2776,31 @@ async function blToplu(a){
     blSecili.clear();
   }
   if(a === 'degisen'){ blSecili.clear(); blVeri.degisen.forEach(p => blSecili.add(p)); return blToplu('gonder-sec'); }
-  if(a === 'gonder-sec'){
+  if(a === 'gonder-sec' || a === 'gonder-hepsi'){
+    if(blGonderim) return;
     if(!blVeri.ayar.kategori){ toast('Önce "Masa ayarları"ndan blog kategorisini seçip kaydedin.'); $('#bl-ayarlar').open = true; $('#bl-ayarlar').scrollIntoView({behavior: 'smooth'}); return; }
+    const liste = a === 'gonder-hepsi' ? [...(blVeri.hazir_tam || [])] : sec, m = liste.length;
+    if(!m) return;
     const durum = blVeri.ayar.durum ? 'yayında' : 'pasif (taslak)';
-    if(!await ask(`${nf(n)} yazı, görselleriyle birlikte Ideasoft'a ${durum} olarak gönderilecek. Yalnızca SEO'su %100 olanlar gönderilir; daha önce gönderilenler güncellenir.`, {title: `${nf(n)} yazı gönderilsin mi?`, ok: 'Gönder', go: true})) return;
-    let ok = 0, err = 0, neden = '';
-    for(const pid of sec){
-      toast(`Gönderiliyor: ${ok + err + 1} / ${n}`);
-      let r = null;
-      try{ r = await blGonderBir(pid, true); }catch(e){ r = {error: 'Görsel hazırlanamadı: ' + e}; }
-      if(r && r.durum === 'gonderildi'){ ok++; blSecili.delete(pid); } else { err++; neden = (r && r.error) || 'Sunucu yanıt vermedi.'; if(r && r.abonelik) break; }
-    }
-    if(err) await ask(`${ok} yazı gönderildi, ${err} yazı gönderilemedi.\n\nNeden: ${neden}`, {title: 'Gönderim sonucu', ok: 'Tamam', no: 'Kapat'});
-    else toast(`${ok} yazı gönderildi.`);
+    const metin = a === 'gonder-hepsi'
+      ? `“Hazır, gönderilmedi” bölümündeki SEO'su %100 olan ${nf(m)} yazının hepsi, görselleriyle birlikte Ideasoft'a ${durum} olarak gönderilecek.\n\nYazılar sırayla tek tek gönderilir; bu sürede bu sayfa açık kalmalı. İstediğiniz an “Gönderimi durdur” ile durdurabilirsiniz; gönderilenler gönderilmiş kalır.`
+      : `${nf(m)} yazı, görselleriyle birlikte Ideasoft'a ${durum} olarak gönderilecek. Yalnızca SEO'su %100 olanlar gönderilir; daha önce gönderilenler güncellenir.`;
+    if(!await ask(metin, {title: `${nf(m)} yazı gönderilsin mi?`, ok: a === 'gonder-hepsi' ? 'Hepsini gönder' : 'Gönder', go: true})) return;
+    const g = blGonderim = {n: m, ok: 0, err: 0, dur: false};
+    let neden = '';
+    blButonlar();
+    try{
+      for(const pid of liste){
+        if(g.dur) break;
+        let r = null;
+        try{ r = await blGonderBir(pid, true); }catch(e){ r = {error: 'Görsel hazırlanamadı: ' + e}; }
+        if(r && r.durum === 'gonderildi'){ g.ok++; blSecili.delete(pid); } else { g.err++; neden = (r && r.error) || 'Sunucu yanıt vermedi.'; if(r && r.abonelik) break; }
+        blButonlar();
+      }
+    } finally { blGonderim = null; }
+    const kalan = m - g.ok - g.err;
+    if(g.err) await ask(`${g.ok} yazı gönderildi, ${g.err} yazı gönderilemedi${kalan ? `, ${kalan} yazı gönderilmeden durduruldu` : ''}.\n\nNeden: ${neden}`, {title: 'Gönderim sonucu', ok: 'Tamam', no: 'Kapat'});
+    else toast(kalan ? `${g.ok} yazı gönderildi; ${kalan} yazı gönderilmeden durduruldu.` : `${g.ok} yazı gönderildi.`);
   }
   blImza = ''; blTick();
 }

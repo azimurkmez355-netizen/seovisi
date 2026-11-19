@@ -236,6 +236,10 @@ class BlogEkrani(Ortam):
         self.assertEqual(d, "hata")
         self.assertIn("Sayfa başlığı 20-60", msg)
         self.assertEqual(self.yazmalar(), [])
+        # "Hepsini gönder" listesi: hazır ve SEO'su %100 olanlar, aramadan bağımsız
+        app.blog_hazirla(5)
+        self.assertEqual(app.BLOG.durum("hazir", q="bulunmayan")["hazir_tam"], [5])
+        self.assertEqual(app.BLOG.durum("yazilacak")["hazir_tam"], [])
 
     def test_yuzde_yuz_olmayanlar_duzeltilir(self):
         app.blog_hazirla(6)
