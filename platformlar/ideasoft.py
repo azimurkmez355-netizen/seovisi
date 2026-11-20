@@ -92,6 +92,10 @@ class Ideasoft(Platform):
     def panel_adresleri(self):
         return {"urun": f"{self.base()}/panel/products/edit/", "kategori": f"{self.base()}/panel/categories/edit/"}
 
+    def vitrin_yollari(self):
+        """Ideasoft vitrinindeki adresler: /urun/<slug>, /kategori/<slug>, /blog/<slug>."""
+        return {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/", "blog_ana": "/blog"}
+
     def mutlak_url(self, u):
         """Kayıttaki görsel adresini tam adrese çevirir (//… ve /… biçimleri)."""
         return "https:" + u if u.startswith("//") else (self.base() + u if u.startswith("/") else u)

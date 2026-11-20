@@ -41,6 +41,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   - `test_panel.py`: panel ve yönetici sayfası betiklerinin sözdizimi (Node.js varsa), yinelenen üst düzey adlar ve öğe kimlikleri.
   - `test_eknot.py`: ek not; notun üretimi, tanınması, kategori grubu, SEO koruması, ekle / güncelle / kaldır, yazma güvenliği.
   - `test_blog.py`: blog yazarı (13 kural her biçimde, ürün kodu / barkod / mağaza adı, hariç kategoriler), hazırlama yazmaz, gönderim / güncelleme / yayından kaldırma, %100 olmayan ve bozuk görselli yazı gönderilmez.
+  - `test_blog_kalite.py`: anahtar kelime araştırması (model bölünmez, Google talebi, yamyamlaşma, önbellek), kalite kapısı
+    (her biçim geçer, okunabilirlik, ürün kartı, iç bağlantılar), benzer ürünlerde kopya meta / içerik yok, blog otomasyonu
+    (vakitler, seçili saatte bir kez, görselsiz / kalitesiz / izinsiz yayın yok, eski yazıya iç bağlantı, yayımlanan adres değişmez).
+  - Testler `SEOVISI_TEST=1` ile çalışır (`hepsi.py` koyar): anahtar kelime araştırması Google'a istek göndermez.
   - `test_otopilot.py`: yeni ürün otopilotu (bellekteki sahte mağaza; kategori analizinin kararını belirleyen `guclu_oneri`).
   - `hepsi.py` testlerin projenin `data` klasörünü oluşturmadığını da denetler.
   - `test_yazma_guvenligi.py`: bellekteki sahte Ideasoft ile yazma güvenliği, yedek ve geri alma. Yazma koduna dokunan her değişiklikte buraya test ekle.
@@ -76,7 +80,9 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `yedek.py` | Günlük yedek: data klasörünün tutarlı zip kopyası (anahtar hariç), eski yedeklerin silinmesi. |
 | `yonetim.py` | Yönetici paneli yardımcıları: parola karması (`data/yonetici.json`), oturum çerezi, kayıtlardaki hatalar. |
 | `eknot.py` | Ek not: ürün açıklamasının sonuna eklenen not ve bağlantının HTML'i, tanınması / çıkarılması, SEO etkisi (yalnızca hesaplar). |
-| `blog.py` | Blog yazarı: ürün başına Ideasoft'un 13 blog kuralını tutan yazı (6 biçim), başlık / meta / özet, yoğunluk ayarı, blog görseli ayarları. Yalnızca hesaplar. |
+| `blog.py` | Blog yazarı: ürün başına Ideasoft'un 13 blog kuralını tutan yazı (6 biçim), başlık / meta / özet, yoğunluk ayarı, iç bağlantılar, ürün kartı, blog görseli ayarları. Yalnızca hesaplar. |
+| `kelime.py` | Blog hedef kelimesi araştırması: ürün adından adaylar, Google arama önerileri (hız sınırı, hata kesici), yerel puan, yamyamlaşma cezası. |
+| `kalite.py` | seovisi kalite kapısı: kendi SEO puanı, Türkçe okunabilirlik (Ateşman), meta / içerik özgünlüğü (MinHash dizini), sınırlar (`SINIRLAR`). Yalnızca hesaplar. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
 | `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. |
@@ -218,6 +224,27 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Hariç kategoriler `blog.haric`; None ise adında "bosch aksesuar" geçenler ve alt kategorileri. Pasif ürünlere yazılmaz.
 - Blog kategorisi Ideasoft `blog_categories`'ten seçilir ya da açılır. Ideasoft uygulamasında blog_read / blog_create / blog_update izinleri gerekir.
 - Sayfa `#v-blog`; stiller `bl-`, betik adları `bl` önekli. Yazı tipleri Fraunces, Caveat, Special Elite (Google Fonts).
+- Hedef kelime araştırması (`kelime.py`, `blog_hazirla`): kullanıcı kelime seçmediyse adaylar ürün adından çıkarılır, Google
+  önerileriyle (mağaza veritabanında `kelime_onbellek`, 30 gün) ve yerel ölçütlerle puanlanır; model adı bölünmez, ifade ürünün ana
+  ismiyle biter, başka yazının hedef kelimesi seçilmez. Hazırlanmış yazının kelimesi korunur. Ayar `blog.google` (varsayılan açık).
+  Kelime seçimiyle kayıt arası `BLOG.hazirla_kilit` altında (paralel hazırlıkta iki yazı aynı kelimeyi almaz).
+- Kalite kapısı (`kalite.py`): `blog.yaz_tam` yazıyı Ideasoft'un 13 kuralı ve `KA.SINIRLAR` (seovisi puanı 94, okunabilirlik 50,
+  meta benzerliği < 0,5, içerik benzerliği < 0,7, yamyamlaşma yok, anahtar kelime kaplaması) geçene kadar başka anlatım / biçim /
+  hedef kelimeyle (en çok `EN_COK_DENEME`) yazar. Kullanıcı biçimi seçtiyse (`bicim_sabit`) biçim değişmez. Her yazının izi
+  (`blog.iz`: hedef kelime, meta izi, içerik MinHash imzası, başlık, adres, kalite, görsel bilgisi) `BLOG.dizin_al()` dizinindedir;
+  `_blog_kaydet` planla birlikte izi de yazar. Yoğunluk hesabı HTML stillerini de saydığı için ürün kartı ve kutularda stil az tutulur.
+- İç bağlantılar: vitrin önekleri `API.vitrin_yollari()` (Ideasoft: `/urun/`, `/kategori/`, `/blog/`); ilgili yazılar yalnızca
+  gönderilmişlerden (`blog_ilgili`), kategori adresi kategori kaydından (`_blog_kategori`, tahmin edilmez). Yayımlanmış yazının
+  adresi (slug) yeniden hazırlanınca değişmez. Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır; fotoğraf
+  ürünün ilk görselinin adresi (`blog_urun_foto`).
+- Periyodik otomasyon (`app.py` "blog otomasyonu", ayar `blog.oto`): Blog Düzenle'nin en üstteki kartındaki "PERİYODİK OTOMASYON"
+  düğmesi aynı sayfada `#bl-oto` panosunu açar (`#v-blog.oto`; stiller `blo-`). Günler ve saatler Türkiye saatiyle (`TR_SAAT`);
+  gün dört eşit vakte bölünür (`BLOG_VAKITLER`). `blog_oto_tur` zamanlayıcıda her dakika: seçili gün ve saatte, saat başına bir kez
+  (`kv.blog_oto_slot`) `blog_oto_yayinla`. Yalnızca %100, kalite kapısını geçen ve görseli hazır yazı gider; görsel tarayıcıda
+  çizildiği için pano açıkken eksikler çizilip `/api/blog/oto/gorsel` ile mağaza klasörüne (`blog_oto_gorsel/`) kaydedilir; görsel
+  ayarı ya da başlık değişince eskir. Yayından sonra aynı kategorideki en çok iki eski yazı yeni yazıya bağlantıyla güncellenir
+  (`blog_oto_baglanti_tazele`, elle düzenlenenler hariç). İzin: `blog_oto_engel` (bağlantı, blog kategorisi, paket özelliği `blog`).
+  Geçmiş `blog_oto_log` tablosunda.
 
 ### Uyarılar (`uyari.py`)
 

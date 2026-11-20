@@ -71,6 +71,13 @@ Süreler tahminidir; tek geliştirici ve tam zamanlı çalışma varsayılmışt
 - [x] Ek not: seçilen kategorilerdeki ürünlerin açıklamasının sonuna kısa not ve bağlantı (ör. üretici sitesinden ürün kaydıyla ek garanti)
 - [x] Blog Düzenle: her ürüne Ideasoft blog kurallarının hepsini tutan yazı (6 biçim), önizleme, görsel atölyesi (4 tema), elle gönderim
   - [ ] (S) Gerçek mağazada ilk gönderimde hedef kelimenin blog kaydına yazıldığını panelden doğrulamak
+  - [x] Akıllı anahtar kelime araştırması (`kelime.py`): ürün adından adaylar, Google arama önerileriyle talep, yamyamlaşma cezası
+  - [x] seovisi kalite kapısı (`kalite.py`): kendi SEO puanı (19 kural), Türkçe okunabilirlik (Ateşman), kopya meta / içerik
+        kontrolü; sınırı geçmeyen yazı baştan yazılır
+  - [x] İç bağlantılama (ilgili yazılar, kategori, blog ana sayfası) ve yazının altında fotoğraflı ürün kartı
+  - [x] Periyodik blog otomasyonu (OTOMASYON sayfası): gün + 4 vakit (sabah, öğle, akşam, gece) saat seçimi, kuyruk, geçmiş
+  - [ ] (S) Gerçek mağazada: vitrindeki blog adresinin `/blog/<slug>` olduğunu ve kategori adreslerini doğrulamak
+  - [ ] (S) Sunucudan Google önerilerine erişimin çalıştığını (ve sınıra takılmadığını) canlıda doğrulamak
 - [ ] Özellik doldurma: renk, malzeme, beden gibi bilgileri ürün adından ek alanlara yazma
 - [x] Kırık bağlantı ve 404 taraması (sitenin herkese açık sayfaları üzerinden; API gerekmez)
 - [x] Uyarılar: fiyat hataları, aktif ama satılamaz ürünler (yalnızca okur)

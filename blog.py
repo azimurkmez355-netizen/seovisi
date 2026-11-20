@@ -21,11 +21,16 @@ import html
 import random
 import re
 
+import kalite as KA
+import kelime as KE
 import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 4   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 5   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+
+# mağaza vitrinindeki adreslerin önekleri (Ideasoft); iç bağlantılar bunlarla kurulur
+YOLLAR = {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/", "blog_ana": "/blog"}
 
 BICIMLER = {
     "rehber": {"ad": "Satın alma rehberi", "rozet": "REHBER", "ek": "Rehberi"},
@@ -92,6 +97,105 @@ KW_EK = [
     "{kw}, düzenli bakım yapıldığında performansını uzun süre korur.",
     "{kw} hakkındaki deneyimlerinizi bizimle paylaşabilirsiniz.",
 ]
+
+# girişler: aynı biçimdeki yazılar aynı cümleyle başlamasın (doğal, insan yazmış gibi okunur)
+GIRIS = {
+    "rehber": [
+        "{kw} almayı düşünüyorsanız önce şu soruyu sorun: Bu ürünü hangi işte, ne sıklıkla kullanacağım? Bu rehberde {k} için "
+        "bakmanız gereken noktaları sırayla ele alıyoruz.",
+        "Doğru {label} seçmek, ilk bakışta göründüğünden daha fazla ayrıntı ister. {kw} özelinde neye dikkat etmeniz gerektiğini, "
+        "kimler için uygun olduğunu ve {M} üzerinden nasıl kolayca alabileceğinizi anlattık.",
+        "Bir {label} alırken çoğu kişi yalnızca fiyata bakar, sonra ihtiyacına uymadığını fark eder. {kw} alırken bu hataya "
+        "düşmemeniz için kontrol listesi, teknik bilgiler ve pratik önerileri tek yazıda topladık.",
+    ],
+    "inceleme": [
+        "{kw} hakkında karar vermeden önce ürünü yakından tanımak istiyorsanız doğru yerdesiniz. Bu incelemede {k} ürününün "
+        "güçlü yanlarını ve kimler için mantıklı olduğunu açıkça anlatıyoruz.",
+        "Kâğıt üzerindeki değerler bir şey, günlük kullanım başka bir şey. {kw} incelemesinde ikisine de bakıyor, dikkat "
+        "edilmesi gereken noktaları saklamadan yazıyoruz.",
+        "{kw}, {label} arayanların sık karşılaştırdığı modellerden. Bu yazıda {k} ürününü özellikleri, kullanım alanları ve "
+        "kutu içeriğiyle birlikte ele aldık.",
+    ],
+    "ipucu": [
+        "{kw} elinizdeyse işin yarısı hazır; diğer yarısı doğru kullanımda saklı. {M} olarak {k} ile daha verimli çalışmanız "
+        "için 7 pratik ipucu derledik.",
+        "Aynı aletle iki kişi çalışır, biri işi yarı sürede bitirir. Fark çoğu zaman küçük alışkanlıklarda. {kw} için işinizi "
+        "kolaylaştıracak 7 ipucunu sırayla anlattık.",
+        "{kw} kullanırken birkaç basit kurala uymak hem sonucu hem ürünün ömrünü değiştirir. Bu yazıda {k} için en çok işe "
+        "yarayan 7 öneriyi bulacaksınız.",
+    ],
+    "sss": [
+        "{kw} hakkında bize en çok sorulan soruları tek yerde topladık. Satın almadan önce {k} ile ilgili merak ettiğiniz "
+        "her şeyin net cevabı bu yazıda.",
+        "Bir ürünü almadan önce akla takılan sorular genelde aynıdır. {kw} için bu soruları kısa ve net cevaplarla "
+        "yanıtladık; ayrıntılar için ürün sayfasına da bağlantı verdik.",
+        "{kw} ile ilgili sorularınız mı var? En sık sorulanları seçtik, cevaplarını ürünün kendi bilgilerinden derledik.",
+    ],
+    "bakim": [
+        "{kw} doğru bakımla yıllarca ilk günkü performansını korur. Bu rehberde {k} için günlük ve periyodik bakım "
+        "adımlarını, doğru saklama yöntemlerini ve kaçınmanız gereken hataları bulacaksınız.",
+        "Bakımı ihmal edilen bir {label}, beklenenden çok daha erken yorulur. {kw} için birkaç dakikanızı alacak düzenli "
+        "bakım adımlarını sade bir dille anlattık.",
+        "{kw} uzun yıllar sorunsuz çalışsın istiyorsanız bakım bir alışkanlık olmalı. Her kullanımdan sonra ve belirli "
+        "aralıklarla yapılacakları adım adım sıraladık.",
+    ],
+    "senaryo": [
+        "{kw} ile neler yapabileceğinizi merak ediyorsanız doğru yerdesiniz. {k} ürününü farklı işlerde nasıl "
+        "kullanabileceğinizi gerçek senaryolar üzerinden anlattık.",
+        "Bir {label} tek bir işe sıkışıp kalmamalı. {kw} için en sık karşılaşılan kullanım alanlarını ve her birinde nelere "
+        "dikkat etmeniz gerektiğini örneklerle anlattık.",
+        "{kw} hangi işte, nasıl kullanılır? Bu yazıda {k} için kullanım senaryolarını, aksesuar seçimini ve pratik "
+        "önerileri tek tek ele aldık.",
+    ],
+}
+
+# ek bölümler: her yazıya ürüne göre ikisi seçilir (yazılar birbirinin kopyası olmaz); {k} yoğunluk ayarına katılır
+EK_BOLUMLER = {
+    "sorular": ("Karar Vermeden Önce Kendinize Sorun",
+                [("p", "Seçimi kolaylaştırmanın en kısa yolu ihtiyacı netleştirmektir. Şu sorulara vereceğiniz cevaplar "
+                       "{k} için doğru karar olup olmadığını büyük ölçüde gösterir."),
+                 ("ol", ["Bu ürünü en çok hangi işte kullanacağım?", "Haftada kaç kez, ne kadar süreyle çalışacağım?",
+                         "Elimdeki aksesuarlar ve yedek parçalar uyumlu mu?",
+                         "Teknik değerler işimin gerektirdiğini karşılıyor mu?"])]),
+    "hatalar": ("Sık Yapılan Seçim Hataları",
+                [("p", "Pişmanlıkla biten alışverişlerin çoğu aynı birkaç hatadan kaynaklanır. {k} alırken bunlardan "
+                       "kaçınmanız yeterli."),
+                 ("cross", ["Yalnızca fiyata bakıp ihtiyacı hesaba katmamak", "Teknik değerleri işle karşılaştırmamak",
+                            "Ürün kodunu doğrulamadan sipariş vermek", "Aksesuar uyumunu sonraya bırakmak"])]),
+    "guvenlik": ("Kullanırken Güvenlik",
+                 [("p", "İyi sonuç güvenli çalışmayla başlar. {k} ile çalışmadan önce kısa bir kontrol yapmak hem sizi "
+                        "hem ürünü korur."),
+                  ("check", ["Kullanım kılavuzundaki uyarıları okuyun", "İşe uygun koruyucu ekipman kullanın",
+                             "Çalışma alanını temiz ve düzenli tutun", "Çocukların erişemeyeceği yerde saklayın"])]),
+    "aksesuar": ("Uyumlu Aksesuar ve Sarf Malzemesi",
+                 [("p", "Aynı ürünle alınan sonuç, kullanılan aksesuara göre belirgin şekilde değişir. {k} için işe uygun, "
+                        "kaliteli aksesuar seçmek hem süreyi kısaltır hem de daha temiz bir iş çıkarır."),
+                  ("p", "Aksesuar alırken ölçüye, bağlantı tipine ve yaptığınız işin malzemesine bakın. Emin olamadığınızda "
+                        "ürün kodunu belirterek bize sormanız en hızlı yoldur.")]),
+    "ilk_kullanim": ("İlk Kullanım İçin Kısa Kontrol Listesi",
+                     [("p", "Kutuyu açtıktan sonraki ilk birkaç dakika, {k} ile uzun ve sorunsuz bir başlangıç yapmanızı "
+                            "sağlar."),
+                      ("ol", ["Paket içeriğini kontrol edin", "Kılavuzu baştan sona bir kez okuyun",
+                              "Ürünü küçük ve basit bir işte deneyin", "Ayarları ve aksesuarları işinize göre netleştirin"])]),
+    "butce": ("Fiyat ve Değer Dengesi",
+              [("p", "En ucuz seçenek çoğu zaman en pahalıya patlar; en pahalısı da her işe gerekmez. {k} için doğru soru, "
+                     "ürünün sizin işinizde kaç yıl ve ne sıklıkla çalışacağıdır."),
+               ("p", "Kullanım sıklığınızı ve beklentinizi netleştirdiğinizde, ödediğiniz bedelin karşılığını alıp "
+                     "almayacağınızı kolayca görürsünüz.")]),
+    "tasima": ("Taşıma ve Saklama Önerileri",
+               [("p", "Ürünü bir işten diğerine taşırken korumak, ömrünü belirgin şekilde uzatır. {k} için mümkünse "
+                      "orijinal kutusunu ya da bir taşıma çantasını kullanın."),
+                ("ul", ["Kuru ve tozsuz bir yerde saklayın", "Üzerine ağır eşya koymayın",
+                        "Kablolu ürünlerde kabloyu sıkı sarmayın", "Uzun süre kullanmayacaksanız temizleyip kaldırın"])]),
+    "destek": ("Satış Sonrası Destek ve Garanti",
+               [("p", "Bir ürünü alırken yalnızca bugünü değil, yarını da düşünmek gerekir. {k} için garanti koşulları ve "
+                      "yedek parça bulunabilirliği ürün sayfasında ve ürünle gelen belgelerde yer alır."),
+                ("p", "Sorun yaşarsanız ürün kodunu ve satın alma bilgisini hazır tutmanız, desteğin hızlı ilerlemesini "
+                      "sağlar.")]),
+    "kod": ("Doğru Ürünü Bulmanın Kısa Yolu",
+            [("p", "Benzer adlı ürünler arasında yanlış modeli almak sık yaşanan bir durum. Ürün kodu ve barkod bu karışıklığı "
+                   "ortadan kaldırır: {k} için sipariş vermeden önce sayfadaki kodu kontrol etmeniz yeterli.")]),
+}
 
 # ürün adının başında hedef kelimeye katkısı olmayan sözcükler
 BOS_SOZ = {"professional", "profesyonel", "pro", "yeni", "orijinal", "orjinal", "original", "new"}
@@ -224,9 +328,60 @@ def _render(bloklar, kw, renk, link):
                        f'<p style="color:#fff;margin:0 0 12px">{_e(metin)}</p>{a}</div>')
         elif tur == "sosyal":
             out.append(_sosyal_html(v[0], v[1], renk))
+        elif tur == "ilgili":
+            out.append(_ilgili_html(v))
+        elif tur == "kart":
+            out.append(_kart_html(v, renk))
         elif tur == "imza":
             out.append(f'<p style="color:#777;font-size:15px;margin:0">{_e(v)}</p>')
     return '<div style="font-size:18px;line-height:1.85">\n' + "\n".join(out) + "\n</div>"
+
+
+# ---------------------------------------------------------------- iç bağlantılar ve ürün kartı
+
+def _koyu(renk, k=0.55):
+    n = int(renk[1:], 16)
+    return "#%02x%02x%02x" % tuple(max(0, int(((n >> s) & 255) * k)) for s in (16, 8, 0))
+
+
+def _ilgili_html(v):
+    """İlgili yazılar, kategori ve blog ana sayfası bağlantıları (iç bağlantılama). Stiller kısa: Ideasoft HTML'deki
+    stilleri de kelime sayar."""
+    li = "".join(f'<li><a href="{_e(u)}">{_e(t)}</a></li>' for t, u in v if u)
+    if not li:
+        return ""
+    return ('<div id="seovisi-ilgili" style="margin:40px 0 12px;padding:20px 26px;border-radius:16px;background:#f4f6f8">'
+            f'<p style="margin:0 0 6px"><strong>Bu konuda da ilginizi çekebilir</strong></p><ul>{li}</ul></div>')
+
+
+def _kart_html(v, renk):
+    """Yazının en dikkat çeken alanı: ürün fotoğrafı, ad, öne çıkan üç bilgi ve büyük düğmeyle ürün kartı. Yalnızca satır
+    içi ve az sayıda stil (Ideasoft editörü; stiller kelime sayımına girer). Dar ekranda iki sütun alt alta iner."""
+    koyu, link = _koyu(renk), v.get("link") or ""
+    if v.get("foto"):
+        resim = f'<img src="{_e(v["foto"])}" alt="{_e(v["ad"])}" style="display:block;width:100%;border-radius:12px">'
+    else:
+        resim = (f'<p style="margin:0;padding:60px 0;text-align:center;font-size:72px;font-weight:800;color:{renk}">'
+                 f'{_e((v.get("marka") or v["ad"] or "?")[:1].upper())}</p>')
+    if link:
+        resim = f'<a href="{_e(link)}">{resim}</a>'
+    tip = v.get("kategori") or ("" if ST.tr_lower(v.get("label") or "") in ("ürün", "urun") else v.get("label"))
+    ust = " · ".join(x for x in (v.get("marka"), tip) if x)
+    maddeler = "".join(f"<li>&#10003; {_e(m)}</li>" for m in v.get("maddeler") or [])
+    dugme = (f'<p><a href="{_e(link)}" style="display:inline-block;padding:15px 34px;border-radius:12px;background:#fff;'
+             f'color:{renk};font-size:18px;font-weight:800;text-decoration:none">'
+             f'{_e(v.get("dugme") or "Ürünü incele")} &#8594;</a></p>') if link else ""
+    alt = " · ".join(x for x in (f"Ürün kodu: {v['sku']}" if v.get("sku") else "", "Güncel fiyat ve stok ürün sayfasında") if x)
+    return (f'<div id="seovisi-urun-karti" style="margin:48px 0 32px;padding:28px;border-radius:24px;color:#fff;'
+            f'background:linear-gradient(135deg,{renk},{koyu})">'
+            f'<p style="margin:0 0 18px;font-size:12px;font-weight:700;letter-spacing:2px">{_e(v.get("rozet") or "BU YAZININ ÜRÜNÜ")}</p>'
+            '<div style="display:inline-block;vertical-align:middle;width:40%;min-width:220px;margin:0 3% 18px 0">'
+            f'<div style="background:#fff;border-radius:18px;padding:12px">{resim}</div></div>'
+            '<div style="display:inline-block;vertical-align:middle;width:55%;min-width:240px">'
+            + (f'<p style="margin:0;font-size:13px;font-weight:700">{_e(ust.upper())}</p>' if ust else "")
+            + f'<h3 style="margin:6px 0 14px;color:#fff;font-size:27px;line-height:1.25">{_e(v["ad"])}</h3>'
+            f'<ul style="list-style:none;margin:0 0 16px;padding:0">{maddeler}</ul>{dugme}'
+            f'<p style="margin:0;font-size:14px">{_e(alt)}</p></div></div>')
 
 
 # ---------------------------------------------------------------- sosyal medya alanı (yazının en altı)
@@ -401,9 +556,17 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
                      "açıkça anlatıyoruz."),
             ("toc", bolum),
             ("h2", h[0]),
-            ("p", f"{{k}} ilk bakışta {label} kategorisinde aradığınız düzeni sunuyor. {marka + ' imzası, ' if marka else ''}"
-                  f"özenli işçilik ve kullanıcıyı yormayan bir yapı ilk dikkat çeken noktalar."),
-            ("quote", f"İyi bir {label}, işi bittiğinde varlığını unutturur; geriye yalnızca temiz bir sonuç kalır."),
+            ("p", rng.choice([
+                f"{{k}} ilk bakışta {label} kategorisinde aradığınız düzeni sunuyor. {marka + ' imzası, ' if marka else ''}"
+                "özenli işçilik ve kullanıcıyı yormayan bir yapı ilk dikkat çeken noktalar.",
+                f"Kutudan çıkarınca ilk fark edilen, {{k}} ürününün derli toplu yapısı oluyor. "
+                f"{(marka + ' çizgisini taşıyan ') if marka else ''}tasarım, işe hızlı başlamanızı kolaylaştırıyor.",
+                f"{{k}} ile ilgili ilk izlenimimiz net: {label} kategorisinde gösterişten çok işe odaklanan bir ürün. "
+                "Yapısı, ilk kullanımda bile alışmayı kolaylaştırıyor."])),
+            ("quote", rng.choice([f"İyi bir {label}, işi bittiğinde varlığını unutturur; geriye yalnızca temiz bir sonuç kalır.",
+                                  "Doğru alet, işin yarısıdır; diğer yarısı onu tanıyıp yerinde kullanmaktır.",
+                                  f"Bir {label} değerini ilk günde değil, yüzüncü kullanımda gösterir.",
+                                  "Sağlam bir ürün, kendisini değil yaptığınız işi konuşturur."])),
             ("h2", h[1]),
             *spec_bl,
             kunye,
@@ -411,16 +574,30 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
             ("h3", "Öne çıkan yönler"),
             ("check", artilar),
             ("h3", "Dikkat edilmesi gerekenler"),
-            ("ul", ["Kullanmadan önce kılavuzdaki güvenlik uyarılarını mutlaka okuyun.",
-                    "İşinize uygun aksesuarı seçmek sonucun kalitesini doğrudan etkiler.",
-                    "Uzun ömür için kullanım sonrası temizlik ve doğru saklama şarttır."]),
+            ("ul", rng.choice([["Kullanmadan önce kılavuzdaki güvenlik uyarılarını mutlaka okuyun.",
+                                "İşinize uygun aksesuarı seçmek sonucun kalitesini doğrudan etkiler.",
+                                "Uzun ömür için kullanım sonrası temizlik ve doğru saklama şarttır."],
+                               ["Teknik değerleri kendi işinizin gerektirdiğiyle karşılaştırın.",
+                                "Aksesuar ve sarf malzemesi seçimini işin malzemesine göre yapın.",
+                                "Düzenli bakım yapılmazsa performans zamanla düşer."],
+                               ["İlk kullanımdan önce paket içeriğini ve kılavuzu kontrol edin.",
+                                "Ürünü tasarım amacının dışındaki işlerde zorlamayın.",
+                                "Kuru ve tozsuz bir yerde saklamak ömrünü uzatır."]])),
             ("h2", h[3]),
-            ("p", f"{{k}}; {use_txt} gibi işler yapan kullanıcılar için biçilmiş kaftan. Arada bir kullanacaklar da "
-                  "yoğun tempoda çalışanlar da ürünü ihtiyaçlarına göre değerlendirebilir."),
+            ("p", rng.choice([f"{{k}}; {use_txt} gibi işler yapan kullanıcılar için biçilmiş kaftan. Arada bir kullanacaklar da "
+                              "yoğun tempoda çalışanlar da ürünü ihtiyaçlarına göre değerlendirebilir.",
+                              f"Bu ürünü en çok {use_txt} gibi işlerle uğraşanlara öneriyoruz. {{k}}, düzenli kullanımda "
+                              "beklentiyi karşılayan dengeli bir seçenek.",
+                              f"{use_txt[:1].upper() + use_txt[1:]} gibi işler sizin için günlük rutinse {{k}} listenizde "
+                              "üst sıralarda olmalı. Arada bir kullanacaklar için de rahat bir seçenek."])),
             *([("h2", h[4]), ("p", f"{{k}} kutusundan çıkanlar:"), *pkg_bl] if pkg else []),
             ("h2", h[5]),
-            ("p", f"Sonuç olarak {{k}}, {label} arayanlar için dengeli ve güven veren bir tercih. {{k}} ile ilgili tüm "
-                  f"ayrıntılara {M} ürün sayfasından ulaşabilirsiniz."),
+            ("p", rng.choice([f"Sonuç olarak {{k}}, {label} arayanlar için dengeli ve güven veren bir tercih. {{k}} ile ilgili tüm "
+                              f"ayrıntılara {M} ürün sayfasından ulaşabilirsiniz.",
+                              f"Toparlarsak: {{k}}, ihtiyacını bilen kullanıcı için mantıklı bir {label}. Karar vermeden önce "
+                              f"teknik bilgileri işinizle karşılaştırmanız yeterli; ayrıntılar {M} ürün sayfasında.",
+                              f"Kısacası {{k}}, vaat ettiğini yapan bir ürün. Ürün kodu ve barkodla doğru modeli seçtiğinizden "
+                              f"emin olun; güncel bilgiler {M} ürün sayfasında."])),
             ("fill", None),
             cta, imza,
         ]
@@ -459,7 +636,9 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
 
     if bicim == "sss":
         sorular = [
-            (f"{{kw}} nedir, ne işe yarar?", f"{{k}}, {label} kategorisinde yer alan bir üründür; {use_txt} için kullanılır."),
+            (rng.choice([f"{{kw}} nedir, ne işe yarar?", f"{{kw}} ne için kullanılır?", f"{{kw}} kimlere uygun?"]),
+             rng.choice([f"{{k}}, {label} kategorisinde yer alan bir üründür; {use_txt} için kullanılır.",
+                         f"Kısaca {label} kategorisinde bir ürün: {{k}} özellikle {use_txt} için tercih ediliyor."])),
             ("Ürün kodu ve barkod numarası nedir?", f"Ürün kodu {sku or '-'}" + (f", barkod numarası {bk}." if bk else ".")
              + " Bu bilgilerle doğru ürünü kolayca doğrulayabilirsiniz."),
             (f"{{k}} hangi işlerde kullanılır?", f"{{k}} özellikle şu işlerde tercih edilir: {use_txt}."),
@@ -467,11 +646,19 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
              if spec else "Teknik bilgiler ürün sayfasında ayrıntılı olarak yer alır."),
             ("Kutudan neler çıkıyor?", ("Paket içeriği: " + ", ".join(pkg[:5]) + ".") if pkg
              else "Paket içeriği ürün sayfasında ayrıntılı olarak listelenir."),
-            (f"{{k}} nasıl bakım ister?", "Her kullanım sonrası temizlik, düzenli kontrol ve kuru bir ortamda saklama "
-                                          "ürünün ömrünü uzatır."),
-            ("Garanti koşulları nelerdir?", "Garanti koşulları ürün sayfasında ve ürünle birlikte gelen belgelerde yer alır."),
-            (f"{{k}} nereden alınır?", f"{{k}} ürününü {M} üzerinden güvenle sipariş edebilirsiniz."),
+            (rng.choice([f"{{k}} nasıl bakım ister?", "Bakım için ne yapmalıyım?"]),
+             rng.choice(["Her kullanım sonrası temizlik, düzenli kontrol ve kuru bir ortamda saklama ürünün ömrünü uzatır.",
+                         "Kullanımdan sonra tozu ve kalıntıyı alın, bağlantı noktalarını ara ara kontrol edin ve nemsiz bir "
+                         "yerde saklayın."])),
+            (rng.choice(["Garanti koşulları nelerdir?", "Garanti ve destek nasıl işliyor?"]),
+             "Garanti koşulları ürün sayfasında ve ürünle birlikte gelen belgelerde yer alır."),
+            (rng.choice([f"{{k}} nereden alınır?", "Siparişi nereden verebilirim?"]),
+             rng.choice([f"{{k}} ürününü {M} üzerinden güvenle sipariş edebilirsiniz.",
+                         f"Ürün sayfasından {M} üzerinden sipariş verebilirsiniz; ürün kodunu kontrol etmeyi unutmayın."])),
         ]
+        son = sorular[5:]
+        rng.shuffle(son)
+        sorular[5:] = son
         out = [
             ("lead", f"{{kw}} hakkında bize en çok sorulan soruları tek yerde topladık. Satın almadan önce {{k}} ile ilgili "
                      "merak ettiğiniz her şeyin net cevabı bu yazıda."),
@@ -555,6 +742,68 @@ def _bloklar(bicim, urun, b, prof, kategori, rng):
     return out
 
 
+def _spec_kisa(t):
+    m = re.match(r"^([^:]{2,40}):\s*(.{1,40})$", t.strip())
+    return f"{m.group(1).strip().lower()} {m.group(2).strip().rstrip('.')}" if m else (t.strip().rstrip(".") if len(t) <= 50 else "")
+
+
+def _ozel_paragraf(b):
+    """Ürünün kendi bilgilerinden kurulan paragraf: her yazıda farklıdır (özgünlük) ve uydurma değer içermez."""
+    spec = [x for x in (_spec_kisa(t if isinstance(t, str) else t[0]) for t in b["spec"]) if x][:3]
+    if len(spec) >= 2:
+        liste = ", ".join(spec[:-1]) + " ve " + spec[-1]
+        return (f"Ürünün teknik bilgilerinde {liste} öne çıkıyor. {{label}} karşılaştırırken bu değerleri kendi işinizin "
+                "ihtiyacıyla yan yana koyun; {k} için doğru karar çoğu zaman burada netleşir.")
+    uses = [u[:1].lower() + u[1:] for u in b["uses"][:3]]
+    if uses:
+        return (f"{{k}} en çok {', '.join(uses)} gibi işlerde tercih ediliyor. Kendi işinizi bu listeyle karşılaştırmak, "
+                "beklentinizi doğru kurmanın en kolay yolu.")
+    return ""
+
+
+def _kart_maddeleri(b):
+    for kaynak in (b["feat"], [t if isinstance(t, str) else t[0] for t in b["spec"]], b["uses"]):
+        m = [re.sub(r"\s+", " ", x).strip().rstrip(".") for x in kaynak if x and len(x) <= 80][:3]
+        if len(m) >= 2:
+            return m
+    return ["Ürün kodu ve barkodla doğrulanabilir model bilgisi", "Teknik bilgiler ürün sayfasında"]
+
+
+def _zenginlestir(bloklar, bicim, urun, b, prof, rng, ilgili, kart):
+    """Biçimin iskeletini kişiselleştirir: başka bir giriş, ürüne özel paragraf, iki ek bölüm, iç bağlantılar ve ürün kartı."""
+    M = prof["magaza"] or "mağazamız"
+    out = list(bloklar)
+    for i, (tur, v) in enumerate(out):
+        if tur == "lead":
+            out[i] = ("lead", rng.choice(GIRIS[bicim] + [v]).replace("{M}", M))
+            break
+    ozel = _ozel_paragraf(b)
+    k_i = next((i for i, (t, _) in enumerate(out) if t == "kunye"), None)
+    if ozel and k_i is not None:
+        out.insert(k_i, ("p", ozel))
+    havuz = [k for k in EK_BOLUMLER if not (bicim == "bakim" and k == "ilk_kullanim")]
+    rng.shuffle(havuz)
+    ek = []
+    for k in havuz[:2]:
+        baslik, govde = EK_BOLUMLER[k]
+        ek += [("h2", baslik)] + govde
+    f_i = next(i for i, (t, _) in enumerate(out) if t == "fill")
+    son_h2 = max((i for i, (t, _) in enumerate(out[:f_i]) if t == "h2"), default=f_i)
+    out[son_h2:son_h2] = ek
+    toc = next((i for i, (t, _) in enumerate(out) if t == "toc"), None)
+    if toc is not None and len(out[toc][1]) < 7:
+        out[toc] = ("toc", list(out[toc][1]) + [baslik for baslik, _ in (EK_BOLUMLER[k] for k in havuz[:2])])
+    yeni = []
+    for tur, v in out:
+        if tur == "cta":
+            if ilgili:
+                yeni.append(("ilgili", ilgili))
+            yeni.append(("kart", kart))
+        else:
+            yeni.append((tur, v))
+    return yeni
+
+
 def _doldur(bloklar, kw, label):
     """{kw} her zaman hedef kelime; {k} yerleri tek tek sayılır (yoğunluk ayarı)."""
     def f(t):
@@ -562,7 +811,9 @@ def _doldur(bloklar, kw, label):
 
     out = []
     for tur, v in bloklar:
-        if isinstance(v, str):
+        if isinstance(v, dict):
+            pass
+        elif isinstance(v, str):
             v = f(v)
         elif isinstance(v, tuple):
             v = tuple(f(x) for x in v)
@@ -643,17 +894,92 @@ def _dagit(j, n):
 
 # ---------------------------------------------------------------- başlık, meta, özet
 
-def sayfa_basligi(kw, bicim, magaza):
-    ek = BICIMLER[bicim]["ek"]
-    for t in (f"{kw} {ek} | {magaza}" if magaza else "", f"{kw} {ek}", f"{kw} | {magaza}" if magaza else "",
-              f"{kw} Rehberi", kw, f"{kw} Hakkında Her Şey"):
+SAYFA_EK = {"rehber": ["Rehberi", "Satın Alma Rehberi", "Nasıl Seçilir?"],
+            "inceleme": ["İncelemesi", "Detaylı İnceleme", "Artıları ve Özellikleri"],
+            "ipucu": ["İpuçları", "Kullanım İpuçları", "7 Pratik Öneri"],
+            "sss": ["Soru ve Cevaplar", "Sık Sorulan Sorular", "Merak Edilenler"],
+            "bakim": ["Bakım Rehberi", "Bakımı Nasıl Yapılır?", "Bakım ve Saklama"],
+            "senaryo": ["Kullanım Alanları", "Nerelerde Kullanılır?", "Kullanım Örnekleri"]}
+
+
+def sayfa_basligi(kw, bicim, magaza, rng=None):
+    """Hedef kelimeyle başlayan, 20-60 karakterlik sayfa başlığı; ek ürüne göre döner (aynı kalıp her yazıda tekrar etmez)."""
+    ekler = list(SAYFA_EK[bicim])
+    if rng:
+        rng.shuffle(ekler)
+    adaylar = [f"{kw} {e} | {magaza}" for e in ekler if magaza] + [f"{kw} {e}" for e in ekler] \
+        + ([f"{kw} | {magaza}"] if magaza else []) + [f"{kw} Rehberi", kw, f"{kw} Hakkında Her Şey"]
+    for t in adaylar:
         if t and 20 <= len(t) <= 60:
             return t
     return kw[:60]
 
 
-def meta_aciklama(kw, bicim, magaza, rng):
+META_GIRIS = {
+    "rehber": ["{kw} alırken nelere dikkat etmeli?", "{kw} seçerken bilmeniz gerekenler.", "Doğru {kw} seçimi için kısa rehber.",
+               "{kw} işinize uygun mu?"],
+    "inceleme": ["{kw} incelemesi.", "{kw} yakından: artılar ve dikkat edilecekler.", "{kw} gerçekten fark yaratıyor mu?",
+                 "{kw} detaylı inceleme."],
+    "ipucu": ["{kw} ile daha verimli çalışmanın 7 yolu.", "{kw} kullanırken işinizi kolaylaştıran ipuçları.",
+              "{kw} için ustalardan pratik öneriler.", "{kw} kullananlara 7 ipucu."],
+    "sss": ["{kw} hakkında en çok sorulanlar.", "{kw}: merak edilen soruların cevapları.", "{kw} ile ilgili net cevaplar.",
+            "{kw} hakkında bilmeniz gerekenler."],
+    "bakim": ["{kw} bakımı nasıl yapılır?", "{kw} uzun ömürlü nasıl kullanılır?", "{kw} için adım adım bakım.",
+              "{kw} ilk günkü gibi kalsın."],
+    "senaryo": ["{kw} hangi işlerde kullanılır?", "{kw} ile neler yapabilirsiniz?", "{kw} için gerçek kullanım örnekleri.",
+                "{kw} sahada nasıl kullanılır?"],
+}
+
+
+def _meta_govdeler(bicim, b, sku, marka):
+    """Ürünün kendi bilgilerinden meta gövdeleri: aynı biçimdeki iki ürünün metası birbirine benzemesin."""
+    spec = [x for x in (_spec_kisa(t if isinstance(t, str) else t[0]) for t in b["spec"]) if x]
+    uses = [u[:1].lower() + u[1:] for u in b["uses"] if len(u) <= 45]
+    pkg = [x for x in b["pkg"] if len(x) <= 30]
+    out = []
+    if len(spec) >= 2:
+        out.append(f"{_bas_harf(spec[0])} ve {spec[1]} gibi teknik bilgiler.")
+    if spec:
+        out.append(f"Öne çıkan değer: {spec[0]}.")
+    if uses:
+        out.append(f"{_bas_harf(uses[0])} için kullanım önerileri.")
+        if len(uses) > 1:
+            out.append(f"{_bas_harf(uses[0])} ve {uses[1]} için öneriler.")
+    if pkg:
+        out.append(f"Kutudan {pkg[0].lower()} ve fazlası çıkıyor.")
+    if sku:
+        out.append(f"Ürün kodu {sku} ile doğru model.")
+    out += {"rehber": ["Kontrol listesi ve teknik bilgiler.", f"{b['label'].capitalize()} seçiminde dikkat edilecekler."],
+            "inceleme": ["Artılar, dikkat edilecekler ve kutu içeriği.", "Kimler tercih etmeli?"],
+            "ipucu": ["Kullanım, aksesuar ve bakım önerileri.", "Güvenlik ve verim ipuçları."],
+            "sss": ["Kullanım, bakım ve sipariş soruları.", "Ürün kodu, barkod ve kullanım bilgisi."],
+            "bakim": ["Temizlik, kontrol ve saklama adımları.", "Sık yapılan bakım hataları."],
+            "senaryo": ["Uygulama örnekleri ve aksesuar önerileri.", "Gerçek kullanım senaryoları."]}[bicim]
+    if marka:
+        out.append(f"{marka} güvencesiyle.")
+    return out
+
+
+def meta_aciklama(kw, bicim, magaza, rng, b=None, sku="", marka="", digerleri=None, haric=None):
+    """Hedef kelimeli, 50-155 karakterlik meta açıklama. Adaylar ürünün kendi bilgileriyle kurulur ve mağazanın diğer
+    yazılarının metalarıyla karşılaştırılır; benzerliği sınırın altındaki ilk aday seçilir (kopya meta olmaz)."""
     at = PR.loc(magaza) if magaza else ""
+    if b is not None:
+        girisler = [g.replace("{kw}", kw) for g in META_GIRIS[bicim]]
+        govdeler = _meta_govdeler(bicim, b, sku, marka)
+        kapanis = [f"Detaylar {at}." if at else "Detaylar yazıda.", f"{magaza} blogunda." if magaza else "Hepsi tek yazıda.", ""]
+        adaylar = [re.sub(r"\s+", " ", f"{g} {gv} {k}").strip() for g in girisler for gv in govdeler for k in kapanis]
+        adaylar = [a for a in adaylar if 50 <= len(a) <= 155 and ST.tr_lower(kw) in ST.tr_lower(a)]
+        rng.shuffle(adaylar)
+        if adaylar:
+            en_iyi, dz = None, KA.dizin(digerleri)
+            for a in adaylar[:60]:
+                sim, _ = dz.meta_benzerlik(a, kw, haric)
+                if sim < KA.SINIRLAR["meta_benzerlik"] * 0.8:
+                    return a
+                if en_iyi is None or sim < en_iyi[0]:
+                    en_iyi = (sim, a)
+            return en_iyi[1]
     adaylar = {
         "rehber": [f"{kw} alırken nelere dikkat etmeli? Kontrol listesi, teknik bilgiler ve ipuçlarıyla doğru seçim rehberi {at}.",
                    f"{kw} satın alma rehberi: kimler için uygun, nelere bakılmalı? Ürün kodu ve barkoduyla {at}."],
@@ -677,7 +1003,15 @@ def meta_aciklama(kw, bicim, magaza, rng):
     return (a[:152].rsplit(" ", 1)[0] + "...") if len(a) > 155 else (a + " Ürün detayları ve ipuçları.")[:155]
 
 
-def ozet(kw, bicim, magaza):
+def ozet(kw, bicim, magaza, rng=None, b=None):
+    """Blog listesinde görünen özet: biçimin cümlesi ve (varsa) ürünün kendi bilgisinden bir cümle."""
+    if rng is not None and b is not None:
+        spec = [x for x in (_spec_kisa(t if isinstance(t, str) else t[0]) for t in b["spec"]) if x]
+        uses = [u[:1].lower() + u[1:] for u in b["uses"] if len(u) <= 45]
+        ek = ([f"Öne çıkan bilgiler: {', '.join(spec[:2])}."] if spec else []) + \
+             ([f"Özellikle {uses[0]} için pratik öneriler."] if uses else [])
+        if ek:
+            return ozet(kw, bicim, "") + " " + rng.choice(ek) + (f" {magaza} blogunda." if magaza else "")
     s = {"rehber": f"{kw} alırken nelere dikkat etmelisiniz? Kontrol listesi, teknik bilgiler ve uzman ipuçlarıyla doğru seçim rehberi.",
          "inceleme": f"{kw} incelemesi: öne çıkan özellikler, dikkat edilmesi gerekenler ve kimlerin tercih etmesi gerektiği.",
          "ipucu": f"{kw} ile daha verimli çalışmanız için kullanım, aksesuar, güvenlik ve bakım üzerine 7 pratik ipucu.",
@@ -703,9 +1037,11 @@ def anahtar_kelimeler(kw, label, bicim, prof):
 # ---------------------------------------------------------------- yazar
 
 def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, method="", hedef=2.5, renk="#1b4f72",
-        kategori=None, kw="", sosyal=None):
+        kategori=None, kw="", sosyal=None, foto="", ilgili=None, digerleri=None, yollar=None, arastirma=None):
     """urun: Ideasoft ürün kaydı (id, name, sku, barcode, slug, brand, categories). kategori: {"ad", "slug"} (isteğe bağlı).
-    kw verilirse o hedef kelime kullanılır (kullanıcının düzenlediği). Dönüş: blog planı (mağazaya yazılmaz)."""
+    kw verilirse o hedef kelime kullanılır (kullanıcının düzenlediği). foto: ürün fotoğrafının adresi (ürün kartında).
+    ilgili: [(başlık, adres)] mağazanın ilgili yazıları (iç bağlantı). digerleri: diğer yazıların izleri (kalite.iz);
+    meta özgünlüğü ve kalite raporu bunlarla karşılaştırılır. Dönüş: blog planı (mağazaya yazılmaz)."""
     prof = PR.with_brand(prof, urun)
     pid = urun.get("id") or 0
     bicim = bicim_sec(bicim, pid, varyant)
@@ -719,7 +1055,17 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     # ürün kodu başlığın sonunda: kodla yapılan aramalarda yazı bulunur (görselde kod ayrıca yazdığı için orada yok)
     baslik = f"{gorsel_baslik} {sku}" if sku and ST.tr_lower(sku) not in ST.tr_lower(gorsel_baslik) else gorsel_baslik
     sosyal = sosyal_listesi(sosyal)
-    link = f"/urun/{urun['slug']}" if urun.get("slug") else ""
+    yollar = dict(YOLLAR, **(yollar or {}))
+    link = f"{yollar['urun']}{urun['slug']}" if urun.get("slug") else ""
+    # iç bağlantılar: ilgili yazılar, ürünün kategorisi, blog ana sayfası (ürün sayfası ürün kartında)
+    baglantilar = [(t, u) for t, u in (ilgili or [])[:3] if t and u]
+    if kategori and kategori.get("slug") and kategori.get("ad"):
+        baglantilar.append((f"Tüm {kategori['ad']} ürünleri", f"{yollar['kategori']}{kategori['slug']}"))
+    if prof["magaza"]:
+        baglantilar.append((f"{prof['magaza']} blogundaki diğer rehberler", yollar["blog_ana"]))
+    kart = {"ad": ad, "link": link, "foto": foto or "", "marka": prof["marka"], "label": b["label"],
+            "sku": sku, "maddeler": _kart_maddeleri(b), "dugme": "Ürünü incele", "rozet": "BU YAZININ ÜRÜNÜ",
+            "kategori": (kategori or {}).get("ad") or ""}
 
     refs = [r.replace("{label}", b["label"]) for r in GONDERME]
     dolgu = [d for d in DOLGU if ST.count_kw(d, kw) == 0]
@@ -735,27 +1081,38 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
         if sinir > len(tum_spec):
             continue
         b2 = dict(b, spec=tum_spec[:sinir])
-        ham = _doldur(_bloklar(bicim, urun, b2, prof, kategori, _rng(pid, bicim, varyant)), kw, b["label"])
+        iskelet = _bloklar(bicim, urun, b2, prof, kategori, _rng(pid, bicim, varyant))
+        ham = _doldur(_zenginlestir(iskelet, bicim, urun, b2, prof, _rng(pid, bicim, varyant, "zengin"), baglantilar,
+                                    dict(kart, maddeler=_kart_maddeleri(b2))), kw, b["label"])
         if sosyal:
             ham.append(("sosyal", (prof["magaza"], sosyal)))
         n_yer = _yer_sayisi(ham)
         for m_ in range(0, len(ek) + 1):
             for n in range(0, len(dolgu) + 1):
-                for j in range(0, n_yer + 1):
-                    h = _render(_uygula(ham, kw, refs, _dagit(j, n_yer), dolgu[:n], ek[:m_]), kw, renk, link)
-                    c = ST.count_kw(ST.strip_tags(h), kw)
-                    ws = [ST.count_words(h, m) for m in methods]
-                    dens = [c / w * 100 if w else 0 for w in ws]
-                    pay = min(min(d - 2.0, 3.0 - d) for d in dens)
-                    ort = sum(dens) / len(dens)
+                olculen = {}
+
+                def olc(j):
+                    if j not in olculen:
+                        h = _render(_uygula(ham, kw, refs, _dagit(j, n_yer), dolgu[:n], ek[:m_]), kw, renk, link)
+                        c = ST.count_kw(ST.strip_tags(h), kw)
+                        ws = [ST.count_words(h, m) for m in methods]
+                        dens = [c / w * 100 if w else 0 for w in ws]
+                        olculen[j] = (h, dens, min(min(d - 2.0, 3.0 - d) for d in dens), sum(dens) / len(dens))
+                    return olculen[j]
+                # yoğunluk anma sayısıyla neredeyse doğrusal artar: iki uçtan hedefe denk gelen sayı tahmin edilir,
+                # yalnızca çevresi denenir (her sayıyı tek tek çizmek yerine)
+                o0, oN = olc(0)[3], olc(n_yer)[3]
+                tahmin = round((hedef - o0) / ((oN - o0) / n_yer)) if n_yer and oN > o0 else 0
+                for j in sorted({max(0, min(n_yer, tahmin + d)) for d in (-3, -2, -1, 0, 1, 2, 3)} | {0, n_yer}):
+                    h, dens, pay, ort = olc(j)
                     # önce güvenli aralık, sonra uzun teknik liste, hedefe yakınlık, az ek cümle (doğal metin)
                     anahtar = (min(pay, 0.25), sinir, -round(abs(ort - hedef), 1), -m_, -n, -j)
                     if en_iyi is None or anahtar > en_iyi[0]:
                         en_iyi = (anahtar, h, dens)
-                    if min(dens) > 3.0:          # daha çok anma yalnızca yükseltir
-                        break
                 if en_iyi[0][0] >= 0.25:
                     break
+                if min(olc(n_yer)[1]) < 2.25:
+                    break               # bütün anmalarla bile düşük: dolgu cümlesi yalnızca düşürür, sıradaki ek cümleye geç
             if en_iyi[0][0] >= 0.25:
                 break
         if en_iyi[0][0] >= 0.25:
@@ -763,37 +1120,84 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     _, icerik, dens = en_iyi
 
     magaza = prof["magaza"]
-    pt = sayfa_basligi(kw, bicim, magaza)
-    md = meta_aciklama(kw, bicim, magaza, _rng(pid, "meta", varyant))
-    plan = {"v": SURUM, "keyword": kw, "title": baslik, "gorsel_baslik": gorsel_baslik, "sosyal_iz": sosyal_izi(sosyal), "slug": slug(baslik), "excerpt": ozet(kw, bicim, magaza),
+    pt = sayfa_basligi(kw, bicim, magaza, _rng(pid, "pt", varyant))
+    digerleri = KA.dizin(digerleri)
+    md = meta_aciklama(kw, bicim, magaza, _rng(pid, "meta", varyant), b, sku, prof["marka"], digerleri, pid)
+    mk = anahtar_kelimeler(kw, b["label"], bicim, prof)
+    if arastirma:
+        kws = set(ST.tr_lower(kw).split())
+        ek_kw = [x for x in arastirma.get("ilgili") or [] if kws & set(ST.tr_lower(x).split())][:3]
+        mk = ", ".join([mk] + ek_kw) if ek_kw else mk
+    plan = {"v": SURUM, "keyword": kw, "title": baslik, "gorsel_baslik": gorsel_baslik, "sosyal_iz": sosyal_izi(sosyal),
+            "slug": slug(f"{kw} {BICIMLER[bicim]['ek']} {sku}", 75),
+            "excerpt": ozet(kw, bicim, magaza, _rng(pid, "ozet", varyant), b),
             "content": icerik, "pageTitle": pt, "metaDescription": md,
-            "metaKeywords": anahtar_kelimeler(kw, b["label"], bicim, prof), "bicim": bicim, "varyant": varyant,
+            "metaKeywords": mk, "bicim": bicim, "varyant": varyant,
             "rozet": BICIMLER[bicim]["rozet"], "label": b["label"],
             "densities": {m: round(d, 2) for m, d in zip(methods, dens)},
             "urun": {"id": pid, "ad": ad, "sku": urun.get("sku") or "", "barkod": urun.get("barcode") or "",
-                     "link": link, "marka": prof["marka"]}}
+                     "link": link, "marka": prof["marka"], "foto": foto or ""},
+            "ilgili": baglantilar}
+    if arastirma:
+        plan["arastirma"] = {k: arastirma.get(k) for k in ("adaylar", "ilgili", "google")}
     plan["score"] = puan(plan, method)
+    plan["imza"] = KA.icerik_imzasi(icerik, kw)
+    plan["kalite"] = KA.degerlendir(plan, digerleri, plan["score"], pid)
     return plan
 
 
-def yaz_tam(urun, details_html="", mevcut_kw="", bicim="", varyant=0, kw="", **kw_args):
-    """yaz() ile aynı; yazı 13 kuralın hepsini tutmazsa sırayla başka anlatım, başka biçim ve (hedef kelimeyi kullanıcı
-    seçmediyse) daha kısa bir hedef kelime denenir. İlk %100 olan döner; hiçbiri olmazsa en yüksek puanlı."""
+EN_COK_DENEME = 16
+
+
+def _daha_iyi(a, b):
+    """İki planın karşılaştırması: önce Ideasoft'un 13 kuralı, sonra seovisi kalite kapısı, sonra seovisi puanı."""
+    if b is None:
+        return True
+    ka, kb = a.get("kalite") or {}, b.get("kalite") or {}
+    return (a["score"]["yuzde"], ka.get("gecti", False), ka.get("puan", 0)) > \
+           (b["score"]["yuzde"], kb.get("gecti", False), kb.get("puan", 0))
+
+
+def yaz_tam(urun, details_html="", mevcut_kw="", bicim="", varyant=0, kw="", kw_adaylar=None, bicim_sabit=False, **kw_args):
+    """Kalite kapısıyla yazar: yazı Ideasoft'un 13 kuralını ve seovisi sınırlarını (kalite.SINIRLAR: SEO puanı,
+    okunabilirlik, meta ve içerik özgünlüğü, yamyamlaşma) geçene kadar başka anlatım, başka biçim ve (hedef kelimeyi
+    kullanıcı seçmediyse) araştırmanın sıradaki hedef kelimesiyle baştan yazılır. Geçen ilk yazı döner; hiçbiri geçmezse
+    en iyisi (kalite raporunda neden geçmediği görünür)."""
     ilk = bicim_sec(bicim, urun.get("id") or 0, varyant)
-    denemeler = [(ilk, varyant, kw), (ilk, varyant + 1, kw)] + [(b, varyant, kw) for b in SIRA if b != ilk]
-    if not kw:
+    if kw:
+        kelimeler = [kw]
+    else:
         ad = re.sub(r"\s+", " ", urun.get("name") or "").strip()
         prof = PR.with_brand(kw_args.get("prof"), urun)
-        for uz in (30, 22):
+        if not kw_adaylar:     # araştırma verilmediyse Google'sız (yerel ölçütlerle) sıralanan adaylar
+            label = SM.machine_type(ad, prof, urun)[0]
+            kw_adaylar = [a["kelime"] for a in KE.arastir(ad, mevcut_kw, urun.get("sku") or "", label,
+                                                           prof.get("marka") or "")["adaylar"]]
+        kelimeler = [k for k in (kw_adaylar or []) if k][:3]
+        for uz in (40, 30, 22):
             kisa = kelime_sec(ad, mevcut_kw, prof, en_uzun=uz, sku=urun.get("sku") or "")
-            denemeler += [(ilk, varyant, kisa)] + [(b, varyant, kisa) for b in SIRA if b != ilk]
-    en_iyi = None
-    for b, v, k in denemeler:
+            if ST.tr_lower(kisa) not in {ST.tr_lower(x) for x in kelimeler}:
+                kelimeler.append(kisa)
+    denemeler = []
+    for i, k in enumerate(kelimeler):
+        if i == 0:
+            denemeler += [(ilk, varyant, k), (ilk, varyant + 1, k), (ilk, varyant + 2, k)]
+            denemeler += [(b, varyant, k) for b in SIRA if b != ilk]
+        else:
+            denemeler += [(ilk, varyant, k), (ilk, varyant + 1, k)] + [(b, varyant, k) for b in SIRA if b != ilk][:2]
+    if "digerleri" in kw_args:
+        kw_args["digerleri"] = KA.dizin(kw_args["digerleri"])
+    if bicim_sabit:          # kullanıcı biçimi kendisi seçti: yalnızca anlatım ve hedef kelime değişir
+        denemeler = [(ilk, v, k) for k in kelimeler for v in range(varyant, varyant + 4)]
+    en_iyi, n = None, 0
+    for b, v, k in denemeler[:EN_COK_DENEME]:
         p = yaz(urun, details_html, mevcut_kw, b, v, kw=k, **kw_args)
-        if en_iyi is None or p["score"]["yuzde"] > en_iyi["score"]["yuzde"]:
+        n += 1
+        if _daha_iyi(p, en_iyi):
             en_iyi = p
-        if p["score"]["yuzde"] == 100:
+        if p["score"]["yuzde"] == 100 and p["kalite"]["gecti"]:
             break
+    en_iyi["kalite"]["deneme"] = n
     return en_iyi
 
 

@@ -9,6 +9,8 @@ import sys
 import time
 import unittest
 
+os.environ.setdefault("SEOVISI_TEST", "1")      # anahtar kelime araştırması Google'a istek göndermez
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.dirname(HERE)
 UYGULAMA_TESTI = "test_cok_magaza.py"      # kendi başına çalışan betik; unittest ile yüklenmez

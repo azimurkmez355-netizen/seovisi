@@ -536,6 +536,109 @@ body.bl-on main{max-width:1560px}
 .bl-kats label{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(43,38,32,.15);cursor:pointer;font-size:14px}
 .bl-kats label:last-child{border-bottom:0}
 .bl-kats input{accent-color:var(--bl-red)}
+/* seovisi kalite raporu (açık mektupta) ve kartlardaki kalite puanı */
+.bl-q{display:inline-block;margin-left:6px;font:700 11px/1 var(--bl-type);color:#fff;background:#b5651d;border-radius:999px;padding:5px 8px 4px;float:right}
+.bl-q.ok{background:#2d4a7a}
+.bl-kal{background:#fff;border-radius:10px;padding:18px 20px;margin:0 0 18px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.bl-kal-ust{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.bl-halka{--p:0;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:conic-gradient(var(--c,#2e9a58) calc(var(--p)*1%),#ece5d3 0)}
+.bl-halka b{width:76px;height:76px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 26px/1 var(--bl-serif)}
+.bl-halka b small{font:10px/1.2 var(--bl-type);letter-spacing:.08em;color:var(--bl-ink2);margin-top:3px}
+.bl-kal-ust h5{margin:0 0 6px;font:12px var(--bl-type);letter-spacing:.1em;text-transform:uppercase;color:var(--bl-ink2)}
+.bl-kal-ust p{margin:0;font-size:13.5px;color:var(--bl-ink2)}
+.bl-olc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0 4px}
+.bl-olc div{background:#faf6ec;border-radius:8px;padding:10px 12px}
+.bl-olc b{display:block;font:700 22px/1.1 var(--bl-serif)}
+.bl-olc span{font:11px/1.3 var(--bl-type);letter-spacing:.06em;color:var(--bl-ink2);text-transform:uppercase}
+.bl-olc i{display:block;font-style:normal;font-size:12.5px;color:var(--bl-ink2);margin-top:3px}
+.bl-kal details{margin-top:12px}
+.bl-kal summary{cursor:pointer;font:13px var(--bl-type);color:var(--bl-blue)}
+.bl-kal ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:5px;font-size:13px}
+.bl-kal li{display:flex;gap:7px;align-items:flex-start}
+.bl-kal li:before{content:"✓";flex:none;width:17px;height:17px;border-radius:50%;background:#2e9a58;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.bl-kal li.yarim:before{content:"½";background:#d9a933}
+.bl-kal li.no{color:#c2410c}.bl-kal li.no:before{content:"!";background:#c2410c}
+.bl-kw{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px}
+.bl-kw td,.bl-kw th{padding:6px 8px;border-bottom:1px dashed rgba(43,38,32,.15);text-align:left;vertical-align:top}
+.bl-kw th{font:11px var(--bl-type);letter-spacing:.08em;color:var(--bl-ink2);text-transform:uppercase}
+.bl-kw tr.sec td:first-child{font-weight:700;color:var(--bl-red)}
+.bl-kw .bar{display:inline-block;width:60px;height:6px;border-radius:6px;background:#ece5d3;vertical-align:middle;margin-right:6px;overflow:hidden}
+.bl-kw .bar i{display:block;height:100%;background:#2d4a7a}
+.bl-etiketler{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.bl-etiketler span{font-size:12px;background:#f1ead7;border-radius:999px;padding:4px 10px}
+
+/* PERİYODİK OTOMASYON düğmesi (mektup kartının içinde, göze batan) */
+.bl-oto-btn{position:relative;display:inline-flex;align-items:center;gap:14px;margin-top:18px;padding:12px 26px 12px 12px;border:0;border-radius:16px;cursor:pointer;
+  background:linear-gradient(135deg,#c0392b,#7a1f18);color:#fff;text-align:left;font:800 15px/1.1 var(--body);letter-spacing:.16em;
+  box-shadow:0 16px 28px -12px rgba(122,31,24,.8),inset 0 1px 0 rgba(255,255,255,.28);transition:transform .15s}
+.bl-oto-btn:hover{transform:translateY(-2px) rotate(-.4deg)}
+.bl-oto-btn:before{content:"";position:absolute;inset:-6px;border-radius:21px;border:2px solid rgba(192,57,43,.6);animation:blNabiz 1.9s ease-out infinite;pointer-events:none}
+@keyframes blNabiz{0%{opacity:.95;transform:scale(1)}100%{opacity:0;transform:scale(1.07)}}
+.bl-oto-btn i{width:44px;height:44px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 4px rgba(255,255,255,.18)}
+.bl-oto-btn i svg{width:24px;height:24px;stroke:#c0392b;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bl-oto-btn small{display:block;font:600 12.5px/1.25 var(--body);letter-spacing:0;opacity:.92;margin-top:5px}
+.bl-oto-btn .nokta{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e5c3bf;margin-right:7px;vertical-align:1px}
+.bl-oto-btn .nokta.acik{background:#7af0a8;box-shadow:0 0 0 3px rgba(122,240,168,.35)}
+
+/* OTOMASYON sayfası: Blog Düzenle'nin içinde, yalnızca pano değişir */
+#bl-oto{display:none}
+#v-blog.oto>:not(#bl-oto){display:none}
+#v-blog.oto>#bl-oto{display:block}
+.blo-geri{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--bl-ink);background:var(--bl-kagit);color:var(--bl-ink);border-radius:999px;
+  padding:9px 18px 9px 14px;font:700 14px/1 var(--body);cursor:pointer;margin-bottom:16px}
+.blo-geri:hover{background:#fff8e8}
+.blo-head h1{letter-spacing:.06em}
+.blo-sw{display:flex;align-items:center;gap:14px;margin-top:16px;cursor:pointer;user-select:none}
+.blo-sw input{display:none}
+.blo-sw .ray{position:relative;width:74px;height:40px;border-radius:999px;background:#cdbf9f;transition:background .2s;flex:none;box-shadow:inset 0 2px 4px rgba(0,0,0,.18)}
+.blo-sw .ray:after{content:"";position:absolute;left:4px;top:4px;width:32px;height:32px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.3);transition:left .2s}
+.blo-sw input:checked+.ray{background:#2f8f55}
+.blo-sw input:checked+.ray:after{left:38px}
+.blo-sw b{font:700 22px/1.1 var(--bl-serif)}
+.blo-sw span.alt{display:block;font-size:13px;color:var(--bl-ink2);font-weight:400;margin-top:3px}
+.blo-uyari{background:#fff3e6;border-left:4px solid #c2410c;padding:12px 16px;border-radius:4px;margin:0 0 18px;font-size:14px}
+.blo-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:22px;align-items:start}
+.blo-kart{background:var(--bl-kagit);border-radius:3px;padding:22px 26px 24px;margin-bottom:22px;
+  box-shadow:0 18px 30px -20px rgba(70,45,10,.55),0 1px 4px rgba(70,45,10,.14)}
+.blo-kart h3{font:700 22px/1.15 var(--bl-serif);margin:0 0 4px;display:flex;align-items:center;gap:10px}
+.blo-kart h3 .num{font:600 26px/1 var(--bl-hand);color:var(--bl-red);transform:rotate(-6deg)}
+.blo-kart>p.muted{margin:0 0 14px;font-size:13.5px}
+.blo-gunler{display:flex;flex-wrap:wrap;gap:8px}
+.blo-gun{border:1.5px solid #cdbf9f;background:#fffdf7;border-radius:10px;padding:10px 14px;cursor:pointer;font:700 14px/1 var(--body);color:var(--bl-ink);min-width:62px}
+.blo-gun.on{background:var(--bl-ink);border-color:var(--bl-ink);color:#fbf6ea}
+.blo-kisa{display:flex;gap:6px;margin-top:10px}
+.blo-kisa button{border:0;background:none;color:var(--bl-blue);cursor:pointer;font:13px var(--bl-type);text-decoration:underline;padding:2px 4px}
+.blo-vakitler{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.blo-vakit{position:relative;border:2px solid #d9cdb0;background:#fffdf7;border-radius:16px;padding:14px 14px 12px;cursor:pointer;text-align:left;color:var(--bl-ink);transition:transform .15s,border-color .15s}
+.blo-vakit:hover{transform:translateY(-2px)}
+.blo-vakit.acik{border-color:var(--bl-ink);background:#fff;box-shadow:0 10px 18px -12px rgba(0,0,0,.4)}
+.blo-vakit.secili:after{content:attr(data-n);position:absolute;right:10px;top:10px;min-width:22px;height:22px;border-radius:999px;background:var(--bl-red);color:#fff;font:700 12px/22px var(--body);text-align:center;padding:0 5px}
+.blo-vakit svg{width:30px;height:30px;stroke:var(--bl-ink);fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.blo-vakit b{display:block;font:700 18px/1.1 var(--bl-serif);margin-top:8px}
+.blo-vakit small{font:12px var(--bl-type);color:var(--bl-ink2)}
+.blo-saatler{margin-top:14px;background:#fff;border-radius:12px;padding:14px 16px;border:1.5px dashed #cdbf9f}
+.blo-saatler p{margin:0 0 10px;font-size:13.5px;color:var(--bl-ink2)}
+.blo-saat-liste{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+.blo-saat{border:1.5px solid #cdbf9f;background:#fffdf7;border-radius:10px;padding:10px 0;cursor:pointer;font:700 15px/1 var(--body);font-variant-numeric:tabular-nums;color:var(--bl-ink)}
+.blo-saat.on{background:var(--bl-red);border-color:var(--bl-red);color:#fff}
+.blo-ozet{margin:14px 0 0;font:600 19px/1.3 var(--bl-hand);color:var(--bl-blue)}
+.blo-sayilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:6px 0 14px}
+.blo-sayilar div{background:#fff;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.blo-sayilar b{display:block;font:700 28px/1 var(--bl-serif)}
+.blo-sayilar span{font:11px/1.3 var(--bl-type);letter-spacing:.06em;color:var(--bl-ink2);text-transform:uppercase}
+.blo-liste{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.blo-liste li{background:#fff;border-radius:10px;padding:10px 12px;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.blo-liste li time{flex:none;font:700 13px/1.3 var(--bl-type);color:var(--bl-red);min-width:96px}
+.blo-liste li .d{flex:none;width:10px;height:10px;border-radius:50%;margin-top:4px;background:#9aa3ad}
+.blo-liste li .d.gonderildi,.blo-liste li .d.baglanti{background:#2f8f55}.blo-liste li .d.hata{background:#c2410c}
+.blo-acts{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.blo-chk{display:flex;gap:10px;align-items:flex-start;font:14px/1.45 var(--body);color:var(--bl-ink);cursor:pointer}
+.blo-chk input{width:18px;height:18px;margin-top:1px;accent-color:var(--bl-ink);flex:none}
+.blo-sinir{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13.5px}
+.blo-sinir div{background:#fff;border-radius:8px;padding:10px 12px}
+.blo-sinir b{display:block;font:700 20px/1.1 var(--bl-serif)}
+@media (max-width:1000px){.blo-grid{grid-template-columns:1fr}.blo-vakitler{grid-template-columns:1fr 1fr}.blo-saat-liste{grid-template-columns:repeat(3,minmax(0,1fr))}.blo-sayilar{grid-template-columns:1fr 1fr}.bl-olc{grid-template-columns:1fr}}
 @media (max-width:1180px){.bl-main,.bl-at{grid-template-columns:1fr}.bl-letter{position:static;max-height:none}}
 @media (max-width:760px){.bl-head{grid-template-columns:1fr;padding-left:56px}.bl-stamp,.bl-postmark{display:none}.bl-marks{grid-template-columns:1fr 1fr}.bl-set,.bl-rules,.bl-opts{grid-template-columns:1fr}.bl-letter{padding:26px 18px 24px 52px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -806,7 +909,9 @@ body.bl-on main{max-width:1560px}
       <span class="bl-kicker">seovisi · yazı masası</span><br>
       <h1>Blog Düzenle<svg viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M2 10 C 40 3, 70 14, 110 8 S 190 4, 230 9 S 280 12, 298 6"/></svg></h1>
       <p class="bl-hand">Her ürüne bir mektup: Google'a ve müşterilerinize…</p>
-      <p class="lede">Mağazanızdaki her ürün için Ideasoft'un blog SEO kurallarının hepsini tutan, arama niyetine cevap veren yazılar hazırlanır. Yazı ve görseli önizlersiniz; <b>hiçbir şey kendiliğinden gönderilmez</b>, her yazıyı siz gönderirsiniz.</p>
+      <p class="lede">Mağazanızdaki her ürün için Ideasoft'un blog SEO kurallarının hepsini tutan, arama niyetine cevap veren yazılar hazırlanır. Yazı ve görseli önizlersiniz; her yazıyı siz gönderirsiniz ya da <b>periyodik otomasyonu</b> açarak seçtiğiniz gün ve saatlerde kendiliğinden yayımlatırsınız.</p>
+      <button class="bl-oto-btn" id="bl-oto-ac" type="button"><i><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/></svg></i>
+        <span>PERİYODİK OTOMASYON<small><span class="nokta" id="bl-oto-nokta"></span><span id="bl-oto-ozet">Bloglarınızı seçtiğiniz vakitlerde otomatik yayımlayın</span></small></span></button>
     </div>
     <div class="bl-stamp" aria-hidden="true"><div class="in"><b id="bl-st-n">0</b><span>yazı<br>gönderildi</span><small id="bl-st-m">seovisi</small></div></div>
     <div class="bl-postmark" aria-hidden="true"><span id="bl-pm">SEOVISI<br>POSTA<br>%100 SEO</span><svg viewBox="0 0 190 52"><path d="M0 8 q12 -8 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0"/><path d="M0 26 q12 -8 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0"/><path d="M0 44 q12 -8 24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0 t24 0"/></svg></div>
@@ -903,6 +1008,69 @@ body.bl-on main{max-width:1560px}
       </div>
     </div>
   </details>
+
+  <!-- ===== OTOMASYON: Blog Düzenle'nin içinde, aynı yerde yalnızca pano değişir -->
+  <div id="bl-oto">
+    <button class="blo-geri" id="blo-geri" type="button">← Blog yazma masasına dön</button>
+    <header class="bl-head blo-head">
+      <div>
+        <span class="bl-kicker">seovisi · blog düzenle · yayın botu</span><br>
+        <h1>OTOMASYON<svg viewBox="0 0 300 16" preserveAspectRatio="none" aria-hidden="true"><path d="M2 10 C 40 3, 70 14, 110 8 S 190 4, 230 9 S 280 12, 298 6"/></svg></h1>
+        <p class="bl-hand">Siz klavyeden uzaktayken yazılar yayımlanır…</p>
+        <p class="lede">Günleri ve saatleri seçin; bot, "Hazır" yazılardan <b>kalite kapısını geçenleri</b> (Ideasoft'un 13 kuralı %100, seovisi SEO puanı, okunabilirlik, özgün meta ve içerik) sırayla Ideasoft'a gönderir. Saatler Türkiye saatidir.</p>
+        <label class="blo-sw"><input type="checkbox" id="blo-acik"><span class="ray"></span><span><b id="blo-acik-t">Bot kapalı</b><span class="alt" id="blo-acik-alt">Açınca seçtiğiniz vakitlerde kendiliğinden yayımlar.</span></span></label>
+      </div>
+      <div class="bl-stamp" aria-hidden="true"><div class="in"><b id="blo-st-n">0</b><span>yayına<br>hazır</span><small>otomasyon</small></div></div>
+    </header>
+    <div class="blo-uyari" id="blo-uyari" hidden></div>
+    <div class="blo-grid">
+      <div>
+        <section class="blo-kart">
+          <h3><span class="num">1</span>Günler</h3>
+          <p class="muted">Botun yayın yapacağı günleri seçin.</p>
+          <div class="blo-gunler" id="blo-gunler"></div>
+          <div class="blo-kisa"><button data-k="hepsi">Her gün</button><button data-k="ici">Hafta içi</button><button data-k="sonu">Hafta sonu</button><button data-k="yok">Temizle</button></div>
+        </section>
+        <section class="blo-kart">
+          <h3><span class="num">2</span>Vakitler ve saatler</h3>
+          <p class="muted">Gün dört eşit vakte bölündü. Bir vakte tıklayın, altında saatleri açılır; yayın yapılacak saatleri seçin.</p>
+          <div class="blo-vakitler" id="blo-vakitler"></div>
+          <div class="blo-saatler" id="blo-saatler"></div>
+          <p class="blo-ozet" id="blo-ozet"></p>
+        </section>
+        <section class="blo-kart">
+          <h3><span class="num">3</span>Yayın ayarları</h3>
+          <div class="bl-set" style="margin-top:8px">
+            <div class="field"><label>Her seçili saatte yayımlanacak yazı</label><span class="bl-seg" id="blo-adet"><button data-a="1">1 yazı</button><button data-a="2">2 yazı</button><button data-a="3">3 yazı</button></span></div>
+            <div class="field"><label>İç bağlantılama</label><div><label class="blo-chk"><input type="checkbox" id="blo-baglanti"><span>Yeni yazı yayımlanınca aynı kategorideki eski yazılara da ona bağlantı ekle</span></label></div></div>
+          </div>
+          <div class="blo-acts" style="margin-top:18px"><button class="btn ink" id="blo-kaydet">Ayarları kaydet</button><button class="btn ghost" id="blo-simdi">Şimdi bir yazı yayımla</button><span class="muted" id="blo-kayit-not"></span></div>
+        </section>
+      </div>
+      <div>
+        <section class="blo-kart">
+          <h3><span class="num">4</span>Yayın kuyruğu</h3>
+          <p class="muted">"Hazır, gönderilmedi" bölümündeki yazılar, en eski hazırlanan önce.</p>
+          <div class="blo-sayilar" id="blo-sayilar"></div>
+          <div class="blo-acts" id="blo-gorsel-acts"></div>
+          <ul class="blo-liste" id="blo-kuyruk" style="margin-top:12px"></ul>
+        </section>
+        <section class="blo-kart">
+          <h3><span class="num">5</span>Sıradaki yayınlar</h3>
+          <ul class="blo-liste" id="blo-takvim"></ul>
+        </section>
+        <section class="blo-kart">
+          <h3><span class="num">6</span>Kalite kapısı</h3>
+          <p class="muted">Bu sınırları geçmeyen yazı hazırlanırken baştan yazılır; geçmeyen yazıyı bot yayımlamaz.</p>
+          <div class="blo-sinir" id="blo-sinir"></div>
+        </section>
+        <section class="blo-kart">
+          <h3><span class="num">7</span>Bot geçmişi</h3>
+          <ul class="blo-liste" id="blo-gecmis"></ul>
+        </section>
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- ============================ YENİ ÜRÜN OTOPİLOTU -->
@@ -2697,6 +2865,7 @@ async function blTick(ilk){
   blListe();
   if(ilk || !once) blAyarDoldur();
   if(ilk && blAcik == null){ const ilkPlan = r.items.find(i => i.plan); if(ilkPlan) blAc(ilkPlan.pid); else blMektupBos(); }
+  if(ilk) blOtoOzet();
 }
 let blGonderim = null;     // süren toplu gönderim: {n, ok, err, dur}
 function blButonlar(){
@@ -2734,6 +2903,7 @@ function blListe(){
         : `<div class="bl-thumb"><i class="bl-tape"></i><div class="bl-blank"><svg viewBox="0 0 24 24"><path d="M14 4l6 6L9 21H3v-6z"/><path d="M12 6l6 6"/></svg>Henüz yazılmadı</div></div>`;
       return `<article class="bl-card${sec ? ' sel' : ''}${blAcik === it.pid ? ' on' : ''}" data-pid="${it.pid}">${ust}
         <div class="bl-cb">${p ? `<span class="bl-tag">${esc(p.rozet)}</span><span class="bl-seal${p.yuzde === 100 ? '' : ' no'}">%${p.yuzde}</span>` : ''}
+        ${p && p.kalite != null ? `<span class="bl-q${p.gecti ? ' ok' : ''}" title="seovisi kalite puanı${p.gecti ? ' (kapıyı geçti)' : ' (kalite kapısının altında)'}">seovisi ${p.kalite}</span>` : ''}
         <h4>${esc(p ? p.title : it.name)}</h4><p class="bl-sku">${esc(it.sku)}${it.barkod ? ' · ' + esc(it.barkod) : ''}</p>${not}</div>
         <label class="bl-pick" title="Seç"><input type="checkbox" ${sec ? 'checked' : ''} aria-label="Seç"></label></article>`;
     }).join('');
@@ -2821,6 +2991,20 @@ function blKurallar(sc){
   const k = sc.kurallar, li = x => `<li class="${x.ok ? '' : 'no'}">${esc(x.ad)}</li>`;
   return `<div class="bl-rules"><div><h5>Blog içeriği</h5><ul>${k.slice(0, 7).map(li).join('')}</ul></div><div><h5>SEO bilgileri</h5><ul>${k.slice(7).map(li).join('')}</ul></div></div>`;
 }
+function blKalite(p){
+  const k = p.kalite; if(!k) return '';
+  const o = k.okunabilirlik || {}, s = k.sinir || {}, renk = k.gecti ? '#2e9a58' : '#c2410c';
+  const kurallar = (k.kurallar || []).map(x => `<li class="${x.ok ? '' : x.kismi ? 'yarim' : 'no'}">${esc(x.ad)}</li>`).join('');
+  const a = p.arastirma, aday = a && a.adaylar && a.adaylar.length ? `<details><summary>Anahtar kelime araştırması${a.google ? ' (Google önerileriyle)' : ' (Google\'a ulaşılamadı; yerel ölçütlerle)'}</summary>
+    <table class="bl-kw"><tr><th>Aday</th><th>Puan</th><th>Neden</th></tr>${a.adaylar.map(x => `<tr class="${x.kelime === p.keyword ? 'sec' : ''}"><td>${esc(x.kelime)}</td><td><span class="bar"><i style="width:${x.puan}%"></i></span>${x.puan}</td><td>${esc((x.neden || []).slice(0, 3).join(' · '))}</td></tr>`).join('')}</table>
+    ${(a.ilgili || []).length ? `<p class="muted" style="margin:10px 0 0;font-size:13px">İnsanların aradığı ilgili ifadeler (anahtar kelimelere eklendi):</p><div class="bl-etiketler">${a.ilgili.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</details>` : '';
+  return `<div class="bl-kal"><div class="bl-kal-ust"><div class="bl-halka" style="--p:${k.puan};--c:${renk}"><b>${k.puan}<small>SEOVISI</small></b></div>
+    <div><h5>seovisi kalite kapısı · ${k.gecti ? 'geçti' : 'geçmedi'}</h5><p>${k.gecti ? 'Yazı kendi SEO kurallarımızı, okunabilirliği ve özgünlüğü geçti; otomasyon yayımlayabilir.' : `Sınır: SEO en az %${s.seo}, okunabilirlik en az ${s.okunabilirlik}. Yazı bu sınırları geçmediği için ${k.deneme ? k.deneme + ' kez ' : ''}yeniden yazıldı; otomasyon bu hâliyle yayımlamaz. "Yeniden yaz" ile başka bir anlatım deneyin.`}</p></div></div>
+    <div class="bl-olc"><div><span>Okunabilirlik</span><b>${o.puan ?? '–'}</b><i>${esc(o.seviye || '')} · ort. ${o.ort_cumle || 0} kelimelik cümle</i></div>
+      <div><span>Özgünlük</span><b>%${Math.round(100 - 100 * (k.icerik_benzerlik || 0))}</b><i>meta benzerliği %${Math.round(100 * (k.meta_benzerlik || 0))}${(k.yamyam || []).length ? ' · hedef kelime başka yazıda da var' : ''}</i></div>
+      <div><span>İç bağlantı</span><b>${k.ic_baglanti}</b><i>${nf(k.kelime)} kelime · ürün kartı</i></div></div>
+    <details><summary>Kurallar (${(k.kurallar || []).filter(x => x.ok).length} / ${(k.kurallar || []).length})</summary><ul>${kurallar}</ul></details>${aday}</div>`;
+}
 function blMektup(sekme){
   const r = blKayit, p = r.plan, a = blVeri.ayar, u = p.urun || {};
   const host = ((S && S.cfg && S.cfg.store) || 'magaza.com').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
@@ -2853,6 +3037,7 @@ function blMektup(sekme){
     <p class="bl-ex">${esc(p.excerpt)}</p>
     <div class="bl-serp"><span class="lbl">GOOGLE'DA BÖYLE GÖRÜNÜR</span><div class="u">${esc(host)} <small>› blog › ${esc(p.slug)}</small></div><div class="t">${esc(p.pageTitle)}</div><div class="d">${esc(p.metaDescription)}</div></div>
     ${blKurallar(p.score)}
+    ${blKalite(p)}
     <div class="bl-ltabs"><button data-t="onizle" class="${sekme === 'onizle' ? 'on' : ''}">Yazı</button><button data-t="duzenle" class="${sekme === 'duzenle' ? 'on' : ''}">Başlık ve SEO</button><button data-t="html" class="${sekme === 'html' ? 'on' : ''}">HTML</button></div>
     ${govde}
     <div class="bl-lacts">
@@ -3013,6 +3198,122 @@ $('#bl-prev').onclick = () => { if(blSayfa > 0){ blSayfa--; blImza = ''; blTick(
 $('#bl-next').onclick = () => { blSayfa++; blImza = ''; blTick(); };
 $('#bl-dur').onclick = async () => { await post('/api/blog/durdur'); blTick(); };
 setInterval(() => { if(document.querySelector('#v-blog.on') && blVeri && blVeri.running) blTick(); }, 2500);
+
+/* ---------------- blog otomasyonu (Blog Düzenle içinde; aynı yerde yalnızca pano değişir) */
+let blOto = null, blOtoAyar = null, blOtoVakit = null, blOtoKirli = false, blOtoCizim = null;
+const BLO_IKON = {
+  sabah: '<svg viewBox="0 0 24 24"><circle cx="12" cy="14" r="4"/><path d="M12 4v3M4.9 7.9l2.1 2.1M19.1 7.9 17 10M2 18h20M6 21h12"/></svg>',
+  ogle: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
+  aksam: '<svg viewBox="0 0 24 24"><path d="M7 17a5 5 0 0 1 10 0"/><path d="M2 17h20M5 21h14M12 5v4M5.6 9.6l1.8 1.8M18.4 9.6l-1.8 1.8"/></svg>',
+  gece: '<svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/><path d="M17 3v3M15.5 4.5h3"/></svg>'};
+const BLO_KISA_GUN = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+function bloTarih(s){
+  const [g, sa] = s.split(' '), d = new Date(g + 'T00:00:00');
+  return `${BLO_KISA_GUN[(d.getDay() + 6) % 7]} ${g.slice(8, 10)}.${g.slice(5, 7)} ${sa}`;
+}
+function blOtoAc(){ $('#v-blog').classList.add('oto'); window.scrollTo(0, 0); blOtoTick(true); }
+function blOtoKapat(){ $('#v-blog').classList.remove('oto'); window.scrollTo(0, 0); blImza = ''; blTick(true); }
+async function blOtoOzet(){
+  const r = await api('/api/blog/oto'); if(!r.ayar) return;
+  blOto = r; blOtoDugme();
+}
+function blOtoDugme(){
+  const r = blOto; if(!r) return;
+  $('#bl-oto-nokta').classList.toggle('acik', r.ayar.acik);
+  $('#bl-oto-ozet').textContent = r.ayar.acik ? `Açık · sıradaki yayın: ${r.sonraki.length ? bloTarih(r.sonraki[0]) : 'vakit seçilmedi'} · ${nf(r.kuyruk.uygun)} yazı hazır`
+    : 'Kapalı · bloglarınızı seçtiğiniz gün ve saatlerde otomatik yayımlayın';
+}
+async function blOtoTick(ilk){
+  const r = await api('/api/blog/oto'); if(!r.ayar) return;
+  blOto = r;
+  if(ilk || !blOtoAyar || !blOtoKirli){ blOtoAyar = JSON.parse(JSON.stringify(r.ayar)); blOtoKirli = false; }
+  if(ilk && blOtoVakit == null){ const ilkV = Object.entries(r.vakitler).find(([k, v]) => blOtoAyar.saatler.some(h => h >= v[1] && h < v[2])); blOtoVakit = ilkV ? ilkV[0] : 'sabah'; }
+  blOtoCiz(); blOtoDugme();
+  if(r.kuyruk.gorsel_eksik.length && !blOtoCizim) blOtoGorseller(r.kuyruk.gorsel_eksik);
+}
+function blOtoCiz(){
+  const r = blOto, a = blOtoAyar;
+  $('#blo-acik').checked = a.acik;
+  $('#blo-acik-t').textContent = a.acik ? 'Bot açık' : 'Bot kapalı';
+  $('#blo-acik-alt').textContent = a.acik ? (r.sonraki.length ? `Sıradaki yayın: ${bloTarih(r.sonraki[0])} (Türkiye saati)` : 'Gün ve saat seçin.') : 'Açınca seçtiğiniz vakitlerde kendiliğinden yayımlar.';
+  $('#blo-st-n').textContent = nf(r.kuyruk.uygun);
+  const u = $('#blo-uyari'); u.hidden = !r.engel; u.textContent = r.engel ? 'Bot şu an yayımlayamaz: ' + r.engel : '';
+  $('#blo-gunler').innerHTML = r.gunler.map((g, i) => `<button class="blo-gun${a.gunler.includes(i) ? ' on' : ''}" data-g="${i}" title="${esc(g)}">${BLO_KISA_GUN[i]}</button>`).join('');
+  $('#blo-gunler').querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = +b.dataset.g; a.gunler = a.gunler.includes(g) ? a.gunler.filter(x => x !== g) : [...a.gunler, g].sort(); blOtoKirli = true; blOtoCiz(); });
+  $('#blo-vakitler').innerHTML = Object.entries(r.vakitler).map(([k, [ad, bas, son]]) => {
+    const n = a.saatler.filter(h => h >= bas && h < son).length;
+    return `<button class="blo-vakit${blOtoVakit === k ? ' acik' : ''}${n ? ' secili' : ''}" data-v="${k}" data-n="${n}">${BLO_IKON[k]}<b>${ad}</b><small>${String(bas).padStart(2, '0')}:00 – ${String(son - 1).padStart(2, '0')}:59</small></button>`;
+  }).join('');
+  $('#blo-vakitler').querySelectorAll('[data-v]').forEach(b => b.onclick = () => { blOtoVakit = b.dataset.v; blOtoCiz(); });
+  const v = r.vakitler[blOtoVakit];
+  if(v){
+    const saat = []; for(let h = v[1]; h < v[2]; h++) saat.push(h);
+    $('#blo-saatler').innerHTML = `<p><b>${v[0]}</b> saatleri: yayın yapılacak saatlere tıklayın.</p><div class="blo-saat-liste">${saat.map(h => `<button class="blo-saat${a.saatler.includes(h) ? ' on' : ''}" data-h="${h}">${String(h).padStart(2, '0')}:00</button>`).join('')}</div>`;
+    $('#blo-saatler').querySelectorAll('[data-h]').forEach(b => b.onclick = () => { const h = +b.dataset.h; a.saatler = a.saatler.includes(h) ? a.saatler.filter(x => x !== h) : [...a.saatler, h].sort((x, y) => x - y); blOtoKirli = true; blOtoCiz(); });
+  }
+  const gunAd = a.gunler.length === 7 ? 'her gün' : a.gunler.length ? a.gunler.map(i => r.gunler[i]).join(', ') : 'gün seçilmedi';
+  const top = a.gunler.length * a.saatler.length * a.adet;
+  $('#blo-ozet').textContent = a.saatler.length && a.gunler.length ? `${gunAd}; saat ${a.saatler.map(h => String(h).padStart(2, '0') + ':00').join(', ')} → haftada ${top} yazı` : 'Henüz yayın vakti seçilmedi.';
+  $('#blo-adet').querySelectorAll('button').forEach(b => { b.classList.toggle('on', +b.dataset.a === a.adet); b.onclick = () => { a.adet = +b.dataset.a; blOtoKirli = true; blOtoCiz(); }; });
+  $('#blo-baglanti').checked = a.baglanti;
+  $('#blo-kayit-not').textContent = blOtoKirli ? 'Kaydedilmemiş değişiklik var.' : '';
+  const k = r.kuyruk;
+  $('#blo-sayilar').innerHTML = [[k.hazir, 'Hazır yazı'], [k.uygun, 'Yayına uygun'], [k.kalite_alti, 'Kalite altında'], [k.gorsel_eksik.length, 'Görseli eksik']]
+    .map(([n, t]) => `<div><b>${nf(n)}</b><span>${t}</span></div>`).join('');
+  $('#blo-gorsel-acts').innerHTML = blOtoCizim ? `<span class="muted">Görseller hazırlanıyor: ${nf(blOtoCizim.ok)} / ${nf(blOtoCizim.n)} (bu sayfa açık kalsın)</span>`
+    : k.gorsel_eksik.length ? `<button class="btn ink sm" id="blo-gorsel">Görselleri hazırla (${nf(k.gorsel_eksik.length)})</button>` : '<span class="muted">Bütün uygun yazıların görseli hazır.</span>';
+  const gb = $('#blo-gorsel'); if(gb) gb.onclick = () => blOtoGorseller(k.gorsel_eksik);
+  $('#blo-kuyruk').innerHTML = k.ilk.length ? k.ilk.map(x => `<li><span class="d ${x.uygun ? 'gonderildi' : x.yuzde === 100 && x.gecti ? '' : 'hata'}"></span><span><b>${esc(x.baslik)}</b><br><span class="muted">seovisi ${x.kalite} · Ideasoft %${x.yuzde}${x.uygun ? ' · yayına uygun' : !(x.yuzde === 100 && x.gecti) ? ' · kalite kapısının altında' : ' · görsel bekleniyor'}</span></span></li>`).join('')
+    : '<li>Kuyruk boş. Blog yazma masasında yazı hazırlayın; hazır yazılar buraya gelir.</li>';
+  const uygun = k.ilk.filter(x => x.uygun);
+  $('#blo-takvim').innerHTML = r.sonraki.length ? r.sonraki.map((t, i) => {
+    const yazi = uygun.slice(i * a.adet, (i + 1) * a.adet);
+    return `<li><time>${bloTarih(t)}</time><span>${yazi.length ? yazi.map(x => esc(x.baslik)).join('<br>') : '<span class="muted">Sırada yazı yok</span>'}</span></li>`;
+  }).join('') : '<li>Gün ve saat seçince sıradaki yayınlar burada görünür.</li>';
+  const s = r.sinir;
+  $('#blo-sinir').innerHTML = `<div><b>%100</b>Ideasoft'un 13 blog kuralı</div><div><b>${s.seo}+</b>seovisi SEO puanı</div><div><b>${s.okunabilirlik}+</b>Okunabilirlik (Ateşman)</div><div><b>%${Math.round(100 - 100 * s.meta_benzerlik)}+</b>Meta özgünlüğü</div><div><b>%${Math.round(100 - 100 * s.icerik_benzerlik)}+</b>İçerik özgünlüğü</div><div><b>Tek</b>Her hedef kelime tek yazıda</div>`;
+  const etiket = {gonderildi: 'Yayımlandı', baglanti: 'Bağlantı eklendi', hata: 'Hata', bos: 'Kuyruk boş', atlandi: 'Atlandı'};
+  $('#blo-gecmis').innerHTML = r.gecmis.length ? r.gecmis.map(x => `<li><span class="d ${x.durum}"></span><time>${bloTarih(x.zaman)}</time><span><b>${etiket[x.durum] || x.durum}</b> · ${esc(x.mesaj)}</span></li>`).join('')
+    : '<li>Bot henüz bir şey yapmadı.</li>';
+}
+async function blOtoKaydet(ek){
+  const r = await post('/api/blog/oto/ayar', Object.assign({}, blOtoAyar, ek || {}));
+  if(r.error) toast(r.error); else if(r.msg) toast(r.msg);
+  blOtoKirli = false;
+  if(r.durum){ blOto = r.durum; blOtoAyar = JSON.parse(JSON.stringify(r.durum.ayar)); blOtoCiz(); blOtoDugme(); }
+  if(blOto && blOto.kuyruk.gorsel_eksik.length && !blOtoCizim) blOtoGorseller(blOto.kuyruk.gorsel_eksik);
+}
+async function blOtoGorseller(pids){
+  if(blOtoCizim || !pids.length) return;
+  if(!blVeri) await blTick(true);
+  const c = blOtoCizim = {n: pids.length, ok: 0};
+  try{
+    for(const pid of pids){
+      if(!document.querySelector('#v-blog.oto')) break;
+      const r = await api(`/api/blog/plan?pid=${pid}`);
+      if(r.plan){ const g = await blJpeg(pid, r.plan); await post('/api/blog/oto/gorsel', {pid, gorsel: g}); }
+      c.ok++; if(blOto) blOtoCiz();
+    }
+  } finally { blOtoCizim = null; }
+  blOtoTick();
+}
+$('#bl-oto-ac').onclick = () => blOtoAc();
+$('#blo-geri').onclick = () => blOtoKapat();
+$('#blo-acik').onchange = e => {
+  blOtoAyar.acik = e.target.checked;
+  if(blOtoAyar.acik && !(blOtoAyar.gunler.length && blOtoAyar.saatler.length)){ e.target.checked = blOtoAyar.acik = false; toast('Önce en az bir gün ve bir saat seçin.'); return; }
+  blOtoKaydet();
+};
+$('#blo-kaydet').onclick = () => blOtoKaydet();
+$('#blo-baglanti').onchange = e => { blOtoAyar.baglanti = e.target.checked; blOtoKirli = true; blOtoCiz(); };
+document.querySelectorAll('.blo-kisa [data-k]').forEach(b => b.onclick = () => {
+  blOtoAyar.gunler = {hepsi: [0, 1, 2, 3, 4, 5, 6], ici: [0, 1, 2, 3, 4], sonu: [5, 6], yok: []}[b.dataset.k]; blOtoKirli = true; blOtoCiz();
+});
+$('#blo-simdi').onclick = async () => {
+  if(!await ask('Kuyruktaki sıradaki uygun yazı (kalite kapısını geçmiş ve görseli hazır) hemen Ideasoft\'a gönderilecek.', {title: 'Şimdi bir yazı yayımlansın mı?', ok: 'Yayımla', go: true})) return;
+  const r = await post('/api/blog/oto/simdi'); if(r.msg) toast(r.msg); setTimeout(blOtoTick, 2500);
+};
+setInterval(() => { if(document.querySelector('#v-blog.on.oto')) blOtoTick(); }, 5000);
 
 oTick();
 /* ---------------- uygulama geneli */

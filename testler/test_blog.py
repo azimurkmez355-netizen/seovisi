@@ -9,6 +9,8 @@ import sys
 import time
 import unittest
 
+os.environ.setdefault("SEOVISI_TEST", "1")      # Google'a istek gitmez
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from test_otopilot import KATEGORILER, Ortam, SahteMagaza  # noqa: E402
 

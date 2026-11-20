@@ -30,7 +30,7 @@ import urllib.parse
 import urllib.request
 import webbrowser
 from collections import Counter, deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -49,6 +49,8 @@ import yedek as YD  # noqa: E402
 import yonetim as YN  # noqa: E402
 import eknot as EN  # noqa: E402
 import blog as BL  # noqa: E402
+import kalite as KA  # noqa: E402
+import kelime as KE  # noqa: E402
 import platformlar as PL  # noqa: E402
 from platformlar import ApiError, store_host  # noqa: E402,F401
 from platformlar.ideasoft import Ideasoft  # noqa: E402
@@ -2662,6 +2664,40 @@ EKNOT = _Ref("eknot")
 BLOG_HARIC_ORNEK = "bosch aksesuar"
 BLOG_GORSEL_MAX = 4 * 1024 * 1024
 BLOG_SAYFA = 24
+KELIME_GUN = 30                       # Google öneri önbelleğinin geçerlilik süresi (gün)
+TR_SAAT = timezone(timedelta(hours=3))   # Türkiye saati (yaz / kış uygulaması yok); otomasyon saatleri buna göre
+
+
+def tr_simdi():
+    return datetime.now(TR_SAAT)
+
+
+def kelime_getirici():
+    """Google arama önerileri (anahtar kelime araştırması). Testlerde (SEOVISI_TEST) ve ayarda kapalıysa yok."""
+    if os.environ.get("SEOVISI_TEST") or not blog_ayar().get("google", True):
+        return None
+    return KE.GOOGLE
+
+
+class _KelimeOnbellek:
+    """Google önerileri mağazanın veritabanında KELIME_GUN gün saklanır (aynı sorgu tekrar sorulmaz)."""
+
+    def get(self, q):
+        r = DBI.q("SELECT v, zaman FROM kelime_onbellek WHERE q=?", (ST.tr_lower(q),), one=True)
+        if r and r["zaman"] >= (datetime.now() - timedelta(days=KELIME_GUN)).strftime("%Y-%m-%d"):
+            return json.loads(r["v"])
+        return None
+
+    def set(self, q, liste):
+        DBI.x("INSERT OR REPLACE INTO kelime_onbellek(q, v, zaman) VALUES(?, ?, ?)",
+              (ST.tr_lower(q), json.dumps(liste, ensure_ascii=False), datetime.now().strftime("%Y-%m-%d")))
+
+
+def vitrin_yollari():
+    try:
+        return API.vitrin_yollari()
+    except (NotImplementedError, AttributeError):
+        return dict(BL.YOLLAR)
 
 
 def blog_ayar():
@@ -2677,7 +2713,7 @@ def blog_ayar():
             "bicim": a.get("bicim") if a.get("bicim") in BL.BICIMLER else "karisik",
             "kategori": int(a.get("kategori") or 0), "kategori_ad": a.get("kategori_ad") or "",
             "durum": 0 if a.get("durum") == 0 else 1, "renk": renk, "gorsel": BL.gorsel_ayar(a.get("gorsel")),
-            "sosyal": BL.sosyal_ayar(a.get("sosyal"))}
+            "sosyal": BL.sosyal_ayar(a.get("sosyal")), "google": a.get("google") is not False}
 
 
 def blog_ayar_yaz(d):
@@ -2697,6 +2733,8 @@ def blog_ayar_yaz(d):
         a["gorsel"] = BL.gorsel_ayar(dict(BL.gorsel_ayar(a.get("gorsel")), **(d["gorsel"] or {})))
     if "sosyal" in d:
         a["sosyal"] = BL.sosyal_ayar(d["sosyal"])
+    if "google" in d:
+        a["google"] = bool(d["google"]) and d["google"] not in ("0", "false")
     CFG.update(blog=a)
     return blog_ayar()
 
@@ -2718,9 +2756,56 @@ def blog_urunler():
     return {pid: u for pid, u in out.items() if u["aktif"] != 0 and not (haric & set(u["kats"]))}
 
 
+def _blog_iz(plan):
+    """Planın karşılaştırma izi (kopya meta / içerik / hedef kelime) ve ilgili yazı önerisi için kısa bilgisi."""
+    d = KA.iz(plan)
+    k = plan.get("kalite") or {}
+    d.update(baslik=plan.get("title") or "", slug=plan.get("slug") or "", yuzde=(plan.get("score") or {}).get("yuzde", 0),
+             kalite=k.get("puan", 0), gecti=bool(k.get("gecti")), gorsel=_gorsel_veri(plan))
+    return d
+
+
 def _blog_kaydet(pid, **alan):
     DBI.x("INSERT OR IGNORE INTO blog(pid, durum) VALUES(?, '')", (pid,))
+    if isinstance(alan.get("plan"), str):
+        iz = _blog_iz(json.loads(alan["plan"]))
+        alan["iz"] = json.dumps(iz, ensure_ascii=False)
+        BLOG.dizin_al().ekle(pid, iz)
     DBI.x(f"UPDATE blog SET {', '.join(k + '=?' for k in alan)} WHERE pid=?", (*alan.values(), pid))
+
+
+def blog_ilgili(pid, kw, kats):
+    """İç bağlantılama: gönderilmiş yazılar içinden bu ürünle en ilgili üçü (aynı kategori, ortak kelimeler).
+    Dönüş: [(başlık, vitrin adresi)]."""
+    yol = vitrin_yollari()["blog"]
+    kats = set(kats or [])
+    kwk = {w for w in ST.tr_lower(kw).split() if len(w) > 2}
+    urun_kats = {}
+    for r in DBI.q("SELECT pid, cats FROM catprod"):
+        urun_kats[r["pid"]] = set(json.loads(r["cats"] or "[]"))
+    adaylar = []
+    for r in DBI.q("SELECT pid, iz FROM blog WHERE durum='gonderildi' AND blog_id IS NOT NULL AND iz IS NOT NULL AND pid<>?",
+                   (pid,)):
+        d = json.loads(r["iz"])
+        if not d.get("slug"):
+            continue
+        ortak_kat = len(kats & urun_kats.get(r["pid"], set()))
+        ortak_kelime = len(kwk & {w for w in ST.tr_lower(d.get("keyword") or "").split() if len(w) > 2})
+        puan = 3 * min(ortak_kat, 2) + ortak_kelime
+        if puan:
+            adaylar.append((-puan, r["pid"], d["baslik"], yol + d["slug"]))
+    adaylar.sort()
+    return [(t, u) for _, _, t, u in adaylar[:3]]
+
+
+def blog_urun_foto(pid):
+    """Ürün kartındaki fotoğrafın adresi (ürünün ilk görseli); yoksa boş."""
+    try:
+        recs = sorted(API.gorseller(pid, 5), key=lambda r: r.get("sortOrder") or 0)
+        u = _image_url(recs[0]) if recs else ""
+        return API.mutlak_url(u) if u else ""
+    except (ApiError, OSError, ValueError):
+        return ""
 
 
 def _blog_ozet(plan):
@@ -2731,16 +2816,25 @@ def _blog_ozet(plan):
 
 
 def _blog_kategori(prod):
-    """Ürünün en özel (en derin) kategorisi: {"ad", "slug"}."""
+    """Ürünün en özel (en derin) kategorisi: {"ad", "slug"}. Ürün kaydında kategorinin adresi (slug) yoksa kategori
+    kaydından okunur (iç bağlantı için; tahmin edilmez, bulunamazsa bağlantı verilmez)."""
     yollar = category_paths()
-    en, derin = None, -1
+    en, derin, en_cid = None, -1, None
     for c in prod.get("categories") or []:
         cid = _ref_id(c)
         yol = yollar.get(cid) or (c.get("name") if isinstance(c, dict) else "") or ""
         d = yol.count("›")
         if cid and d > derin:
             ad = (c.get("name") if isinstance(c, dict) else "") or yol.split("›")[-1].strip()
-            en, derin = {"ad": ad, "slug": (c.get("slug") if isinstance(c, dict) else "") or ""}, d
+            en, derin, en_cid = {"ad": ad, "slug": (c.get("slug") if isinstance(c, dict) else "") or ""}, d, cid
+    if en and not en["slug"] and en_cid:
+        onbellek = BLOG.kat_slug
+        if en_cid not in onbellek:
+            try:
+                onbellek[en_cid] = (API.kategori(en_cid) or {}).get("slug") or ""
+            except ApiError:
+                onbellek[en_cid] = ""
+        en["slug"] = onbellek[en_cid]
     return en
 
 
@@ -2766,16 +2860,43 @@ def blog_hazirla(pid, bicim=None, yeni=False, kw=""):
     detail = API.get_detail(prod)
     urun_kw = (kw_read(prod)[0] if kw_loc() else prod.get("targetKeyword")) or ""
     varyant = int(eski.get("varyant") or 0) + (1 if yeni else 0)
+    sabit = bicim in BL.BICIMLER or a["bicim"] in BL.BICIMLER       # biçimi kullanıcı seçti
     bicim = bicim if bicim in BL.BICIMLER else (eski.get("bicim") if eski and not yeni else a["bicim"])
+    prof = PR.with_brand(blog_profil(), prod)
+    foto = (eski.get("urun") or {}).get("foto") or blog_urun_foto(pid)
+    kategori = _blog_kategori(prod)
+    with BLOG.hazirla_kilit:     # hedef kelime seçimiyle kayıt arası tek iş: paralel hazırlıkta iki yazı aynı kelimeyi almaz
+        return _blog_hazirla_yaz(pid, prod, detail, row, eski, a, urun_kw, varyant, sabit, bicim, prof, foto, kategori, kw, yeni)
+
+
+def _blog_hazirla_yaz(pid, prod, detail, row, eski, a, urun_kw, varyant, sabit, bicim, prof, foto, kategori, kw, yeni):
+    dizin = BLOG.dizin_al()
+    # akıllı anahtar kelime araştırması (kullanıcı hedef kelimeyi kendisi seçmediyse)
+    arastirma, adaylar = None, []
+    if not kw:
+        label = SM.machine_type(prod.get("name") or "", prof, prod)[0]
+        kullanilan = [d["keyword"] for p_, d in dizin.izler.items() if p_ != pid]
+        arastirma = KE.arastir(prod.get("name") or "", urun_kw, prod.get("sku") or "", label, prof.get("marka") or "",
+                               kullanilan, kelime_getirici(), _KelimeOnbellek())
+        onceki = eski.get("keyword") or ""
+        if onceki and not yeni and not dizin.kelimeyi_kullanan(onceki, pid):
+            adaylar.append(onceki)                    # hazırlanmış yazının hedef kelimesi korunur (yamyamlaşma yoksa)
+        adaylar += [x["kelime"] for x in arastirma["adaylar"] if x["kelime"] not in adaylar]
+    kats = [_ref_id(c) for c in prod.get("categories") or [] if _ref_id(c)]
     plan = BL.yaz_tam(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
-                  prof=blog_profil(), method=CFG.get("count_method") or SAFE_METHODS,
-                  hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=_blog_kategori(prod),
-                  kw=kw or eski.get("keyword") or "", sosyal=a["sosyal"])
-    # aynı adreste (slug) başka bir yazı varsa ürün kodu eklenir
-    for r in DBI.q("SELECT pid, plan FROM blog WHERE pid<>? AND plan IS NOT NULL", (pid,)):
-        if json.loads(r["plan"]).get("slug") == plan["slug"]:
-            plan["slug"] = BL.slug(plan["slug"] + "-" + (prod.get("sku") or str(pid)))
-            break
+                      prof=prof, method=CFG.get("count_method") or SAFE_METHODS,
+                      hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=kategori,
+                      kw=kw, kw_adaylar=adaylar, sosyal=a["sosyal"], foto=foto,
+                      ilgili=blog_ilgili(pid, kw or (adaylar[0] if adaylar else prod.get("name") or ""), kats),
+                      digerleri=dizin, yollar=vitrin_yollari(), arastirma=arastirma, bicim_sabit=sabit)
+    if row and row["blog_id"] and eski.get("slug"):
+        plan["slug"] = eski["slug"]                  # yayımlanmış yazının adresi değişmez (bağlantılar ve Google)
+    else:
+        # aynı adreste (slug) başka bir yazı varsa ürün kodu eklenir
+        for r in DBI.q("SELECT iz FROM blog WHERE pid<>? AND iz IS NOT NULL", (pid,)):
+            if json.loads(r["iz"]).get("slug") == plan["slug"]:
+                plan["slug"] = BL.slug(plan["slug"] + "-" + (prod.get("sku") or str(pid)))
+                break
     durum = "gonderildi" if row and row["durum"] == "gonderildi" else "hazir"
     _blog_kaydet(pid, plan=json.dumps(plan, ensure_ascii=False), durum=durum, duzenlendi=0,
                  mesaj="Yazı hazır; önizleyip gönderin." if durum == "hazir" else "Yeni hâli hazır; güncellemek için gönderin.",
@@ -2801,6 +2922,8 @@ def blog_duzenle(pid, d):
     if isinstance(d.get("slug"), str) and d["slug"].strip():
         plan["slug"] = BL.slug(d["slug"])
     plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
+    plan["imza"] = KA.icerik_imzasi(plan["content"], plan["keyword"])
+    plan["kalite"] = KA.degerlendir(plan, BLOG.dizin_al(), plan["score"], pid)
     _blog_kaydet(pid, plan=json.dumps(plan, ensure_ascii=False), duzenlendi=1)
     return plan, "Değişiklikler kaydedildi."
 
@@ -2972,7 +3095,34 @@ class BlogYazari:
         self.running, self.done, self.todo, self.stop_flag, self.sonuc = False, 0, 0, False, {}
         DBI.x("""CREATE TABLE IF NOT EXISTS blog(pid INTEGER PRIMARY KEY, plan TEXT, durum TEXT, mesaj TEXT, blog_id INTEGER,
                  zaman TEXT, duzenlendi INTEGER DEFAULT 0, gonderilen TEXT)""")
+        try:
+            DBI.x("ALTER TABLE blog ADD COLUMN iz TEXT")     # karşılaştırma izi (kopya meta / içerik, hedef kelime)
+        except sqlite3.OperationalError:
+            pass
+        DBI.x("CREATE TABLE IF NOT EXISTS kelime_onbellek(q TEXT PRIMARY KEY, v TEXT, zaman TEXT)")
+        DBI.x("""CREATE TABLE IF NOT EXISTS blog_oto_log(id INTEGER PRIMARY KEY AUTOINCREMENT, zaman TEXT, pid INTEGER,
+                 durum TEXT, mesaj TEXT)""")
         self.kategoriler = None          # Ideasoft blog kategorileri (istenince okunur)
+        self.dizin = None                # mağazanın yazılarının izleri (kalite.Dizin), ilk istenişte kurulur
+        self.dizin_kilit = threading.Lock()
+        self.oto_running = False         # otomasyon şu an yayımlıyor mu
+        self.kat_slug = {}               # kategori numarası -> vitrin adresi (iç bağlantılar için)
+        self.hazirla_kilit = threading.Lock()
+
+    def dizin_al(self):
+        """Bütün yazıların izleri; izi olmayan eski kayıtların izi bir kez hesaplanıp yazılır."""
+        with self.dizin_kilit:
+            if self.dizin is None:
+                d = KA.Dizin()
+                for r in DBI.q("SELECT pid, iz, plan FROM blog WHERE plan IS NOT NULL"):
+                    if r["iz"]:
+                        iz = json.loads(r["iz"])
+                    else:
+                        iz = _blog_iz(json.loads(r["plan"]))
+                        DBI.x("UPDATE blog SET iz=? WHERE pid=?", (json.dumps(iz, ensure_ascii=False), r["pid"]))
+                    d.ekle(r["pid"], iz)
+                self.dizin = d
+            return self.dizin
 
     def satirlar(self):
         urunler = blog_urunler()
@@ -2994,6 +3144,9 @@ class BlogYazari:
                         "plan": {"title": plan["title"], "gorsel_baslik": plan.get("gorsel_baslik") or plan["title"],
                                  "keyword": plan["keyword"], "rozet": plan["rozet"], "bicim": plan["bicim"],
                                  "yuzde": plan["score"]["yuzde"],
+                                 "kalite": (plan.get("kalite") or {}).get("puan"),
+                                 "gecti": bool((plan.get("kalite") or {}).get("gecti")),
+                                 "okunabilirlik": ((plan.get("kalite") or {}).get("okunabilirlik") or {}).get("puan"),
                                  "eski": plan.get("v") != BL.SURUM or (plan.get("sosyal_iz") or "") != iz} if plan else None})
         out.sort(key=lambda x: x["pid"])
         return out
@@ -3039,6 +3192,9 @@ class BlogYazari:
             return None
         plan = json.loads(r["plan"])
         plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
+        plan["kalite"] = dict(KA.degerlendir(plan, self.dizin_al(), plan["score"], pid),
+                              deneme=(plan.get("kalite") or {}).get("deneme"))
+        plan.pop("imza", None)
         return {"plan": plan, "durum": r["durum"] or "", "mesaj": r["mesaj"] or "", "blog_id": r["blog_id"],
                 "zaman": r["zaman"] or "", "duzenlendi": bool(r["duzenlendi"]),
                 "degisti": bool(r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan))}
@@ -3105,6 +3261,248 @@ class BlogYazari:
 
 
 BLOG = _Ref("blog")
+
+
+# ============================================================ blog otomasyonu (periyodik yayın)
+#
+# Kullanıcı günleri ve saatleri seçer (Türkiye saati; gün dört eşit vakte bölünür: sabah 06-11, öğle 12-17, akşam 18-23,
+# gece 00-05). Açıkken zamanlayıcı her dakika bakar; seçili gün ve saatte, o saat için bir kez, "Hazır" yazılardan
+# Ideasoft'un 13 kuralını ve seovisi kalite kapısını geçen, görseli hazır olanları sırayla (en eski hazırlanan önce)
+# gönderir. Blog görseli panelde (canvas) çizildiği için görseller otomasyon sayfası açıkken önceden çizilip
+# sunucuya kaydedilir (mağaza klasöründe blog_oto_gorsel/); yazı ya da görsel ayarı değişirse görsel yeniden çizilir.
+# Yayımlanan yazıyla aynı kategorideki en çok iki eski yazı, yeni yazıya bağlantı verecek şekilde yenilenir (iç bağlantı).
+# Paket özelliği "blog"; izin yoksa bot yayımlamaz ve nedenini kaydeder.
+
+BLOG_VAKITLER = {"sabah": ("Sabah", 6, 12), "ogle": ("Öğle", 12, 18), "aksam": ("Akşam", 18, 24), "gece": ("Gece", 0, 6)}
+BLOG_GUNLER = ["Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi", "Pazar"]
+BLOG_OTO_BAGLANTI = 2          # yayımlanan her yazı için yenilenen en çok eski yazı
+
+
+def _gorsel_veri(plan):
+    """Yazının görseline giren bilgiler (başlık, rozet, ürün kodu)."""
+    return [plan.get("gorsel_baslik") or plan.get("title") or "", plan.get("rozet") or "", (plan.get("urun") or {}).get("sku") or ""]
+
+
+def blog_gorsel_izi(plan=None, veri=None):
+    """Görselin içeriğini belirleyen bilgilerin ve bugünkü görsel ayarlarının özeti: biri değişirse kayıtlı görsel eskir,
+    otomasyon sayfası onu yeniden çizer."""
+    return hashlib.md5(json.dumps([veri or _gorsel_veri(plan), blog_profil()["magaza"], blog_ayar()["gorsel"]],
+                                  ensure_ascii=False, sort_keys=True).encode()).hexdigest()[:16]
+
+
+def blog_oto_ayar():
+    a = dict((CFG.get("blog") or {}).get("oto") or {})
+    gunler = a.get("gunler") if isinstance(a.get("gunler"), list) else [0, 1, 2, 3, 4]
+    saatler = a.get("saatler") if isinstance(a.get("saatler"), list) else [10, 15, 20]
+    return {"acik": bool(a.get("acik")),
+            "gunler": sorted({int(x) for x in gunler if str(x).isdigit() and 0 <= int(x) <= 6}),
+            "saatler": sorted({int(x) for x in saatler if str(x).isdigit() and 0 <= int(x) <= 23}),
+            "adet": min(3, max(1, int(a.get("adet") or 1))), "baglanti": a.get("baglanti") is not False,
+            "acildi": a.get("acildi") or ""}
+
+
+def blog_oto_yaz(d):
+    b = dict(CFG.get("blog") or {})
+    a = dict(b.get("oto") or {})
+    once = blog_oto_ayar()
+    for k in ("gunler", "saatler"):
+        if isinstance(d.get(k), list):
+            a[k] = [int(x) for x in d[k] if str(x).isdigit()]
+    if "adet" in d:
+        a["adet"] = min(3, max(1, int(d.get("adet") or 1)))
+    if "baglanti" in d:
+        a["baglanti"] = bool(d["baglanti"])
+    if "acik" in d:
+        a["acik"] = bool(d["acik"])
+        if a["acik"] and not once["acik"]:
+            a["acildi"] = tr_simdi().strftime("%Y-%m-%d %H:%M")
+            log("Blog otomasyonu açıldı.", "ok")
+        elif not a["acik"] and once["acik"]:
+            log("Blog otomasyonu kapatıldı.", "ok")
+    b["oto"] = a
+    CFG.update(blog=b)
+    return blog_oto_ayar()
+
+
+def _oto_gorsel_yolu(pid):
+    return os.path.join(current().dir, "blog_oto_gorsel", f"{int(pid)}")
+
+
+def blog_oto_gorsel_kaydet(pid, veri):
+    """Panelin çizdiği görsel (JPEG data URL) otomatik gönderim için saklanır."""
+    row = DBI.q("SELECT plan FROM blog WHERE pid=?", (pid,), one=True)
+    if not row or not row["plan"]:
+        return "Önce yazıyı hazırlayın."
+    g, hata = blog_gorsel_coz(veri)
+    if hata:
+        return hata
+    yol = _oto_gorsel_yolu(pid)
+    os.makedirs(os.path.dirname(yol), exist_ok=True)
+    with open(yol + ".jpg", "wb") as f:
+        f.write(base64.b64decode(g.split(",", 1)[1]))
+    with open(yol + ".iz", "w", encoding="utf-8") as f:
+        f.write(blog_gorsel_izi(json.loads(row["plan"])))
+    return None
+
+
+def blog_oto_gorsel_al(pid, plan):
+    """Kayıtlı ve güncel görsel (data URL); yoksa ya da eskidiyse None."""
+    yol = _oto_gorsel_yolu(pid)
+    try:
+        with open(yol + ".iz", encoding="utf-8") as f:
+            if f.read().strip() != blog_gorsel_izi(plan):
+                return None
+        with open(yol + ".jpg", "rb") as f:
+            return "data:image/jpeg;base64," + base64.b64encode(f.read()).decode()
+    except OSError:
+        return None
+
+
+def blog_oto_kuyruk():
+    """Hazır yazılar (en eski hazırlanan önce) ve otomasyonun yayımlayıp yayımlayamayacağı."""
+    out = []
+    for r in DBI.q("SELECT pid, iz, zaman FROM blog WHERE durum='hazir' AND iz IS NOT NULL ORDER BY zaman, pid"):
+        d = json.loads(r["iz"])
+        gorsel = False
+        try:
+            with open(_oto_gorsel_yolu(r["pid"]) + ".iz", encoding="utf-8") as f:
+                gorsel = f.read().strip() == blog_gorsel_izi(veri=d.get("gorsel") or ["", "", ""])
+        except OSError:
+            pass
+        out.append({"pid": r["pid"], "baslik": d.get("baslik") or "", "yuzde": d.get("yuzde", 0), "kalite": d.get("kalite", 0),
+                    "gecti": bool(d.get("gecti")), "gorsel": gorsel, "zaman": r["zaman"] or "",
+                    "uygun": d.get("yuzde") == 100 and bool(d.get("gecti")) and gorsel})
+    return out
+
+
+def blog_oto_sonraki(a, n=6, simdi=None):
+    """Seçili gün ve saatlere göre sıradaki yayın vakitleri (Türkiye saati)."""
+    simdi = simdi or tr_simdi()
+    out, t = [], simdi.replace(minute=0, second=0, microsecond=0)
+    if not (a["gunler"] and a["saatler"]):
+        return out
+    for _ in range(24 * 15):
+        if t.weekday() in a["gunler"] and t.hour in a["saatler"] and (t > simdi or t.hour == simdi.hour and t.date() == simdi.date()):
+            out.append(t)
+            if len(out) >= n:
+                break
+        t += timedelta(hours=1)
+    return out
+
+
+def _oto_kaydet(pid, durum, mesaj):
+    DBI.x("INSERT INTO blog_oto_log(zaman, pid, durum, mesaj) VALUES(?, ?, ?, ?)",
+          (tr_simdi().strftime("%Y-%m-%d %H:%M"), pid, durum, mesaj[:400]))
+    DBI.x("DELETE FROM blog_oto_log WHERE id NOT IN (SELECT id FROM blog_oto_log ORDER BY id DESC LIMIT 300)")
+
+
+def blog_oto_engel():
+    """Otomasyonun şu an yayımlayamama nedeni (yoksa None)."""
+    if not (CFG.get("access_token") or CFG.get("refresh_token")) or CFG.get("kaldirildi"):
+        return "Mağaza bağlı değil."
+    if not blog_ayar()["kategori"]:
+        return "Blog kategorisi seçilmedi (Blog Düzenle > Masa ayarları)."
+    return yazma_engeli("blog")
+
+
+def blog_oto_durum():
+    a = blog_oto_ayar()
+    kuyruk = blog_oto_kuyruk()
+    sonraki = blog_oto_sonraki(a) if a["acik"] else blog_oto_sonraki(dict(a, acik=True))
+    gecmis = [dict(r) for r in DBI.q("SELECT zaman, pid, durum, mesaj FROM blog_oto_log ORDER BY id DESC LIMIT 40")]
+    return {"ayar": a, "simdi": tr_simdi().strftime("%Y-%m-%d %H:%M"), "vakitler": BLOG_VAKITLER, "gunler": BLOG_GUNLER,
+            "sonraki": [t.strftime("%Y-%m-%d %H:%M") for t in sonraki], "running": BLOG.oto_running,
+            "kuyruk": {"hazir": len(kuyruk), "uygun": sum(1 for k in kuyruk if k["uygun"]),
+                       "kalite_alti": sum(1 for k in kuyruk if not (k["yuzde"] == 100 and k["gecti"])),
+                       "gorsel_eksik": [k["pid"] for k in kuyruk if k["yuzde"] == 100 and k["gecti"] and not k["gorsel"]],
+                       "ilk": kuyruk[:8]},
+            "sinir": KA.SINIRLAR, "engel": blog_oto_engel(), "gecmis": gecmis}
+
+
+def blog_oto_yayinla(slot, adet):
+    """Kuyruktaki uygun yazılardan en çok `adet` tanesini gönderir (zamanlayıcı ya da "Şimdi bir yazı yayımla")."""
+    if BLOG.oto_running:
+        return
+    BLOG.oto_running = True
+    try:
+        engel = blog_oto_engel()
+        if engel:
+            _oto_kaydet(None, "atlandi", f"{slot}: yayımlanmadı. {engel}")
+            return
+        uygun = [k for k in blog_oto_kuyruk() if k["uygun"]]
+        if not uygun:
+            _oto_kaydet(None, "bos", f"{slot}: kuyrukta yayımlanacak yazı yok (kalite kapısını geçen ve görseli hazır "
+                                     "yazı bekleniyor).")
+            return
+        for k in uygun[:adet]:
+            row = DBI.q("SELECT plan FROM blog WHERE pid=?", (k["pid"],), one=True)
+            plan = json.loads(row["plan"])
+            durum, msg = blog_gonder(k["pid"], blog_oto_gorsel_al(k["pid"], plan))
+            _oto_kaydet(k["pid"], "gonderildi" if durum == "gonderildi" else "hata", f"{plan.get('title', '')}: {msg}")
+            if durum != "gonderildi":
+                break
+            if blog_oto_ayar()["baglanti"]:
+                blog_oto_baglanti_tazele(k["pid"])
+    except Exception as e:  # noqa: BLE001
+        _oto_kaydet(None, "hata", f"{slot}: {str(e)[:300]}")
+        log(f"Blog otomasyonu: {e}", "err")
+    finally:
+        BLOG.oto_running = False
+
+
+def blog_oto_baglanti_tazele(yeni_pid):
+    """Yeni yayımlanan yazıyla aynı kategorideki en çok BLOG_OTO_BAGLANTI eski yazı, yeni yazıya bağlantı verecek şekilde
+    yeniden hazırlanıp güncellenir (elle düzenlenenlere dokunulmaz; görselleri değişmez)."""
+    yeni = DBI.q("SELECT iz FROM blog WHERE pid=?", (yeni_pid,), one=True)
+    if not yeni or not yeni["iz"]:
+        return
+    yol = vitrin_yollari()["blog"] + json.loads(yeni["iz"]).get("slug", "")
+    kats = {}
+    for r in DBI.q("SELECT pid, cats FROM catprod"):
+        kats[r["pid"]] = set(json.loads(r["cats"] or "[]"))
+    hedef = kats.get(yeni_pid, set())
+    if not hedef:
+        return
+    n = 0
+    for r in DBI.q("""SELECT pid, plan FROM blog WHERE durum='gonderildi' AND blog_id IS NOT NULL AND duzenlendi=0
+                      AND pid<>? ORDER BY zaman DESC""", (yeni_pid,)):
+        if n >= BLOG_OTO_BAGLANTI:
+            break
+        if not (kats.get(r["pid"], set()) & hedef) or yol in (r["plan"] or ""):
+            continue
+        try:
+            plan = blog_hazirla(r["pid"])
+            if yol not in plan["content"]:
+                continue
+            if plan["score"]["yuzde"] == 100 and plan["kalite"]["gecti"]:
+                d, msg = blog_gonder(r["pid"])
+                _oto_kaydet(r["pid"], "baglanti" if d == "gonderildi" else "hata",
+                            f"İç bağlantı eklendi, yazı güncellendi: {plan['title']}" if d == "gonderildi" else msg)
+                n += 1
+        except ApiError as e:
+            _oto_kaydet(r["pid"], "hata", f"Bağlantı güncellenemedi: {str(e)[:200]}")
+
+
+def blog_oto_tur(simdi=None):
+    """Zamanlayıcının bir turu: otomasyonu açık mağazalarda seçili gün ve saat geldiyse o saatin yayınını başlatır."""
+    simdi = simdi or tr_simdi()
+    prev = getattr(_cur, "t", None)
+    for tid in _magazalar():
+        try:
+            _cur.t = tenant(tid)
+            a = blog_oto_ayar()
+            if not a["acik"] or simdi.weekday() not in a["gunler"] or simdi.hour not in a["saatler"]:
+                continue
+            slot = simdi.strftime("%Y-%m-%d %H")
+            r = DBI.q("SELECT v FROM kv WHERE k='blog_oto_slot'", one=True)
+            if (r and r["v"] == slot) or BLOG.oto_running:
+                continue
+            DBI.x("INSERT OR REPLACE INTO kv(k, v) VALUES('blog_oto_slot', ?)", (slot,))
+            spawn(blog_oto_yayinla, slot + ":00", a["adet"])
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+        finally:
+            _cur.t = prev
 
 
 # ============================================================ kırık bağlantı taraması
@@ -3526,6 +3924,7 @@ def oto_zamanlayici():
     while True:
         time.sleep(60)
         oto_tur()
+        blog_oto_tur()
         haftalik_tur()
         silme_turu()
 
@@ -3750,6 +4149,7 @@ WRITE_ROUTES = {
     "/api/sablon/gecis/start": "seo_gonder",       # içindeki SEO ve kategori yazımları ayrıca seo_gonder / kategori_duzelt ister
     "/api/eknot/yaz": "ek_not",                    # notu kaldırmak (/api/eknot/kaldir, geri_al) geri almadır, listede yok
     "/api/blog/gonder": "blog", "/api/blog/kategori_ekle": "blog",   # yayından kaldırmak (/api/blog/kaldir) geri almadır
+    "/api/blog/oto/simdi": "blog",                 # zamanlanmış yayın da blog_oto_engel ile aynı izni denetler
 }
 
 
@@ -4446,6 +4846,8 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/blog":
             sekme = q.get("sekme") if q.get("sekme") in ("yazilacak", "hazir", "gonderildi") else "yazilacak"
             return self._send(200, BLOG.durum(sekme, (q.get("q") or "").strip(), max(0, int(q.get("sayfa") or 0))))
+        if p == "/api/blog/oto":
+            return self._send(200, blog_oto_durum())
         if p == "/api/blog/plan":
             r = BLOG.plan(int(q.get("pid") or 0))
             return self._send(200, r if r else {"error": "Bu ürünün yazısı henüz hazırlanmadı."})
@@ -4792,6 +5194,23 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/blog/durdur":
             BLOG.stop()
             return self._send(200, {"msg": "Durduruluyor."})
+        if p == "/api/blog/oto/ayar":      # açmak / kapatmak ve takvim; yayımlarken paket izni ayrıca denetlenir
+            d = self._json()
+            a = blog_oto_yaz(d)
+            if a["acik"] and not (a["gunler"] and a["saatler"]):
+                a = blog_oto_yaz({"acik": False})
+                return self._send(200, {"error": "En az bir gün ve bir saat seçin.", "durum": blog_oto_durum()})
+            return self._send(200, {"ok": True, "msg": "Otomasyon açık; seçtiğiniz vakitlerde yayımlar." if a["acik"]
+                                    else "Otomasyon ayarları kaydedildi.", "durum": blog_oto_durum()})
+        if p == "/api/blog/oto/gorsel":    # panelin çizdiği görsel, otomatik gönderim için saklanır
+            d = self._json()
+            hata = blog_oto_gorsel_kaydet(int(d.get("pid") or 0), d.get("gorsel"))
+            return self._send(200, {"error": hata} if hata else {"ok": True})
+        if p == "/api/blog/oto/simdi":     # kuyruktaki sıradaki yazıyı hemen yayımlar
+            if BLOG.oto_running:
+                return self._send(200, {"msg": "Otomasyon şu an yayımlıyor; bitmesini bekleyin."})
+            spawn(blog_oto_yayinla, "Elle", 1)
+            return self._send(200, {"msg": "Sıradaki yazı yayımlanıyor; sonuç geçmişte görünecek."})
         if p == "/api/blog/kategori_ekle":
             ad = re.sub(r"\s+", " ", str(self._json().get("ad") or "")).strip()[:120]
             if len(ad) < 2:

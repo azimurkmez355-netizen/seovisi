@@ -63,6 +63,11 @@ class Platform:
         """Mağaza yönetim panelinde ürün ve kategori düzenleme sayfalarının öneki: {"urun": ..., "kategori": ...}."""
         raise NotImplementedError
 
+    def vitrin_yollari(self):
+        """Mağazanın herkese açık sitesinde (vitrin) adres önekleri; blog yazılarındaki iç bağlantılar bunlarla kurulur:
+        {"urun": "/…/", "kategori": "/…/", "blog": "/…/", "blog_ana": "/…"}."""
+        raise NotImplementedError
+
     # ---- ürünler
     def urun_sayisi(self):
         raise NotImplementedError
