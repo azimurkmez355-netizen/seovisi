@@ -568,6 +568,13 @@ body.bl-on main{max-width:1560px}
 .bl-etiketler{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .bl-etiketler span{font-size:12px;background:#f1ead7;border-radius:999px;padding:4px 10px}
 
+/* modern silme düğmesi */
+.bl-sil{display:inline-flex;align-items:center;gap:8px;border:1.5px solid #e2b4ae;background:#fff6f4;color:#a8322a;border-radius:999px;
+  padding:8px 16px 8px 12px;font:600 14px/1 var(--body);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.bl-sil svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bl-sil:hover{background:#a8322a;border-color:#a8322a;color:#fff}
+.bl-sil:disabled{opacity:.45;cursor:not-allowed}
+
 /* PERİYODİK OTOMASYON düğmesi (mektup kartının içinde, göze batan) */
 .bl-oto-btn{position:relative;display:inline-flex;align-items:center;gap:14px;margin-top:18px;padding:12px 26px 12px 12px;border:0;border-radius:16px;cursor:pointer;
   background:linear-gradient(135deg,#c0392b,#7a1f18);color:#fff;text-align:left;font:800 15px/1.1 var(--body);letter-spacing:.16em;
@@ -2680,7 +2687,7 @@ function blCiz(cv, d, a, img){
   c.textBaseline = 'alphabetic'; c.textAlign = 'left';
   const r = blRng((d.title || '') + a.tema), foto = a.foto && img, magaza = a.magaza && d.magaza ? d.magaza : '';
   const ust = a.ust_metin || '', rozet = a.rozet ? (d.rozet || '') : '', kod = a.kod && d.sku ? d.sku : '';
-  ({lacivert_bant: blTemaLacivertBant, beyaz_bant: blTemaBeyazBant, kirmizi_bant: blTemaKirmiziBant, pano_bant: blTemaPanoBant,
+  ({lacivert_bant: blTemaLacivertBant, beyaz_bant: blTemaBeyazBant, editoryal: blTemaEditoryal, gece_isik: blTemaGeceIsik,
     lacivert_kutu: blTemaLacivertKutu, beyaz_kutu: blTemaBeyazKutu, bolunmus_kutu: blTemaBolunmusKutu, vitrin_kutu: blTemaVitrinKutu}[a.tema] || blTemaLacivertBant)(c, d, a, foto ? img : null, r, {magaza, ust, rozet, kod});
 }
 /* ---- kapak temaları (1200×800 tasarım alanı; 3:2 oranı blog kartlarında kırpılmadan oturur, kenarlarda güvenli boşluk) */
@@ -2756,25 +2763,45 @@ function blTemaBeyazBant(c, d, a, img, r, o){
   if(img) blBantli(c, img, 915, 405, 400, 450, -.05, 'rgba(232,196,120,.78)');
   blAlt(c, o, 70, 730, a.renk2, '#5b6475');
 }
-function blTemaKirmiziBant(c, d, a, img, r, o){
-  const g = c.createLinearGradient(0, 0, BL_W, BL_H); g.addColorStop(0, a.renk); g.addColorStop(1, blKoyu(a.renk, .62)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  if(a.desen){ c.save(); c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 16; for(let x = -BL_H; x < BL_W; x += 54){ c.beginPath(); c.moveTo(x, BL_H); c.lineTo(x + BL_H, 0); c.stroke(); } c.restore(); }
-  c.fillStyle = a.renk2; c.fillRect(0, BL_H - 120, BL_W, 120);
-  let y = blUst(c, o, 70, 80, 'rgba(255,255,255,.85)'); y = blRozet(c, o, 70, y, '#fff', a.renk);
-  blBaslik(c, d, a, 70, y, img ? 600 : 1060, '#fff');
-  if(img) blBantli(c, img, 915, 370, 400, 450, .06, 'rgba(255,255,255,.62)');
-  blAlt(c, o, 70, 742, '#fff', 'rgba(255,255,255,.78)');
+/* Editoryal · minimal: dergi kapağı gibi sıcak kâğıt zemin, büyük başlık, beyaz daire içinde ürün ve ince vurgu yayı */
+function blTemaEditoryal(c, d, a, img, r, o){
+  c.fillStyle = '#f7f5f1'; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.fillStyle = 'rgba(60,40,20,.035)'; for(let i = 0; i < 2600; i++) c.fillRect(r() * BL_W, r() * BL_H, 1.7, 1.7); }
+  if(img){
+    c.save(); c.shadowColor = 'rgba(60,40,20,.22)'; c.shadowBlur = 60; c.shadowOffsetY = 26;
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(905, 395, 285, 0, 7); c.fill(); c.restore();
+    c.save(); c.beginPath(); c.arc(905, 395, 285, 0, 7); c.clip(); blSigdir(c, img, 905 - 205, 395 - 205, 410, 410); c.restore();
+    c.strokeStyle = a.renk; c.lineWidth = 7; c.lineCap = 'round'; c.beginPath(); c.arc(905, 395, 318, -2.45, -0.75); c.stroke();
+    c.fillStyle = a.renk; c.beginPath(); c.arc(905 + 318 * Math.cos(-0.75), 395 + 318 * Math.sin(-0.75), 11, 0, 7); c.fill();
+  }
+  c.fillStyle = '#111'; c.fillRect(70, 96, 56, 3);
+  let y = 118;
+  if(o.ust){ c.font = blRubik(600)(19); c.fillStyle = '#6b665e'; c.fillText(o.ust.toUpperCase(), 140, 104); }
+  if(o.rozet){ c.font = blRubik(700)(21); c.fillStyle = a.renk; c.fillText(o.rozet, 70, y + 26); y += 56; }
+  const son = blBaslik(c, d, a, 70, y, img ? 500 : 1060, '#141414', 80);
+  c.fillStyle = '#d9d3c7'; c.fillRect(70, Math.min(son + 34, 680), img ? 520 : 1060, 2);
+  blAlt(c, o, 70, 735, '#141414', '#6b665e');
 }
-function blTemaPanoBant(c, d, a, img, r, o){
-  c.fillStyle = '#2b2f36'; c.fillRect(0, 0, BL_W, BL_H);
-  const g = c.createRadialGradient(400, 300, 50, 400, 300, 900); g.addColorStop(0, 'rgba(255,255,255,.06)'); g.addColorStop(1, 'rgba(0,0,0,.35)'); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
-  if(a.desen){ for(let x = 30; x < BL_W; x += 40) for(let y = 30; y < BL_H; y += 40){ c.fillStyle = 'rgba(0,0,0,.45)'; c.beginPath(); c.arc(x, y, 5, 0, 7); c.fill();
-    c.fillStyle = 'rgba(255,255,255,.06)'; c.beginPath(); c.arc(x, y + 1.5, 5, 0, Math.PI); c.fill(); } }
-  c.fillStyle = a.renk; c.fillRect(0, 0, 14, BL_H);
-  let y = blUst(c, o, 70, 90, '#f5c518'); y = blRozet(c, o, 70, y, '#f5c518', '#1b1d21', 'kose');
-  blBaslik(c, d, a, 70, y, img ? 600 : 1060, '#fff');
-  if(img) blBantli(c, img, 915, 400, 400, 450, -.04, 'rgba(245,197,24,.82)');
-  blAlt(c, o, 70, 730, '#fff', '#f5c518');
+/* Gece · ışıltılı: kömür zemin, vurgu renginde yumuşak ışık, cam pano üzerinde beyaz kutuda ürün */
+function blTemaGeceIsik(c, d, a, img, r, o){
+  const g = c.createLinearGradient(0, 0, BL_W, BL_H); g.addColorStop(0, '#0e1014'); g.addColorStop(1, '#1c2029'); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
+  if(a.desen){ c.strokeStyle = 'rgba(255,255,255,.035)'; c.lineWidth = 1;
+    for(let x = 0; x <= BL_W; x += 48){ c.beginPath(); c.moveTo(x + .5, 0); c.lineTo(x + .5, BL_H); c.stroke(); }
+    for(let y = 0; y <= BL_H; y += 48){ c.beginPath(); c.moveTo(0, y + .5); c.lineTo(BL_W, y + .5); c.stroke(); } }
+  const p = c.createRadialGradient(910, 390, 20, 910, 390, 470); p.addColorStop(0, blHex(a.renk, .42)); p.addColorStop(1, blHex(a.renk, 0)); c.fillStyle = p; c.fillRect(0, 0, BL_W, BL_H);
+  const q = c.createRadialGradient(240, 120, 10, 240, 120, 420); q.addColorStop(0, 'rgba(255,255,255,.07)'); q.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = q; c.fillRect(0, 0, BL_W, BL_H);
+  if(img){
+    c.fillStyle = 'rgba(255,255,255,.06)'; blYuvarlak(c, 690, 140, 440, 500, 38); c.fill();
+    c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 1.5; blYuvarlak(c, 690, 140, 440, 500, 38); c.stroke();
+    c.save(); c.shadowColor = blHex(a.renk, .55); c.shadowBlur = 70; c.fillStyle = '#fff'; blYuvarlak(c, 726, 176, 368, 368, 28); c.fill(); c.restore();
+    blSigdir(c, img, 750, 200, 320, 320);
+    c.fillStyle = a.renk; blYuvarlak(c, 860, 576, 100, 6, 3); c.fill();
+  }
+  let y = blUst(c, o, 70, 92, 'rgba(255,255,255,.6)'); y = blRozet(c, o, 70, y, a.renk, '#fff', 'cizgi');
+  const son = blBaslik(c, d, a, 70, y, img ? 570 : 1060, '#fff');
+  const bar = c.createLinearGradient(70, 0, 250, 0); bar.addColorStop(0, a.renk); bar.addColorStop(1, blHex(a.renk, 0));
+  c.fillStyle = bar; c.fillRect(70, Math.min(son + 32, 670), 180, 6);
+  blAlt(c, o, 70, 735, '#fff', 'rgba(255,255,255,.6)');
 }
 function blTemaLacivertKutu(c, d, a, img, r, o){
   const g = c.createLinearGradient(0, 0, 0, BL_H); g.addColorStop(0, a.renk2); g.addColorStop(1, blKoyu(a.renk2, .55)); c.fillStyle = g; c.fillRect(0, 0, BL_W, BL_H);
@@ -2884,6 +2911,7 @@ function blButonlar(){
     b.push(`<button class="btn ink" data-a="gonder-sec" ${n ? '' : 'disabled'}>Seçilenleri gönder${n ? ' (' + nf(n) + ')' : ''}</button>`);
     if(blSekme === 'hazir') b.push(`<button class="btn ink" data-a="gonder-hepsi" ${(r.hazir_tam || []).length ? '' : 'disabled'}>Hepsini gönder (${nf((r.hazir_tam || []).length)})</button>`);
     b.push(`<button class="btn ghost" data-a="yeniden-sec" ${n ? '' : 'disabled'}>Seçilenleri yeniden yaz</button>`);
+    b.push(`<button class="bl-sil" data-a="sil-sec" ${n ? '' : 'disabled'}>${BL_COP}Seçilenleri sil${n ? ' (' + nf(n) + ')' : ''}</button>`);
     if(blSekme === 'gonderildi' && r.degisen.length) b.push(`<button class="btn ink" data-a="degisen">Değişenleri gönder (${nf(r.degisen.length)})</button>`);
     if(r.sayilar.eksik) b.push(`<button class="btn" style="background:#b5651d;border-color:#b5651d" data-a="eksik">${blSekme === 'hazir' ? 'Eskileri ve %100 olmayanları yenile' : 'Eski yazıları yenile'} (${nf(r.sayilar.eksik)})</button>`);
   }
@@ -2946,6 +2974,7 @@ async function blToplu(a){
     blSecili.clear();
   }
   if(a === 'degisen'){ blSecili.clear(); blVeri.degisen.forEach(p => blSecili.add(p)); return blToplu('gonder-sec'); }
+  if(a === 'sil-sec') return blSil(sec);
   if(a === 'gonder-sec' || a === 'gonder-hepsi'){
     if(blGonderim) return;
     if(!blVeri.ayar.kategori){ toast('Önce "Masa ayarları"ndan blog kategorisini seçip kaydedin.'); $('#bl-ayarlar').open = true; $('#bl-ayarlar').scrollIntoView({behavior: 'smooth'}); return; }
@@ -2975,6 +3004,26 @@ async function blToplu(a){
   blImza = ''; blTick();
 }
 
+/* ---- silme: hazır yazı panelden kalkar (ürün "Yazılacak"a döner); gönderilmişse onayla Ideasoft'taki de silinir */
+const BL_COP = '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
+async function blSil(pids){
+  pids = pids.filter(x => x != null); if(!pids.length) return;
+  const items = (blVeri ? blVeri.items : []), gonderilmis = pids.filter(p => { const it = items.find(i => i.pid === p); return (it && it.blog_id) || (p === blAcik && blKayit && blKayit.blog_id); });
+  const n = pids.length;
+  if(!await ask(n === 1 ? 'Bu yazı silinecek. Ürün yeniden "Yazılacak" bölümüne döner; isterseniz sonra yeniden yazabilirsiniz.'
+    : `${nf(n)} yazı silinecek. Ürünler yeniden "Yazılacak" bölümüne döner.`, {title: n === 1 ? 'Yazı silinsin mi?' : `${nf(n)} yazı silinsin mi?`, ok: 'Sil', danger: true})) return;
+  let ideasoft = false;
+  if(gonderilmis.length){
+    ideasoft = await ask(`${gonderilmis.length === 1 ? 'Bu yazı' : nf(gonderilmis.length) + ' yazı'} Ideasoft'ta yayımlanmış. Ideasoft'taki blog da silinecek (silme izni yoksa yayından kaldırılır).`,
+      {title: 'Ideasoft\'taki blog da silinsin mi?', ok: 'Ideasoft\'tan da sil', danger: true, no: 'Vazgeç'});
+    if(!ideasoft) return;
+  }
+  const r = await post('/api/blog/sil', {pids, ideasoft}); if(r.msg) toast(r.msg);
+  pids.forEach(p => blSecili.delete(p));
+  if(pids.includes(blAcik)){ blAcik = null; blKayit = null; blMektupBos(); }
+  blImza = ''; await blTick();
+}
+
 /* ---- açık mektup (önizleme, düzenleme) */
 function blMektupBos(){
   $('#bl-letter').innerHTML = `<div class="bl-welcome"><svg viewBox="0 0 120 90" fill="none" stroke="#6b5f4f" stroke-width="2"><rect x="6" y="14" width="108" height="70" rx="3" fill="#fff8e8"/><path d="M6 16l54 38 54-38"/><path d="M6 84l40-30M114 84 74 54"/><circle cx="96" cy="26" r="11" fill="#a8322a" stroke="none"/></svg>
@@ -2996,7 +3045,7 @@ function blKalite(p){
   const o = k.okunabilirlik || {}, s = k.sinir || {}, renk = k.gecti ? '#2e9a58' : '#c2410c';
   const kurallar = (k.kurallar || []).map(x => `<li class="${x.ok ? '' : x.kismi ? 'yarim' : 'no'}">${esc(x.ad)}</li>`).join('');
   const a = p.arastirma, aday = a && a.adaylar && a.adaylar.length ? `<details><summary>Anahtar kelime araştırması${a.google ? ' (Google önerileriyle)' : ' (Google\'a ulaşılamadı; yerel ölçütlerle)'}</summary>
-    <table class="bl-kw"><tr><th>Aday</th><th>Puan</th><th>Neden</th></tr>${a.adaylar.map(x => `<tr class="${x.kelime === p.keyword ? 'sec' : ''}"><td>${esc(x.kelime)}</td><td><span class="bar"><i style="width:${x.puan}%"></i></span>${x.puan}</td><td>${esc((x.neden || []).slice(0, 3).join(' · '))}</td></tr>`).join('')}</table>
+    <table class="bl-kw"><tr><th>Aday</th><th>Puan</th><th>Neden</th></tr>${a.adaylar.slice(0, 6).map(x => `<tr class="${x.kelime === p.keyword ? 'sec' : ''}"><td>${esc(x.kelime)}</td><td><span class="bar"><i style="width:${x.puan}%"></i></span>${x.puan}</td><td>${esc((x.neden || []).slice(0, 3).join(' · '))}</td></tr>`).join('')}</table>
     ${(a.ilgili || []).length ? `<p class="muted" style="margin:10px 0 0;font-size:13px">İnsanların aradığı ilgili ifadeler (anahtar kelimelere eklendi):</p><div class="bl-etiketler">${a.ilgili.map(x => `<span>${esc(x)}</span>`).join('')}</div>` : ''}</details>` : '';
   return `<div class="bl-kal"><div class="bl-kal-ust"><div class="bl-halka" style="--p:${k.puan};--c:${renk}"><b>${k.puan}<small>SEOVISI</small></b></div>
     <div><h5>seovisi kalite kapısı · ${k.gecti ? 'geçti' : 'geçmedi'}</h5><p>${k.gecti ? 'Yazı kendi SEO kurallarımızı, okunabilirliği ve özgünlüğü geçti; otomasyon yayımlayabilir.' : `Sınır: SEO en az %${s.seo}, okunabilirlik en az ${s.okunabilirlik}. Yazı bu sınırları geçmediği için ${k.deneme ? k.deneme + ' kez ' : ''}yeniden yazıldı; otomasyon bu hâliyle yayımlamaz. "Yeniden yaz" ile başka bir anlatım deneyin.`}</p></div></div>
@@ -3045,6 +3094,7 @@ function blMektup(sekme){
       <span class="sp"></span>
       <select id="bl-l-bicim" aria-label="Biçim">${bicimler}</select><button class="btn ghost" id="bl-l-yeniden">Yeniden yaz</button>
       ${panel}${r.blog_id && r.durum !== 'kaldirildi' ? '<button class="btn ghost sm" id="bl-l-kaldir">Yayından kaldır</button>' : ''}
+      <button class="bl-sil" id="bl-l-sil" type="button">${BL_COP}Sil</button>
     </div>
     ${r.mesaj ? `<p class="bl-msg">${esc(r.mesaj)}</p>` : ''}`;
   const cv = $('#bl-l-cv');
@@ -3075,6 +3125,7 @@ function blMektup(sekme){
     const x = await post('/api/blog/yeniden', {pid: blAcik, bicim: $('#bl-l-bicim').value});
     if(x.msg) toast(x.msg); blImza = ''; await blTick(); blAc(blAcik);
   };
+  $('#bl-l-sil').onclick = () => blSil([blAcik]);
   const k = $('#bl-l-kaldir');
   if(k) k.onclick = async () => {
     if(!await ask('Yazı Ideasoft\'ta pasif yapılır (silinmez); dilediğiniz zaman yeniden gönderebilirsiniz.', {title: 'Yayından kaldırılsın mı?', ok: 'Yayından kaldır', danger: true})) return;
@@ -3111,7 +3162,7 @@ async function blGonderTek(){
 function blAtolyeKur(){
   const a = blVeri.ayar.gorsel;
   if(!blGor) blGor = Object.assign({}, a);
-  $('#bl-themes').innerHTML = Object.entries({lacivert_bant: 'Lacivert · bantlı', beyaz_bant: 'Beyaz · bantlı', kirmizi_bant: 'Kırmızı · bantlı', pano_bant: 'Atölye panosu · bantlı', lacivert_kutu: 'Lacivert · kutu', beyaz_kutu: 'Beyaz · kutu', bolunmus_kutu: 'İki renk · kutu', vitrin_kutu: 'Vitrin · kutu'})
+  $('#bl-themes').innerHTML = Object.entries({lacivert_bant: 'Lacivert · bantlı', beyaz_bant: 'Beyaz · bantlı', editoryal: 'Editoryal · minimal', gece_isik: 'Gece · ışıltılı', lacivert_kutu: 'Lacivert · kutu', beyaz_kutu: 'Beyaz · kutu', bolunmus_kutu: 'İki renk · kutu', vitrin_kutu: 'Vitrin · kutu'})
     .map(([k, v]) => `<button class="bl-theme" data-t="${k}"><canvas width="360" height="240"></canvas>${v}</button>`).join('');
   $('#bl-themes').querySelectorAll('.bl-theme').forEach(b => b.onclick = () => { blGor.tema = b.dataset.t; blAtolyeCiz(); });
   for(const k of ['foto', 'magaza', 'rozet', 'kod', 'desen']) $('#bl-g-' + k).onchange = e => { blGor[k] = e.target.checked; blAtolyeCiz(); };

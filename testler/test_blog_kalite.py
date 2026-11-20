@@ -2,6 +2,7 @@
 blog otomasyonu. Google'a ve gerçek Ideasoft'a istek gitmez (sahte öneri kaynağı ve bellekteki sahte mağaza)."""
 import json
 import os
+import re
 import sys
 import unittest
 from datetime import datetime
@@ -32,7 +33,12 @@ def benzer(i):
 class AnahtarKelime(unittest.TestCase):
     def test_model_adi_bolunmez_ve_urun_tipi_one_cikar(self):
         r = KE.arastir(URUN["name"], "", URUN["sku"], "darbeli matkap", "Bosch")
-        self.assertEqual(r["secilen"], "Darbeli Matkap")
+        self.assertIn("GSB 13 RE", r["secilen"])                                  # müşteri markayı değil modeli arar
+        self.assertEqual(KE.model_dizisi("Bosch Professional GWS 18V-8 Akülü Avuç Taşlama 06019H9100", "06019H9100"), "GWS 18V-8")
+        r2 = KE.arastir("Bosch Professional GDR 18 V-200 C (Solo) Akülü Darbeli Somun Sıkma Makinesi 06019G4104", "",
+                        "06019G4104", "ürün", "Bosch")
+        self.assertEqual(r2["secilen"], "GDR 18 V-200 C")
+        self.assertNotIn("Bosch Professional", [a["kelime"] for a in r2["adaylar"]])         # yalnızca marka seçilmez
         kotu = {"RE Darbeli", "13 RE Darbeli"}
         self.assertFalse(kotu & {a["kelime"] for a in r["adaylar"][:2]})
         self.assertFalse(r["google"])
@@ -153,6 +159,32 @@ class Kalite(unittest.TestCase):
         self.assertEqual(len(dz), 0)
 
 
+class Baslik(unittest.TestCase):
+    def test_baslikta_urun_adi_ve_kodu(self):
+        ST.panel_factor = lambda: 1.30
+        u = dict(URUN, name="Bosch Professional GWS 18V-8 Akülü Avuç Taşlama 06019H9100", sku="06019H9100")
+        for b in BL.BICIMLER:
+            p = BL.yaz_tam(u, DETAY, bicim=b, prof=PROF, method="panel", bicim_sabit=True)
+            self.assertIn("GWS 18V-8 Akülü Avuç Taşlama", p["title"], b)
+            self.assertTrue(p["title"].endswith("06019H9100"))
+            self.assertNotIn("06019H9100", p["gorsel_baslik"])
+            self.assertIn(ST.tr_lower(p["keyword"]), ST.tr_lower(p["title"]))
+            self.assertFalse(p["title"].startswith("Bosch Professional"))
+            self.assertEqual(p["score"]["yuzde"], 100)
+
+    def test_html_agir_yazida_da_yuzde_yuz(self):
+        """Sosyal medya, ürün kartı ve bağlantılarla HTML'i ağır yazı her sayım yönteminde Ideasoft'un 13 kuralını tutar."""
+        ST.panel_factor = lambda: 1.30
+        s = {"instagram": "https://www.instagram.com/a/", "youtube": "https://www.youtube.com/@b"}
+        u = dict(URUN, name="Bosch Professional GDR 120-Li Çift Akülü 2 Ah Somun Sıkma Makinesi 06019F0001", sku="06019F0001")
+        for m in ("panel", "asc_html", "ws_text", "panel_lo,panel,panel_hi"):
+            for b in BL.BICIMLER:
+                p = BL.yaz_tam(u, DETAY, bicim=b, prof=PROF, method=m, sosyal=s, foto="https://cdn.ornek.com/a.jpg",
+                               kategori=KAT, ilgili=[("Bir yazı", "/blog/icerik/a")], bicim_sabit=True)
+                self.assertEqual(p["score"]["yuzde"], 100, (m, b))
+                self.assertTrue(p["kalite"]["gecti"], (m, b))
+
+
 class BlogOtomasyon(Ortam):
     def setUp(self):
         super().setUp()
@@ -260,6 +292,52 @@ class BlogOtomasyon(Ortam):
         eski = [b for b in self.m.bloglar.values() if b["id"] == app.DBI.q("SELECT blog_id FROM blog WHERE pid=5", one=True)["blog_id"]][0]
         self.assertIn(app.vitrin_yollari()["blog"] + slug6, eski["content"])          # eski yazı da yenisine bağlandı
         self.assertIn("baglanti", [r["durum"] for r in app.DBI.q("SELECT durum FROM blog_oto_log")])
+
+    def test_sitede_acilmayan_baglanti_yaziya_girmez(self):
+        acik = {"/urun/urun-5", "/blog"}
+        app.VITRIN_GETIR = lambda url, govde=True: ((200, "text/html", "<h1>Ürün</h1>", url)
+                                                     if url.split("deneme.com", 1)[1] in acik
+                                                     else (404, "text/html", "Aradığınız sayfa bulunamamıştır", url))
+        try:
+            plan = app.blog_hazirla(5)
+            hrefler = set(re.findall(r'href="(/[^"]*)"', plan["content"]))
+            self.assertEqual(hrefler, acik)                                # kategori adresi açılmadığı için yok
+            # gönderilmiş yazının adresi sitede açılmıyorsa ilgili yazılara eklenmez
+            self.assertEqual(app.blog_ilgili(6, plan["keyword"], [11]), [])
+            # gönderim öncesi son denetim: sonradan kırılan bağlantı yazıyı yeniden kurdurur
+            acik.discard("/blog")
+            app.DBI.x("DELETE FROM vitrin_link")
+            self.assertEqual(app.blog_gonder(5, JPEG)[0], "gonderildi")
+            self.assertNotIn('href="/blog"', next(iter(self.m.bloglar.values()))["content"])
+        finally:
+            app.VITRIN_GETIR = None
+
+    def test_siteye_ulasilamazsa_gonderilmez(self):
+        self.hazir(5)
+        app.DBI.x("DELETE FROM vitrin_link")
+        app.VITRIN_GETIR = lambda url, govde=True: (0, "", "", url)
+        try:
+            d, msg = app.blog_gonder(5, JPEG)
+        finally:
+            app.VITRIN_GETIR = None
+        self.assertEqual(d, "hata")
+        self.assertIn("ulaşılamadı", msg)
+        self.assertEqual(self.m.bloglar, {})
+
+    def test_sil(self):
+        self.hazir(5)
+        app.blog_oto_gorsel_kaydet(5, JPEG)
+        self.assertEqual(app.blog_sil(5)[0], "silindi")
+        self.assertIsNone(app.DBI.q("SELECT 1 FROM blog WHERE pid=5", one=True))
+        self.assertNotIn(5, app.BLOG.dizin_al().izler)
+        self.assertIn(5, [r["pid"] for r in app.BLOG.satirlar() if r["sekme"] == "yazilacak"])
+        # gönderilmiş yazı: onay olmadan silinmez; onayla Ideasoft'taki de silinir
+        self.hazir(5)
+        app.blog_gonder(5, JPEG)
+        self.assertEqual(app.blog_sil(5)[0], "hata")
+        self.assertEqual(len(self.m.bloglar), 1)
+        self.assertEqual(app.blog_sil(5, True)[0], "silindi")
+        self.assertEqual(self.m.bloglar, {})
 
     def test_yayimlanan_yazinin_adresi_degismez(self):
         self.hazir(5)

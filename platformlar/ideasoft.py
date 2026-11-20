@@ -93,8 +93,9 @@ class Ideasoft(Platform):
         return {"urun": f"{self.base()}/panel/products/edit/", "kategori": f"{self.base()}/panel/categories/edit/"}
 
     def vitrin_yollari(self):
-        """Ideasoft vitrinindeki adresler: /urun/<slug>, /kategori/<slug>, /blog/<slug>."""
-        return {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/", "blog_ana": "/blog"}
+        """Ideasoft vitrinindeki adresler: /urun/<slug>, /kategori/<slug>, /blog/icerik/<slug>. Kullanmadan önce
+        app.vitrin_acik ile sitede gerçekten açıldıkları denetlenir."""
+        return {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/icerik/", "blog_ana": "/blog"}
 
     def mutlak_url(self, u):
         """Kayıttaki görsel adresini tam adrese çevirir (//… ve /… biçimleri)."""
@@ -368,6 +369,9 @@ class Ideasoft(Platform):
         out = {k: v for k, v in copy.deepcopy(mevcut or {}).items() if k not in self.BLOG_READONLY}
         out.update(yeni)
         return out
+
+    def blog_sil(self, bid):
+        return self.call("DELETE", f"blogs/{bid}")
 
     def blog_kategorileri(self):
         return self.call("GET", "blog_categories", {"limit": 100}) or []

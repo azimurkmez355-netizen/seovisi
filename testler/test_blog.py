@@ -86,7 +86,7 @@ class Yazar(unittest.TestCase):
         g = BL.gorsel_ayar({"tema": "yok", "renk": "kirmizi", "renk2": "#ABCDEF", "foto": "0", "ust_metin": "x" * 99})
         self.assertEqual((g["tema"], g["renk"], g["renk2"], g["foto"], len(g["ust_metin"])), ("lacivert_bant", "#e30613", "#abcdef", False, 40))
         self.assertEqual(len(BL.GORSEL_TEMALAR), 8)
-        self.assertEqual(BL.gorsel_ayar({"tema": "pano_bant"})["tema"], "pano_bant")
+        self.assertEqual(BL.gorsel_ayar({"tema": "gece_isik"})["tema"], "gece_isik")
 
     def test_urun_kodu_basligin_sonunda_hedef_kelimede_yok(self):
         u = dict(URUN, name="0603688001 Universal Humid Nem Ölçer", sku="0603688001")
@@ -138,6 +138,8 @@ class BlogluMagaza(SahteMagaza):
             bid = int(parts[1])
             if bid not in self.bloglar:
                 raise app.ApiError(404, "yok")
+            if method == "DELETE":
+                return self.bloglar.pop(bid) and None
             if method == "PUT":
                 self.bloglar[bid].update({k: v for k, v in copy.deepcopy(body).items() if k != "attachment"})
             return copy.deepcopy(self.bloglar[bid])

@@ -74,11 +74,13 @@ GOOGLE = GoogleOneri()
 # ---------------------------------------------------------------- adaylar
 
 def _temiz(ad, sku=""):
+    """Ürün adından stok kodu, parantez içi ekler ve " + aksesuar" gibi kuyruklar çıkarılır."""
     t = re.sub(r"\s+", " ", ad or "").strip()
     if sku:
         t = " ".join(w for w in t.split() if ST.tr_lower(w.strip(",.;:")) != ST.tr_lower(sku))
-    t = re.split(r"\s[\(\+–]\s?|\s\(|\s-\s|\s\+", t)[0]
-    return t.strip(" ,-")
+    t = re.sub(r"\([^)]*\)|\[[^\]]*\]", " ", t)
+    t = re.split(r"\s[\+–]\s?|\s-\s|\s\+", t)[0]
+    return re.sub(r"\s+", " ", t).strip(" ,-")
 
 
 def _uygun(aday):
@@ -90,7 +92,32 @@ def _uygun(aday):
         return False
     if all(ST.tr_lower(w) in _GENEL for w in harfli):
         return False
-    return not re.fullmatch(r"[0-9A-Z\-.]{6,}", aday.replace(" ", ""))      # yalnızca kod
+    return not (len(kelimeler) == 1 and len(re.findall(r"\d", aday)) >= 6)      # yalnızca stok kodu / barkod
+
+
+def model_dizisi(ad, sku=""):
+    """Ürünün model adı (müşterinin aradığı: GWS 18V-8, GDR 120-Li, GSB 13 RE): adın içindeki rakamlı / kısaltmalı
+    ardışık kelimeler. Yalnızca sayı + birimden oluşan dizi (2 Ah, 750 W) model sayılmaz."""
+    w = [x.strip(",.;:") for x in _temiz(ad, sku).split() if x.strip(",.;:")]
+    dizi, cur = [], []
+    for x in w + [""]:
+        if x and (_model_mi(x) or (len(x) == 1 and x.isupper())):
+            cur.append(x)
+            continue
+        if cur:
+            dizi.append(cur)
+        cur = []
+    for d in dizi:
+        metin = " ".join(d)
+        if re.search(r"[A-Za-z]", metin) and re.search(r"\d", metin) and not (len(d) <= 2 and _BIRIM.match(metin.replace(" ", ""))):
+            return metin
+    return ""
+
+
+def _sadece_marka(aday, marka):
+    """Aday yalnızca marka ve genel kelimelerden mi oluşuyor (Bosch, Bosch Professional)? Müşteri marka değil model arar."""
+    mk = {ST.tr_lower(x) for x in (marka or "").split()}
+    return all(ST.tr_lower(x) in mk or ST.tr_lower(x) in _GENEL for x in aday.split())
 
 
 def adaylar(ad, mevcut="", sku="", label="", marka=""):
@@ -98,6 +125,11 @@ def adaylar(ad, mevcut="", sku="", label="", marka=""):
     t = _temiz(ad, sku)
     w = [x.strip(",.;:") for x in t.split() if x.strip(",.;:")]
     out = []
+    model = model_dizisi(ad, sku)
+    if model:
+        out.append(model)
+        if marka and ST.tr_lower(marka) not in ST.tr_lower(model):
+            out.append(f"{marka} {model}")
     for n in (2, 3, 4, 5, 1):
         for i in range(0, len(w) - n + 1):
             out.append(" ".join(w[i:i + n]))
@@ -112,7 +144,7 @@ def adaylar(ad, mevcut="", sku="", label="", marka=""):
     for a in out:
         a = re.sub(r"\s+", " ", a).strip(" ,-")
         k = ST.tr_lower(a)
-        if k not in gor and _uygun(a):
+        if k not in gor and _uygun(a) and not _sadece_marka(a, marka):
             gor.add(k)
             sonuc.append(a)
     return sonuc
@@ -177,7 +209,7 @@ def _yerel(aday, ad, label, marka, sku=""):
         if anlamli and ST.tr_lower(anlamli[-1]) == bas:
             p += 10
             neden.append(f"ürünün ne olduğunu söylüyor ({bas_isim(ad, sku)})")
-        elif bas not in k.split():
+        elif bas not in k.split() and not (model_dizisi(ad, sku) and ST.tr_lower(model_dizisi(ad, sku)) in k):
             p -= 10
             neden.append("ürünün ne olduğunu söylemiyor (yarım ifade)")
     if k in ST.tr_lower(ad):
@@ -195,14 +227,26 @@ def _yerel(aday, ad, label, marka, sku=""):
     if marka and ST.tr_lower(marka) in k:
         p += 5
         neden.append("markayı içeriyor")
-    if 2 <= n <= 4:
+    if 2 <= n <= 3:
         p += 15
         neden.append(f"{n} kelime (ideal uzunluk)")
+    elif n == 4:
+        p += 8
+        neden.append("4 kelime")
     elif n == 1:
         neden.append("tek kelime: çok genel, rekabeti yüksek")
-    else:
-        p += 5
-    if any(_model_mi(x) for x in kel):
+    model = ST.tr_lower(model_dizisi(ad, sku))
+    if ST.tr_lower(kel[0]) in _GENEL:
+        p -= 10
+        neden.append("genel bir kelimeyle başlıyor")
+    if model and model in k:
+        p += 20
+        neden.insert(0, f"ürünün model adını içeriyor ({model_dizisi(ad, sku)}): müşterinin aradığı")
+        son = ST.tr_lower(kel[-1])
+        if not k.endswith(model) and son != bas and not _model_mi(kel[-1]):
+            p -= 8
+            neden.append("modelden sonra yarım kalıyor")
+    elif any(_model_mi(x) for x in kel):
         p += 5
         neden.append("model / seri bilgisi var (daha özgül arama)")
     if _bolunmus_model(aday, ad, sku):
@@ -283,4 +327,4 @@ def arastir(ad, mevcut="", sku="", label="", marka="", kullanilan=(), getir=None
             if ST.tr_lower(s) not in gor and len(s) <= 60 and not any(c in _RISKLI for c in s):
                 gor.add(ST.tr_lower(s))
                 ilgili.append(s)
-    return {"secilen": sonuc[0]["kelime"], "adaylar": sonuc[:6], "ilgili": ilgili[:10], "google": ulasildi}
+    return {"secilen": sonuc[0]["kelime"], "adaylar": sonuc[:12], "ilgili": ilgili[:10], "google": ulasildi}

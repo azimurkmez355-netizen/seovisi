@@ -2700,6 +2700,61 @@ def vitrin_yollari():
         return dict(BL.YOLLAR)
 
 
+# ---- vitrin bağlantılarının doğrulanması: yazıya yalnızca mağazanın sitesinde gerçekten açılan adresler girer
+VITRIN_GETIR = None          # testler sahte site verir; None ise gerçek site (site_getirici)
+VITRIN_OK_SAAT, VITRIN_HATA_SAAT = 72, 2
+_BULUNAMADI = ("bulunamamıştır", "sayfa bulunamadı", "page not found")
+
+
+def _vitrin_getirici():
+    if VITRIN_GETIR is not None:
+        return VITRIN_GETIR
+    if os.environ.get("SEOVISI_TEST"):
+        return lambda url, govde=True: (200, "text/html", "", url)
+    return site_getirici()
+
+
+def vitrin_acik(yol, getir=None):
+    """Mağazanın sitesinde bu adres açılıyor mu (200 ve "sayfa bulunamadı" sayfası değil)? Sonuç saklanır
+    (açılan VITRIN_OK_SAAT, açılmayan VITRIN_HATA_SAAT saat). Siteye hiç ulaşılamazsa None."""
+    if not yol or not yol.startswith("/"):
+        return False
+    r = DBI.q("SELECT ok, zaman FROM vitrin_link WHERE yol=?", (yol,), one=True)
+    if r:
+        sure = VITRIN_OK_SAAT if r["ok"] else VITRIN_HATA_SAAT
+        if r["zaman"] >= (datetime.now() - timedelta(hours=sure)).strftime("%Y-%m-%d %H:%M"):
+            return bool(r["ok"])
+    host = store_host(CFG.get("store") or "")
+    if not host:
+        return None
+    st, _, metin, son = (getir or _vitrin_getirici())(f"https://{host}{yol}", True)
+    if st == 0:
+        return None
+    ok = st == 200 and not any(x in ST.tr_lower(metin or "")[:200000] for x in _BULUNAMADI) \
+        and "/404" not in urllib.parse.urlsplit(son or "").path
+    DBI.x("INSERT OR REPLACE INTO vitrin_link(yol, ok, zaman) VALUES(?, ?, ?)",
+          (yol, 1 if ok else 0, datetime.now().strftime("%Y-%m-%d %H:%M")))
+    return ok
+
+
+def vitrin_ilk_acik(adaylar, getir=None):
+    """Sırayla denenen adreslerden sitede açılan ilki (yoksa "")."""
+    for y in adaylar:
+        if y and vitrin_acik(y, getir):
+            return y
+    return ""
+
+
+def kirik_ic_baglantilar(icerik, getir=None):
+    """Yazıdaki site içi bağlantılardan açılmayanlar: [(adres, None | False)] (None: siteye ulaşılamadı)."""
+    out = []
+    for y in dict.fromkeys(re.findall(r'href="(/[^"#]*)"', icerik or "")):
+        d = vitrin_acik(html.unescape(y), getir)
+        if not d:
+            out.append((y, d))
+    return out
+
+
 def blog_ayar():
     """Mağaza ayarı `blog`: hariç kategoriler (None: adında "Bosch Aksesuar" geçenler), biçim, blog kategorisi,
     yayın durumu, yazı rengi ve görsel ayarları."""
@@ -2795,7 +2850,13 @@ def blog_ilgili(pid, kw, kats):
         if puan:
             adaylar.append((-puan, r["pid"], d["baslik"], yol + d["slug"]))
     adaylar.sort()
-    return [(t, u) for _, _, t, u in adaylar[:3]]
+    out = []
+    for _, _, t, u in adaylar[:10]:
+        if vitrin_acik(u):
+            out.append((t, u))
+            if len(out) == 3:
+                break
+    return out
 
 
 def blog_urun_foto(pid):
@@ -2879,16 +2940,26 @@ def _blog_hazirla_yaz(pid, prod, detail, row, eski, a, urun_kw, varyant, sabit, 
         arastirma = KE.arastir(prod.get("name") or "", urun_kw, prod.get("sku") or "", label, prof.get("marka") or "",
                                kullanilan, kelime_getirici(), _KelimeOnbellek())
         onceki = eski.get("keyword") or ""
-        if onceki and not yeni and not dizin.kelimeyi_kullanan(onceki, pid):
+        if onceki and not yeni and eski.get("v") == BL.SURUM and not dizin.kelimeyi_kullanan(onceki, pid):
             adaylar.append(onceki)                    # hazırlanmış yazının hedef kelimesi korunur (yamyamlaşma yoksa)
-        adaylar += [x["kelime"] for x in arastirma["adaylar"] if x["kelime"] not in adaylar]
+        adaylar += [x["kelime"] for x in arastirma["adaylar"] if x["kelime"] not in adaylar
+                    and not dizin.kelimeyi_kullanan(x["kelime"], pid)]
     kats = [_ref_id(c) for c in prod.get("categories") or [] if _ref_id(c)]
+    yollar = dict(vitrin_yollari())
+    slug_ = prod.get("slug") or ""
+    urun_yol = vitrin_ilk_acik([yollar["urun"] + slug_, "/" + slug_] if slug_ else [])
+    yollar["urun"] = urun_yol[: -len(slug_)] if urun_yol else ""
+    if kategori and kategori.get("slug"):
+        k_yol = vitrin_ilk_acik([yollar["kategori"] + kategori["slug"], "/" + kategori["slug"]])
+        yollar["kategori"] = k_yol[: -len(kategori["slug"])] if k_yol else ""
+    yollar["blog_ana"] = vitrin_ilk_acik([yollar["blog_ana"]])
     plan = BL.yaz_tam(prod, (detail or {}).get("details") or "", mevcut_kw=urun_kw, bicim=bicim, varyant=varyant,
                       prof=prof, method=CFG.get("count_method") or SAFE_METHODS,
                       hedef=float(CFG.get("target_density") or 2.5), renk=a["renk"], kategori=kategori,
                       kw=kw, kw_adaylar=adaylar, sosyal=a["sosyal"], foto=foto,
                       ilgili=blog_ilgili(pid, kw or (adaylar[0] if adaylar else prod.get("name") or ""), kats),
-                      digerleri=dizin, yollar=vitrin_yollari(), arastirma=arastirma, bicim_sabit=sabit)
+                      digerleri=dizin, yollar=yollar, arastirma=arastirma, bicim_sabit=sabit,
+                      vurgu=a["gorsel"]["renk"])
     if row and row["blog_id"] and eski.get("slug"):
         plan["slug"] = eski["slug"]                  # yayımlanmış yazının adresi değişmez (bağlantılar ve Google)
     else:
@@ -2972,6 +3043,17 @@ def blog_gonder_ic(pid, gorsel=None, durum=None):
     if not a["kategori"]:
         return "hata", "Önce blog kategorisini seçin (sayfadaki Ayarlar bölümü)."
     plan = json.loads(row["plan"])
+    # yazıdaki bütün site içi bağlantılar sitede açılmalı; açılmayan varsa yazı doğrulanmış bağlantılarla yeniden kurulur
+    kirik = kirik_ic_baglantilar(plan.get("content"))
+    if kirik and not row["duzenlendi"] and any(d is False for _, d in kirik):     # ulaşılamıyorsa yazı bozulmaz, beklenir
+        DBI.xm("DELETE FROM vitrin_link WHERE yol=?", [(y,) for y, _ in kirik])
+        plan = blog_hazirla(pid)
+        kirik = kirik_ic_baglantilar(plan.get("content"))
+    if kirik:
+        if all(d is None for _, d in kirik):
+            return "hata", "Mağazanızın sitesine ulaşılamadı; yazıdaki bağlantılar doğrulanamadı. Biraz sonra yeniden deneyin."
+        return "hata", "Yazıda sitede açılmayan bağlantı var: " + ", ".join(y for y, _ in kirik[:5]) + \
+            (". Yazıyı yeniden yazın." if row["duzenlendi"] else ".")
     plan["score"] = BL.puan(plan, CFG.get("count_method") or SAFE_METHODS)
     if plan["score"]["yuzde"] < 100:
         eksik = "; ".join(k["ad"] for k in plan["score"]["kurallar"] if not k["ok"])
@@ -3039,6 +3121,8 @@ def blog_gonder_ic(pid, gorsel=None, durum=None):
     if kw_alani and ST.tr_lower(str(son.get(kw_alani) or "")) != ST.tr_lower(plan["keyword"]):
         uyar.append(f"hedef kelime Ideasoft yanıtında görünmüyor; panelde blogun hedef kelimesine "
                     f"\"{plan['keyword']}\" yazın")
+    if son.get("slug") and son["slug"] != plan.get("slug"):
+        plan["slug"] = son["slug"]                     # vitrindeki gerçek adres (iç bağlantılar bununla kurulur)
     msg = f"Blog {islem}." + (" Dikkat: " + ", ".join(uyar) + "." if uyar else "")
     _blog_kaydet(pid, durum="gonderildi", blog_id=int(bid), gonderilen=_blog_ozet(plan), mesaj=msg, zaman=zaman,
                  plan=json.dumps(plan, ensure_ascii=False))
@@ -3062,6 +3146,45 @@ def blog_kaldir(pid):
     olay("geri", pid)
     log(f"Blog yayından kaldırıldı, ürün {pid}.", "ok")
     return "kaldirildi", "Yazı yayından kaldırıldı; Ideasoft'ta pasif duruyor."
+
+
+def blog_sil(pid, ideasofttan=False):
+    """Yazıyı siler: hazırlanmış yazı panelden kalkar (ürün yeniden "Yazılacak"a döner). Gönderilmiş yazı için
+    ideasofttan=True ise Ideasoft'taki blog da silinir; Ideasoft silmeye izin vermezse yayından kaldırılır (pasif).
+    Dönüş: (durum, mesaj)."""
+    row = DBI.q("SELECT blog_id, durum FROM blog WHERE pid=?", (pid,), one=True)
+    if not row:
+        return "hata", "Bu ürünün yazısı yok."
+    ek = ""
+    if row["blog_id"]:
+        if not ideasofttan:
+            return "hata", "Bu yazı Ideasoft'ta yayımlanmış; silmek için Ideasoft'taki blogun da silinmesini onaylayın."
+        try:
+            API.blog_sil(row["blog_id"])
+            ek = " Ideasoft'taki blog da silindi."
+            olay("geri", pid)
+        except ApiError as e:
+            if e.status == 404:
+                ek = " Blog Ideasoft'ta zaten yoktu."
+            elif e.status in (401, 403, 405):
+                try:
+                    mevcut = API.blog(row["blog_id"])
+                    if mevcut:
+                        API.blog_yaz(row["blog_id"], API.blog_birlestir(mevcut, {"status": 0}))
+                    ek = " Ideasoft silme izni vermediği için blog yayından kaldırıldı (pasif)."
+                except ApiError as e2:
+                    return "hata", f"Ideasoft'taki blog silinemedi: {str(e2)[:200]}"
+            else:
+                return "hata", f"Ideasoft'taki blog silinemedi: {str(e)[:200]}"
+    DBI.x("DELETE FROM blog WHERE pid=?", (pid,))
+    BLOG.dizin_al().sil(pid)
+    for uz in (".jpg", ".iz"):
+        try:
+            os.remove(_oto_gorsel_yolu(pid) + uz)
+        except OSError:
+            pass
+    log(f"Blog yazısı silindi, ürün {pid}.{ek}", "ok")
+    return "silindi", "Yazı silindi." + ek
 
 
 def blog_urun_gorseli(pid):
@@ -3100,6 +3223,7 @@ class BlogYazari:
         except sqlite3.OperationalError:
             pass
         DBI.x("CREATE TABLE IF NOT EXISTS kelime_onbellek(q TEXT PRIMARY KEY, v TEXT, zaman TEXT)")
+        DBI.x("CREATE TABLE IF NOT EXISTS vitrin_link(yol TEXT PRIMARY KEY, ok INTEGER, zaman TEXT)")
         DBI.x("""CREATE TABLE IF NOT EXISTS blog_oto_log(id INTEGER PRIMARY KEY AUTOINCREMENT, zaman TEXT, pid INTEGER,
                  durum TEXT, mesaj TEXT)""")
         self.kategoriler = None          # Ideasoft blog kategorileri (istenince okunur)
@@ -5188,6 +5312,16 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, {"error": "Yazılar hazırlanırken gönderim yapılamaz; bitmesini bekleyin."})
             durum, msg = blog_gonder(int(d.get("pid") or 0), d.get("gorsel"), d.get("durum"))
             return self._send(200, {"msg": msg, "durum": durum} if durum == "gonderildi" else {"error": msg})
+        if p == "/api/blog/sil":          # hazırlanmış yazıyı siler; gönderilmişse (onayla) Ideasoft'takini de
+            d = self._json()
+            sonuc = Counter()
+            son = ""
+            for pid in [int(x) for x in (d.get("pids") or []) if str(x).isdigit()][:500]:
+                durum, son = blog_sil(pid, bool(d.get("ideasoft")))
+                sonuc[durum] += 1
+            msg = son if sum(sonuc.values()) == 1 else f"{sonuc.get('silindi', 0)} yazı silindi" + (
+                f", {sonuc['hata']} yazı silinemedi." if sonuc.get("hata") else ".")
+            return self._send(200, {"msg": msg, "sonuc": dict(sonuc)})
         if p == "/api/blog/kaldir":
             durum, msg = blog_kaldir(int(q.get("pid") or 0))
             return self._send(200, {"msg": msg} if durum != "hata" else {"error": msg})

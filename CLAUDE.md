@@ -213,9 +213,12 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Gönderim (`blog_gonder`, `/api/blog/gonder`, paket özelliği `blog`) yalnızca kullanıcının isteğiyle ve SEO %100 ise; daha önce
   gönderildiyse aynı blog kaydı PUT ile güncellenir. Hedef kelime `targetKeyword` (ürünün kw_loc alanı) ile gider; Ideasoft yanıtında
   yoksa mesajla bildirilir. Yayından kaldırma (`/api/blog/kaldir`) blogu pasif yapar, silmez; geri almadır.
-- Görsel panelde canvas ile çizilir (`blCiz`, mağazanın lacivert / kırmızı / beyaz çizgisine uyan 8 tema: dördü bantlı fotoğraflı `*_bant`, dördü kutulu `*_kutu`; ayar `blog.gorsel`). Oran 3:2 (tasarım 1200×800, gönderim 1500×1000 JPEG, kalite 0,95): Ideasoft blog kartında kesilmez; kenarlarda güvenli boşluk. Görselde ürün kodu "Ürün Kodu: …"
+- Görsel panelde canvas ile çizilir (`blCiz`, 8 tema: lacivert ve beyaz bantlı, "Editoryal · minimal" (`editoryal`), "Gece · ışıltılı"
+  (`gece_isik`) ve dört kutulu `*_kutu`; ayar `blog.gorsel`; kaldırılan temalar varsayılana döner). Oran 3:2 (tasarım 1200×800, gönderim 1500×1000 JPEG, kalite 0,95): Ideasoft blog kartında kesilmez; kenarlarda güvenli boşluk. Görselde ürün kodu "Ürün Kodu: …"
   `attachment` olarak gider. Ürün fotoğrafı `/api/blog/urun_gorsel` üzerinden (aynı köken; mağaza klasöründe `blog_gorsel/` önbellek).
-- Blog başlığının sonunda ürün kodu (stok kodu) yer alır (`plan.title`); hedef kelime ve görseldeki başlık (`gorsel_baslik`) kodsuzdur (`BL.kodsuz`).
+- Blog başlığı ürünün kendi adıyla kurulur (`BL.blog_basligi`, `BL.urun_kisa_ad`: stok kodu, parantezler, baştaki marka
+  atılır; kısa kalırsa marka eklenir) ve sonunda ürün kodu (stok kodu) yer alır (`plan.title`); hedef kelime başlıkta mutlaka
+  geçer. Görseldeki başlık (`gorsel_baslik`) aynı başlığın kodsuz hâlidir.
 - Yazının en altında sosyal medya kartı (`blog.sosyal`: instagram, youtube, tiktok, facebook; `BL.sosyal_ayar` yalnızca o ağın https adresini kabul eder):
   ağ renkleriyle yatay geçişli zemin, simgeler satır içi CSS ile (emoji yok: Ideasoft blog içeriği 4 baytlık karakterleri "????" kaydediyor).
   Mağaza adı girilmemişse adresten alınır (`blog_profil`).
@@ -226,17 +229,30 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 - Sayfa `#v-blog`; stiller `bl-`, betik adları `bl` önekli. Yazı tipleri Fraunces, Caveat, Special Elite (Google Fonts).
 - Hedef kelime araştırması (`kelime.py`, `blog_hazirla`): kullanıcı kelime seçmediyse adaylar ürün adından çıkarılır, Google
   önerileriyle (mağaza veritabanında `kelime_onbellek`, 30 gün) ve yerel ölçütlerle puanlanır; model adı bölünmez, ifade ürünün ana
-  ismiyle biter, başka yazının hedef kelimesi seçilmez. Hazırlanmış yazının kelimesi korunur. Ayar `blog.google` (varsayılan açık).
+  ismiyle biter, başka yazının hedef kelimesi seçilmez. Ürünün model adı (`KE.model_dizisi`: GWS 18V-8, GDR 120-Li) en güçlü
+  adaydır; yalnızca marka (Bosch, Bosch Professional) aday olamaz. Aynı yazar sürümünde hazırlanmış yazının kelimesi korunur.
+  Ayar `blog.google` (varsayılan açık).
   Kelime seçimiyle kayıt arası `BLOG.hazirla_kilit` altında (paralel hazırlıkta iki yazı aynı kelimeyi almaz).
 - Kalite kapısı (`kalite.py`): `blog.yaz_tam` yazıyı Ideasoft'un 13 kuralı ve `KA.SINIRLAR` (seovisi puanı 94, okunabilirlik 50,
   meta benzerliği < 0,5, içerik benzerliği < 0,7, yamyamlaşma yok, anahtar kelime kaplaması) geçene kadar başka anlatım / biçim /
   hedef kelimeyle (en çok `EN_COK_DENEME`) yazar. Kullanıcı biçimi seçtiyse (`bicim_sabit`) biçim değişmez. Her yazının izi
   (`blog.iz`: hedef kelime, meta izi, içerik MinHash imzası, başlık, adres, kalite, görsel bilgisi) `BLOG.dizin_al()` dizinindedir;
   `_blog_kaydet` planla birlikte izi de yazar. Yoğunluk hesabı HTML stillerini de saydığı için ürün kartı ve kutularda stil az tutulur.
-- İç bağlantılar: vitrin önekleri `API.vitrin_yollari()` (Ideasoft: `/urun/`, `/kategori/`, `/blog/`); ilgili yazılar yalnızca
-  gönderilmişlerden (`blog_ilgili`), kategori adresi kategori kaydından (`_blog_kategori`, tahmin edilmez). Yayımlanmış yazının
-  adresi (slug) yeniden hazırlanınca değişmez. Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır; fotoğraf
-  ürünün ilk görselinin adresi (`blog_urun_foto`).
+- İç bağlantılar: vitrin önekleri `API.vitrin_yollari()` (Ideasoft: `/urun/`, `/kategori/`, `/blog/icerik/`, `/blog`). Yazıya
+  **yalnızca mağazanın sitesinde gerçekten açılan** adresler girer: `vitrin_acik` adresi sitede dener (200 ve "sayfa bulunamadı"
+  değil; sonuç `vitrin_link` tablosunda, açılan 72, açılmayan 2 saat). Ürün ve kategori için önek açılmazsa `/<slug>` denenir;
+  hiçbiri açılmazsa bağlantı verilmez. Gönderimden hemen önce (`blog_gonder_ic`) yazıdaki bütün site içi bağlantılar yeniden
+  denenir; açılmayan varsa yazı yeniden kurulur, siteye ulaşılamıyorsa gönderilmez. Testler `VITRIN_GETIR` ile sahte site verir
+  (`SEOVISI_TEST` varken ve sahte yoksa her adres açık sayılır). Ilgili yazılar yalnızca gönderilmişlerden (`blog_ilgili`);
+  gönderimden sonra Ideasoft'un verdiği adres (slug) saklanır. Yayımlanmış yazının adresi yeniden hazırlanınca değişmez.
+- Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır: beyaz, gölgeli, Poppins; vurgu rengi blog görselinin
+  ana rengi (`vurgu`), düğme siyah; esnek (flex) düzen telefonda alt alta iner. "Bu konuda da ilginizi çekebilir" kutusu
+  (`seovisi-ilgili`) bağlantıları renkli ok ve alt çizgiyle gösterir. Fotoğraf ürünün ilk görselinin adresi (`blog_urun_foto`).
+- Yoğunluk %2'ye çıkamazsa (HTML'i ağır yazı) yazar önce ek bölümü, sonra teknik listeyi kısaltır, son çare olarak sosyal medya
+  kartını çıkarır; Ideasoft'un 13 kuralı her sayım yönteminde tutulur (`test_blog_kalite.Baslik`).
+- Silme (`blog_sil`, `/api/blog/sil`): hazır yazı panelden kalkar (ürün "Yazılacak"a döner); gönderilmiş yazı yalnızca onayla ve
+  Ideasoft'taki blogla birlikte silinir (`API.blog_sil`); Ideasoft silmeye izin vermezse blog pasif yapılır. Geri alma gibi
+  paketten bağımsızdır.
 - Periyodik otomasyon (`app.py` "blog otomasyonu", ayar `blog.oto`): Blog Düzenle'nin en üstteki kartındaki "PERİYODİK OTOMASYON"
   düğmesi aynı sayfada `#bl-oto` panosunu açar (`#v-blog.oto`; stiller `blo-`). Günler ve saatler Türkiye saatiyle (`TR_SAAT`);
   gün dört eşit vakte bölünür (`BLOG_VAKITLER`). `blog_oto_tur` zamanlayıcıda her dakika: seçili gün ve saatte, saat başına bir kez
