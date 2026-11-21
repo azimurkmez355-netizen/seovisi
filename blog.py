@@ -27,7 +27,7 @@ import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 6   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 7   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
 
 # mağaza vitrinindeki adreslerin önekleri (Ideasoft); iç bağlantılar bunlarla kurulur
 YOLLAR = {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/", "blog_ana": "/blog"}
@@ -389,7 +389,7 @@ def _render(bloklar, kw, renk, link):
             out.append(_kart_html(v, renk))
         elif tur == "imza":
             out.append(f'<p style="color:#777;font-size:15px;margin:0">{_e(v)}</p>')
-    return '<div style="font-size:18px;line-height:1.85">\n' + "\n".join(out) + "\n</div>"
+    return FONT_YUKLE + '<div style="font-size:18px;line-height:1.85">\n' + "\n".join(out) + "\n</div>"
 
 
 # ---------------------------------------------------------------- iç bağlantılar ve ürün kartı
@@ -399,56 +399,60 @@ def _koyu(renk, k=0.55):
     return "#%02x%02x%02x" % tuple(max(0, int(((n >> s) & 255) * k)) for s in (16, 8, 0))
 
 
-YAZI = "font-family:Poppins,sans-serif"
+FONT_ADRES = "https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+# Poppins yazının başında iki yolla yüklenir (editör birini silse diğeri kalsın); yüklenemezse modern sistem yazı tipleri
+FONT_YUKLE = (f'<link rel="stylesheet" href="{FONT_ADRES}">'
+              f'<style>@import url("{FONT_ADRES}");</style>')
+YAZI = "font-family:Poppins,'Segoe UI',Rubik,Helvetica,Arial,sans-serif"
 
 
 def _ilgili_html(v):
-    """İç bağlantılar kutusu: mağazanın kendi (doğrulanmış) yazıları, kategori ve blog sayfası. Bağlantılar bağlantı gibi
-    görünür (renkli ok, altı çizili). Stiller kısa: Ideasoft HTML'deki stilleri de kelime sayar."""
+    """İç bağlantılar kutusu: her bağlantı tıklanabilir bir satır (çerçeve, okla); mağazanın kendi doğrulanmış adresleri.
+    Stiller kısa tutulur: Ideasoft HTML'deki stilleri de kelime sayar."""
     liste, vurgu = v
-    li = "".join(f'<li style="margin:0 0 9px"><b style="color:{vurgu}">&#8594;</b> <a href="{_e(u)}" style="color:#111;'
-                 f'font-weight:600;text-decoration:underline;text-decoration-color:{vurgu}">{_e(t)}</a></li>'
-                 for t, u in liste if u)
-    if not li:
+    satir = "".join(f'<a href="{_e(u)}" style="display:block;margin:0 0 8px;padding:13px 16px;border:1px solid #e8e8ec;'
+                    f'border-radius:12px;background:#fff;color:#111;font-size:15px;font-weight:500;text-decoration:none">'
+                    f'{_e(t)} <b style="float:right;color:{vurgu}">&#8594;</b></a>' for t, u in liste if u)
+    if not satir:
         return ""
-    return (f'<div id="seovisi-ilgili" style="margin:42px 0 14px;padding:22px 26px;border-radius:18px;background:#fafafa;'
-            f'border:1px solid #ececef;border-left:5px solid {vurgu};{YAZI}">'
-            f'<p style="margin:0;font-size:12px;font-weight:600;letter-spacing:2px;color:{vurgu}">OKUMAYA DEVAM EDİN</p>'
-            '<p style="margin:2px 0 12px;font-size:20px;font-weight:700;color:#111">Bu konuda da ilginizi çekebilir</p>'
-            f'<ul style="margin:0;padding:0;list-style:none">{li}</ul></div>')
+    return (f'<div id="seovisi-ilgili" style="margin:42px 0 14px;padding:22px;border-radius:20px;background:#f6f6f8;{YAZI}">'
+            f'<p style="margin:0 0 6px"><span style="padding:5px 12px;border-radius:99px;background:#fff;color:{vurgu};'
+            'font-size:11px;font-weight:600;letter-spacing:1.5px">OKUMAYA DEVAM EDİN</span></p>'
+            '<p style="margin:10px 0 14px;font-size:20px;line-height:1.35;font-weight:600;color:#111">Bu konuda da ilginizi çekebilir</p>'
+            f'{satir}</div>')
 
 
 def _kart_html(v, renk):
-    """Yazının en dikkat çeken alanı: beyaz, gölgeli, Poppins yazılı ürün kartı. Rengi sitenin vurgusundan (blog görseli
-    ana rengi) yalnızca ince ayrıntılarda alır; düğme siyah. Fotoğraf solda, bilgiler sağda; dar ekranda alt alta iner ve
-    fotoğraf alçak kalır (kompakt)."""
+    """Yazının en dikkat çeken alanı: beyaz, gölgeli, Poppins yazılı ürün kartı. Vurgu rengi (sitenin rengi) yalnızca küçük
+    ayrıntılarda; düğme siyah. Esnek düzen: telefonda fotoğraf üstte, bilgiler altta, sıkı."""
     vurgu, link = v.get("vurgu") or "#e30613", v.get("link") or ""
+    ad = kodsuz(v["ad"], v.get("sku") or "")
     if v.get("foto"):
-        resim = (f'<img src="{_e(v["foto"])}" alt="{_e(v["ad"])}" style="display:block;width:100%;max-width:300px;'
-                 'max-height:210px;object-fit:contain;margin:0 auto">')
+        resim = (f'<img src="{_e(v["foto"])}" alt="{_e(ad)}" style="display:block;width:100%;max-width:260px;'
+                 'max-height:220px;object-fit:contain;margin:0 auto">')
     else:
-        resim = (f'<p style="margin:0;padding:50px 0;font-size:64px;font-weight:800;color:{vurgu}">'
-                 f'{_e((v.get("marka") or v["ad"] or "?")[:1].upper())}</p>')
+        resim = (f'<p style="margin:0;padding:46px 0;font-size:60px;font-weight:700;color:{vurgu}">'
+                 f'{_e((v.get("marka") or ad or "?")[:1].upper())}</p>')
     if link:
         resim = f'<a href="{_e(link)}">{resim}</a>'
     ust = " · ".join(x for x in (v.get("marka"), v.get("kategori") or "") if x)
-    maddeler = "".join(f'<li><b style="color:{vurgu}">&#10003;</b> {_e(m)}</li>' for m in v.get("maddeler") or [])
-    dugme = (f'<p style="margin:0 0 12px"><a href="{_e(link)}" style="display:inline-block;padding:14px 30px;'
-             'border-radius:12px;background:#111;color:#fff;font-size:16px;font-weight:600;text-decoration:none">'
-             f'{_e(v.get("dugme") or "Ürünü incele")} <b style="color:{vurgu}">&#8594;</b></a></p>') if link else ""
-    kod = f'Ürün kodu: <b style="color:#111">{_e(v["sku"])}</b> · ' if v.get("sku") else ""
-    return (f'<div id="seovisi-urun-karti" style="margin:48px 0 32px;padding:22px;border-radius:22px;background:#fff;'
-            f'border:1px solid #e9e9ec;border-top:4px solid {vurgu};box-shadow:0 26px 50px -26px rgba(17,17,17,.4);'
-            f'{YAZI};color:#111;display:flex;flex-wrap:wrap;align-items:center;gap:22px">'
-            '<div style="flex:1 1 220px;padding:14px;border-radius:16px;background:#f5f5f7;text-align:center">'
-            f'{resim}</div><div style="flex:1.4 1 260px">'
-            f'<p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:2px;color:{vurgu}">'
-            f'{_e(v.get("rozet") or "BU YAZIDAKİ ÜRÜN")}</p>'
-            + (f'<p style="margin:0;font-size:13px;font-weight:300;color:#666">{_e(ust)}</p>' if ust else "")
-            + f'<h3 style="margin:4px 0 12px;font-size:23px;line-height:1.3;font-weight:700;color:#111">{_e(v["ad"])}</h3>'
-            f'<ul style="margin:0 0 16px;padding:0;list-style:none;font-size:15px;font-weight:300;line-height:1.7">{maddeler}</ul>'
-            f'{dugme}<p style="margin:0;font-size:13px;font-weight:300;color:#666">{kod}Güncel fiyat ve stok ürün sayfasında</p>'
-            '</div></div>')
+    cipler = "".join(f'<span style="display:inline-block;margin:0 6px 8px 0;padding:7px 12px;border-radius:99px;'
+                     f'background:#f4f4f6;font-size:13px;font-weight:500">{_e(m)}</span>' for m in v.get("maddeler") or [])
+    dugme = (f'<a href="{_e(link)}" style="display:inline-block;padding:14px 28px;border-radius:99px;background:#111;'
+             f'color:#fff;font-size:15px;font-weight:600;text-decoration:none">{_e(v.get("dugme") or "Ürünü incele")} '
+             f'<b style="color:{vurgu}">&#8594;</b></a>') if link else ""
+    kod = f'Ürün kodu <b style="font-weight:600;color:#111">{_e(v["sku"])}</b> · ' if v.get("sku") else ""
+    return (f'<div id="seovisi-urun-karti" style="margin:46px 0 30px;padding:20px;border-radius:24px;background:#fff;'
+            f'border:1px solid #ececf0;box-shadow:0 24px 48px -28px rgba(17,17,17,.45);{YAZI};color:#111;'
+            'display:flex;flex-wrap:wrap;align-items:center;gap:24px">'
+            f'<div style="flex:0 1 300px;margin:0 auto;padding:16px;border-radius:18px;background:#f6f6f8">{resim}</div>'
+            '<div style="flex:1 1 280px;padding:4px 6px">'
+            f'<p style="margin:0 0 10px"><span style="padding:5px 12px;border-radius:99px;background:#fdeeee;color:{vurgu};'
+            f'font-size:11px;font-weight:600;letter-spacing:1.5px">{_e(v.get("rozet") or "BU YAZIDAKİ ÜRÜN")}</span></p>'
+            + (f'<p style="margin:0 0 4px;font-size:13px;color:#777">{_e(ust)}</p>' if ust else "")
+            + f'<p style="margin:0 0 14px;font-size:24px;line-height:1.3;font-weight:700;letter-spacing:-.3px">{_e(ad)}</p>'
+            f'<p style="margin:0 0 10px">{cipler}</p>{dugme}'
+            f'<p style="margin:14px 0 0;font-size:12px;color:#888">{kod}Güncel fiyat ve stok ürün sayfasında</p></div></div>')
 
 
 # ---------------------------------------------------------------- sosyal medya alanı (yazının en altı)
@@ -1107,7 +1111,7 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     if prof["magaza"] and yollar.get("blog_ana"):
         baglantilar.append((f"{prof['magaza']} blogundaki diğer rehberler", yollar["blog_ana"]))
     kart = {"ad": ad, "link": link, "foto": foto or "", "marka": prof["marka"], "label": b["label"],
-            "sku": sku, "maddeler": _kart_maddeleri(b), "dugme": "Ürünü incele", "rozet": "BU YAZININ ÜRÜNÜ",
+            "sku": sku, "maddeler": _kart_maddeleri(b), "dugme": "Ürünü incele", "rozet": "BU YAZIDAKİ ÜRÜN",
             "kategori": (kategori or {}).get("ad") or "", "vurgu": vurgu}
 
     refs = [r.replace("{label}", b["label"]) for r in GONDERME]

@@ -246,8 +246,10 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   (`SEOVISI_TEST` varken ve sahte yoksa her adres açık sayılır). Ilgili yazılar yalnızca gönderilmişlerden (`blog_ilgili`);
   gönderimden sonra Ideasoft'un verdiği adres (slug) saklanır. Yayımlanmış yazının adresi yeniden hazırlanınca değişmez.
 - Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır: beyaz, gölgeli, Poppins; vurgu rengi blog görselinin
-  ana rengi (`vurgu`), düğme siyah; esnek (flex) düzen telefonda alt alta iner. "Bu konuda da ilginizi çekebilir" kutusu
-  (`seovisi-ilgili`) bağlantıları renkli ok ve alt çizgiyle gösterir. Fotoğraf ürünün ilk görselinin adresi (`blog_urun_foto`).
+  ana rengi (`vurgu`) yalnızca küçük ayrıntılarda, teknik bilgiler çip, düğme siyah; esnek (flex) düzen telefonda alt alta iner.
+  "Bu konuda da ilginizi çekebilir" kutusu (`seovisi-ilgili`) her bağlantıyı çerçeveli, oklu bir satır olarak gösterir.
+  Mağaza siteleri Poppins yüklemediği için yazının başında `BL.FONT_YUKLE` (Google Fonts `<link>` ve `@import`) bulunur.
+  Fotoğraf ürünün ilk görselinin adresi (`blog_urun_foto`).
 - Yoğunluk %2'ye çıkamazsa (HTML'i ağır yazı) yazar önce ek bölümü, sonra teknik listeyi kısaltır, son çare olarak sosyal medya
   kartını çıkarır; Ideasoft'un 13 kuralı her sayım yönteminde tutulur (`test_blog_kalite.Baslik`).
 - Silme (`blog_sil`, `/api/blog/sil`): hazır yazı panelden kalkar (ürün "Yazılacak"a döner); gönderilmiş yazı yalnızca onayla ve
