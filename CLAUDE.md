@@ -85,8 +85,9 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
 | `kalite.py` | seovisi kalite kapısı: kendi SEO puanı, Türkçe okunabilirlik (Ateşman), meta / içerik özgünlüğü (MinHash dizini), sınırlar (`SINIRLAR`). Yalnızca hesaplar. |
 | `profil.py` | Mağaza profili (mağaza adı, varsayılan marka) ve Türkçe ekler (`loc`, `gen`). |
 | `ui/index.html` | Tek sayfalık panel; saf JS (`$`, `api`, `post`, `ask`, `show`). Bütün betik tek kapsamda: yeni üst düzey ad ve öğe kimliği var olanlarla çakışmamalı (`test_panel.py`). |
-| `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. |
-| `ui/marka/` | Logo, simge ve renkler. |
+| `ui/giris.html` | Mağaza giriş sayfası (sunucu kipi, oturumsuz `/`). Koyu, hareketli; `login_page()` hata iletisini `HATA_ALANI` yerine yazar (dosyada bu ad tek kez geçmeli). Çerçeve içi kapı girişi betiği buradadır. |
+| `ui/yonetim.html` | Yönetici paneli (`/yonetim`); mağaza panelinden ayrı, tek sayfa. Giriş koyu ve altın vurgulu ("Yönetici konsolu"); panel açık temalı, sol menü ve `#genel`, `#magazalar`, `#abonelikler`, `#hatalar` sayfaları; abonelik formu ve silme sağdan açılan çekmecede. |
+| `ui/marka/` | Logo (açık ve koyu zemin), simge, renkler ve Plus Jakarta Sans yazı tipi (`/marka/` altında; dışarıdan yazı tipi yüklenmez). |
 
 ### Çok mağaza yapısı
 
@@ -245,7 +246,7 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   denenir; açılmayan varsa yazı yeniden kurulur, siteye ulaşılamıyorsa gönderilmez. Testler `VITRIN_GETIR` ile sahte site verir
   (`SEOVISI_TEST` varken ve sahte yoksa her adres açık sayılır). Ilgili yazılar yalnızca gönderilmişlerden (`blog_ilgili`);
   gönderimden sonra Ideasoft'un verdiği adres (slug) saklanır. Yayımlanmış yazının adresi yeniden hazırlanınca değişmez.
-- Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır: beyaz, gölgeli, Poppins; vurgu rengi blog görselinin
+- Ürün kartı (`id="seovisi-urun-karti"`) yazının en dikkat çeken alanıdır: beyaz, 2 px belirgin çerçeveli (telefonda gölge görünmez), gölgeli, Poppins; vurgu rengi blog görselinin
   ana rengi (`vurgu`) yalnızca küçük ayrıntılarda, teknik bilgiler çip, düğme siyah; esnek (flex) düzen telefonda alt alta iner.
   "Bu konuda da ilginizi çekebilir" kutusu (`seovisi-ilgili`) her bağlantıyı çerçeveli, oklu bir satır olarak gösterir.
   Mağaza siteleri Poppins yüklemediği için yazının başında `BL.FONT_YUKLE` (Google Fonts `<link>` ve `@import`) bulunur.

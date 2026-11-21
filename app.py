@@ -4635,65 +4635,19 @@ def migrate_legacy():
     print(f"Eski kurulum {dest} klasörüne taşındı.")
 
 
+UI_GIRIS = os.path.join(BASE, "ui", "giris.html")
+
+
 def login_page(msg=""):
+    """Mağaza giriş sayfası (ui/giris.html); hata ve eksik sunucu ayarı iletisi HATA_ALANI yerine yazılır."""
     eksik = [e for e, k in ORTAM_AYAR.items() if not SRV.get(k)]
-    err = f'<p class="err">{html.escape(msg)}</p>' if msg else ""
+    satirlar = [html.escape(msg)] if msg else []
     if eksik:
-        err += (f'<p class="err">Sunucu ayarları eksik: {", ".join(eksik)}. Ortam değişkeni olarak (Railway: Variables) '
-                'ya da data/sunucu.json dosyasına girin.</p>')
-    return f"""<!doctype html><html lang="tr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>seovisi — giriş</title><link rel="icon" href="/favicon.ico">
-<style>
-:root{{--ink:#15161a;--muted:#5d6270;--line:#e3e5ea;--blue:#2f4bf0;--bg:#f5f6f8;--card:#fff;--err:#c0392b}}
-@media (prefers-color-scheme:dark){{:root{{--ink:#eef0f4;--muted:#a0a5b1;--line:#2c2f37;--bg:#111216;--card:#1a1c21;--err:#ff7b6b}}}}
-*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--ink);
-font-family:"Segoe UI",system-ui,sans-serif;padding:16px}}
-.card{{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:36px 32px;width:100%;max-width:420px}}
-img{{height:34px;margin-bottom:22px}}h1{{font-size:22px;margin:0 0 6px}}p{{color:var(--muted);line-height:1.5;margin:0 0 20px}}
-label{{display:block;font-weight:600;font-size:14px;margin-bottom:6px}}
-input{{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink)}}
-button{{width:100%;margin-top:14px;font:inherit;font-weight:600;padding:12px;border:0;border-radius:9px;background:var(--blue);color:#fff;cursor:pointer}}
-.err{{color:var(--err);margin:0 0 16px}}.frame{{margin:16px 0 0;color:var(--ink)}}.frame a{{color:var(--blue)}}small{{display:block;color:var(--muted);margin-top:16px;line-height:1.5}}
-</style>
-<div class="card"><img src="/marka/seovisi-logo.svg" alt="seovisi">
-<h1>Mağazanızla giriş yapın</h1><p>Ideasoft mağazanızın adresini yazın. Ideasoft'un izin sayfasında onay verdiğinizde panel açılır.</p>
-{err}<form method="post" action="/giris" id="f"><label for="m">Mağaza adresi</label>
-<input id="m" name="store" placeholder="magazaniz.myideasoft.com" autocomplete="url" required autofocus>
-<input type="hidden" name="kapi" id="k">
-<button type="submit">Ideasoft ile giriş yap</button></form>
-<p class="frame" id="note" hidden></p>
-<small>Şifreniz bize gelmez; giriş Ideasoft üzerinden yapılır. Tarama mağazanızda hiçbir şey değiştirmez.</small></div>
-<script>
-// Ideasoft panelinin içinde (çerçevede) açıldıysa: Ideasoft'un izin sayfası çerçevede açılmaz; giriş yeni sekmede yapılır,
-// bu sayfa tek kullanımlık kapı koduyla oturumunu teslim alır.
-if (window.top !== window.self) {{
-  const f = document.getElementById('f'), note = document.getElementById('note');
-  const say = (t, full) => {{ note.hidden = false; note.innerHTML = t + (full ? ' <a href="/" target="_blank" rel="noopener">Tam ekranda aç</a>' : ''); }};
-  say('Giriş yeni bir sekmede açılır; izin verdikten sonra bu pencereye dönün.');
-  f.target = '_blank';
-  let timer = null;
-  f.addEventListener('submit', () => {{
-    const b = new Uint8Array(24); crypto.getRandomValues(b);
-    const code = btoa(String.fromCharCode(...b)).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');
-    document.getElementById('k').value = code;
-    say('Yeni sekmede Ideasoft izni bekleniyor…');
-    clearInterval(timer);
-    const started = Date.now();
-    timer = setInterval(async () => {{
-      if (Date.now() - started > 300000) {{ clearInterval(timer); say('Süre doldu; yeniden giriş yapın.'); return; }}
-      const r = await fetch('/kapi/al', {{method: 'POST', headers: {{'Content-Type': 'application/json', 'X-Seovisi': '1'}},
-                                          body: JSON.stringify({{kapi: code}})}}).catch(() => null);
-      const j = r ? await r.json().catch(() => ({{}})) : {{}};
-      if (j.bekle) return;
-      clearInterval(timer);
-      if (!j.ok) {{ say(j.error || 'Giriş tamamlanamadı.'); return; }}
-      const s = await fetch('/api/state').catch(() => null);
-      if (s && s.ok) location.reload();
-      else say('Tarayıcınız bu pencerede oturum açılmasına izin vermiyor. Paneli kendi sekmesinde kullanabilirsiniz:', true);
-    }}, 2000);
-  }});
-}}
-</script></html>"""
+        satirlar.append(f'Sunucu ayarları eksik: {", ".join(eksik)}. Ortam değişkeni olarak (Railway: Variables) '
+                        'ya da data/sunucu.json dosyasına girin.')
+    err = "".join(f'<p class="err" role="alert">{t}</p>' for t in satirlar)
+    with open(UI_GIRIS, encoding="utf-8") as f:
+        return f.read().replace("HATA_ALANI", err, 1)
 
 
 # ======================================================================= web
@@ -4817,7 +4771,7 @@ class H(BaseHTTPRequestHandler):
     def route_public(self, method, p, q):
         if method == "GET" and (p == "/favicon.ico" or p.startswith("/marka/")):   # logo ve simgeler (ui/marka)
             name = "favicon.ico" if p == "/favicon.ico" else os.path.basename(p)
-            types = {".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon"}
+            types = {".svg": "image/svg+xml", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2"}
             path = os.path.join(MARKA, name)
             if os.path.splitext(name)[1] not in types or not os.path.isfile(path):
                 self._send(404, {"error": "Yok"})

@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0c0d13">
+<title>seovisi — giriş</title>
+<link rel="icon" href="/favicon.ico">
+<link rel="preload" href="/marka/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Mağaza giriş sayfası (app.login_page hata iletisini formun üstüne yazar). Koyu zemin, logodaki 3×3 tarama ızgarası motifi:
+   gri → mavi (taranıyor) → yeşil (tamam). Bütün hareketler prefers-reduced-motion: no-preference içinde. */
+@font-face{font-family:"Jakarta";src:url(/marka/plus-jakarta-sans.woff2) format("woff2");font-weight:200 800;font-display:swap}
+@property --aci{syntax:"<angle>";inherits:false;initial-value:0deg}
+:root{
+  --gece:#0c0d13; --gece2:#14151b; --cam:rgba(22,24,33,.72); --cizgi:rgba(255,255,255,.09); --cizgi2:rgba(255,255,255,.16);
+  --yazi:#f3f4f8; --soluk:#a3a8b8; --soluk2:#6f7487;
+  --mavi:#5a70ff; --mavi2:#2f4bf0; --yesil:#2bc071; --bos:#3a3d47; --hata:#ff7b6b;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{min-height:100vh;background:var(--gece);color:var(--yazi);font:15.5px/1.6 Jakarta,"Segoe UI",system-ui,sans-serif;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased}
+a{color:#9fb0ff}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--mavi);outline-offset:3px}
+
+/* ---- arka plan: ışık bulutları, ızgara çizgileri, film dokusu, imleçle gezen ışık */
+.zemin{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.bulut{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55}
+.bulut.b1{width:620px;height:620px;left:-160px;top:-180px;background:radial-gradient(circle,#2f4bf0 0,transparent 70%)}
+.bulut.b2{width:560px;height:560px;right:-140px;bottom:-200px;background:radial-gradient(circle,#1e9e5a 0,transparent 70%);opacity:.42}
+.bulut.b3{width:420px;height:420px;left:42%;top:30%;background:radial-gradient(circle,#7a4dff 0,transparent 70%);opacity:.22}
+.izgara{position:absolute;inset:-2px;background-image:linear-gradient(var(--cizgi) 1px,transparent 1px),linear-gradient(90deg,var(--cizgi) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(ellipse 75% 65% at 50% 45%,#000 30%,transparent 78%);
+  -webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 45%,#000 30%,transparent 78%);opacity:.55}
+.doku{position:absolute;inset:0;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.isik{position:absolute;width:520px;height:520px;margin:-260px 0 0 -260px;border-radius:50%;left:50%;top:40%;
+  background:radial-gradient(circle,rgba(90,112,255,.16),transparent 65%);translate:var(--mx,0) var(--my,0)}
+.kare-yagmuru i{position:absolute;width:10px;height:10px;border-radius:3px;background:var(--bos);opacity:0}
+
+/* ---- düzen */
+.sahne{position:relative;z-index:1;min-height:100vh;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);
+  align-items:center;gap:56px;max-width:1240px;margin:0 auto;padding:48px 40px}
+.ust{position:absolute;top:28px;left:40px;right:40px;display:flex;align-items:center;justify-content:space-between}
+.ust img{height:30px;display:block}
+.rozet{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:99px;border:1px solid var(--cizgi2);
+  background:rgba(255,255,255,.04);font-size:12.5px;font-weight:600;color:var(--soluk);letter-spacing:.2px}
+.rozet i{width:7px;height:7px;border-radius:50%;background:var(--yesil);box-shadow:0 0 0 4px rgba(43,192,113,.18)}
+
+/* sol: tanıtım */
+.tanitim h1{font-size:clamp(34px,4.2vw,54px);line-height:1.08;letter-spacing:-1.6px;font-weight:800;margin:18px 0 18px}
+.tanitim h1 em{font-style:normal;background:linear-gradient(100deg,#8fa0ff 10%,#5a70ff 45%,#2bc071 90%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.tanitim>p{color:var(--soluk);font-size:17px;max-width:520px;margin:0 0 30px}
+.ozellik{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;max-width:540px;padding:0;margin:0;list-style:none}
+.ozellik li{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid var(--cizgi);border-radius:14px;
+  background:rgba(255,255,255,.025);font-size:14px;font-weight:500;color:#d9dce6}
+.ozellik svg{flex:none;width:30px;height:30px;padding:7px;border-radius:9px;background:rgba(90,112,255,.14);color:#a7b4ff}
+.ozellik li:nth-child(even) svg{background:rgba(43,192,113,.14);color:#6fe0a3}
+
+/* tarama gösterisi: 3×3 ızgara ve tarama çizgisi */
+.tarayici{position:relative;display:flex;align-items:center;gap:18px;margin:0 0 34px}
+.tg{position:relative;display:grid;grid-template-columns:repeat(3,22px);gap:7px;padding:14px;border-radius:18px;
+  background:rgba(255,255,255,.03);border:1px solid var(--cizgi);overflow:hidden}
+.tg b{width:22px;height:22px;border-radius:6px;background:var(--bos)}
+.tg::after{content:"";position:absolute;left:0;right:0;height:26px;top:-30px;
+  background:linear-gradient(180deg,transparent,rgba(90,112,255,.55),transparent)}
+.tarayici .sayac{font-size:13.5px;color:var(--soluk)}
+.tarayici .sayac b{display:block;font-size:22px;color:var(--yazi);font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+
+/* sağ: cam kart, dönen ışıklı kenar */
+.kart-dis{position:relative;border-radius:28px;padding:1.5px;
+  background:conic-gradient(from var(--aci),rgba(90,112,255,.0) 0deg,rgba(90,112,255,.9) 70deg,rgba(43,192,113,.85) 140deg,rgba(90,112,255,0) 200deg,rgba(255,255,255,.08) 360deg)}
+.kart-dis::before{content:"";position:absolute;inset:-40px;z-index:-1;border-radius:60px;
+  background:radial-gradient(closest-side,rgba(47,75,240,.35),transparent);filter:blur(30px)}
+.kart{position:relative;border-radius:26.5px;padding:38px 36px 30px;background:linear-gradient(160deg,rgba(24,26,36,.97),rgba(15,16,23,.97));backdrop-filter:blur(22px) saturate(140%);
+  -webkit-backdrop-filter:blur(22px) saturate(140%);transform-style:preserve-3d}
+.kart h2{font-size:27px;letter-spacing:-.6px;line-height:1.2;margin:0 0 8px;font-weight:800}
+.kart>p{color:var(--soluk);margin:0 0 26px;font-size:15px}
+.adimlar{display:flex;gap:6px;margin:0 0 26px;padding:0;list-style:none;counter-reset:a}
+.adimlar li{flex:1;font-size:12px;font-weight:600;color:var(--soluk2);counter-increment:a}
+.adimlar li::before{content:"";display:block;height:4px;border-radius:4px;background:var(--bos);margin-bottom:8px}
+.adimlar li.on{color:#c4cdff}.adimlar li.on::before{background:linear-gradient(90deg,var(--mavi),#8fa0ff)}
+label{display:block;font-size:13.5px;font-weight:700;margin:0 0 8px;color:#e3e6ef}
+.alan{position:relative;display:flex;align-items:center;border:1.5px solid var(--cizgi2);border-radius:16px;background:rgba(9,10,15,.55);
+  transition:border-color .2s,box-shadow .2s}
+.alan:focus-within{border-color:var(--mavi);box-shadow:0 0 0 5px rgba(90,112,255,.18)}
+.alan svg{flex:none;width:20px;height:20px;margin-left:16px;color:var(--soluk2)}
+.alan:focus-within svg{color:#9fb0ff}
+.alan input{flex:1;min-width:0;border:0;outline:0;background:transparent;color:var(--yazi);font:inherit;font-size:16px;padding:16px 14px}
+.alan input::placeholder{color:#5d6276}
+.alan .tik{flex:none;width:26px;height:26px;margin-right:12px;border-radius:50%;display:grid;place-items:center;
+  background:rgba(43,192,113,.16);color:var(--yesil);scale:0;transition:scale .25s}
+.alan.gecerli .tik{scale:1}
+.ipucu{margin:9px 2px 0;font-size:12.5px;color:var(--soluk2)}
+.dugme{position:relative;overflow:hidden;width:100%;margin-top:20px;border:0;border-radius:16px;padding:17px 20px;cursor:pointer;
+  font:inherit;font-size:16px;font-weight:700;color:#fff;letter-spacing:.1px;
+  background:linear-gradient(100deg,#2f4bf0,#5a70ff 55%,#3f5cff);box-shadow:0 18px 40px -16px rgba(47,75,240,.85),inset 0 1px 0 rgba(255,255,255,.25);
+  display:flex;align-items:center;justify-content:center;gap:10px;transition:translate .2s,box-shadow .2s}
+.dugme:hover{translate:0 -2px;box-shadow:0 24px 50px -16px rgba(47,75,240,.95),inset 0 1px 0 rgba(255,255,255,.25)}
+.dugme::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);translate:-120% 0}
+.dugme svg{width:18px;height:18px;transition:translate .2s}
+.dugme:hover svg{translate:4px 0}
+.dugme .yukleniyor{display:none;width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff}
+.dugme.gidiyor .yukleniyor{display:block}.dugme.gidiyor svg{display:none}
+.err{display:flex;gap:10px;align-items:flex-start;margin:0 0 18px;padding:12px 14px;border-radius:14px;
+  background:rgba(255,123,107,.1);border:1px solid rgba(255,123,107,.3);color:#ffb3a8;font-size:14px}
+.frame{margin:16px 0 0;padding:12px 14px;border-radius:14px;background:rgba(90,112,255,.1);border:1px solid rgba(90,112,255,.25);color:#d3daff;font-size:14px}
+.guven{display:flex;gap:10px;align-items:flex-start;margin:24px 0 0;padding-top:20px;border-top:1px solid var(--cizgi);color:var(--soluk2);font-size:12.5px;line-height:1.55}
+.guven svg{flex:none;width:18px;height:18px;color:var(--yesil);margin-top:1px}
+.alt{position:absolute;left:0;right:0;bottom:20px;text-align:center;color:var(--soluk2);font-size:12.5px}
+
+/* ---- hareket */
+@media (prefers-reduced-motion:no-preference){
+  .bulut.b1{animation:suzul1 18s ease-in-out infinite alternate}
+  .bulut.b2{animation:suzul2 22s ease-in-out infinite alternate}
+  .bulut.b3{animation:suzul3 26s ease-in-out infinite alternate}
+  .izgara{animation:kay 30s linear infinite}
+  .kare-yagmuru i{animation:dus var(--s,9s) linear var(--g,0s) infinite}
+  .kart-dis{animation:don 6s linear infinite}
+  .dugme::after{animation:parilti 3.6s ease-in-out 1.2s infinite}
+  .dugme .yukleniyor{animation:don2 .8s linear infinite}
+  .tg::after{animation:tara 2.4s cubic-bezier(.5,0,.5,1) infinite}
+  .tg b{animation:hucre 7.2s ease-in-out infinite;animation-delay:calc(var(--i) * .32s)}
+  .belir{animation:belir .9s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--d,0) * 90ms)}
+  .rozet i{animation:nabiz 2s ease-in-out infinite}
+}
+@keyframes suzul1{to{translate:140px 90px;scale:1.15}}
+@keyframes suzul2{to{translate:-120px -110px;scale:1.1}}
+@keyframes suzul3{to{translate:-180px 120px;scale:.85}}
+@keyframes kay{to{background-position:56px 56px,56px 56px}}
+@keyframes don{to{--aci:360deg}}
+@keyframes don2{to{rotate:360deg}}
+@keyframes parilti{0%,60%{translate:-120% 0}100%{translate:120% 0}}
+@keyframes tara{0%{top:-30px}100%{top:calc(100% + 4px)}}
+@keyframes hucre{0%,8%{background:var(--bos)}18%,30%{background:var(--mavi);box-shadow:0 0 14px rgba(90,112,255,.7)}
+  42%,88%{background:var(--yesil);box-shadow:0 0 10px rgba(43,192,113,.35)}100%{background:var(--bos)}}
+@keyframes belir{from{opacity:0;translate:0 26px;scale:.98}}
+@keyframes dus{0%{opacity:0;translate:0 -40px;rotate:0deg}10%{opacity:.35}60%{background:var(--mavi)}
+  85%{opacity:.3;background:var(--yesil)}100%{opacity:0;translate:0 110vh;rotate:180deg}}
+@keyframes nabiz{50%{box-shadow:0 0 0 8px rgba(43,192,113,0)}}
+
+/* ---- küçük ekran ve Ideasoft çerçevesi */
+@media (max-width:940px){
+  .sahne{grid-template-columns:1fr;gap:30px;padding:96px 20px 64px;max-width:560px}
+  .ust{left:20px;right:20px;top:22px}
+  .tanitim h1{font-size:34px;margin-top:6px}
+  .tanitim>p{font-size:15.5px;margin-bottom:0}
+  .tarayici,.ozellik{display:none}
+  .kart{padding:30px 22px 24px}
+}
+@media (max-width:420px){.ust .rozet{display:none}}
+</style>
+</head>
+<body>
+<div class="zemin" aria-hidden="true">
+  <div class="izgara"></div>
+  <div class="bulut b1"></div><div class="bulut b2"></div><div class="bulut b3"></div>
+  <div class="isik" id="isik"></div>
+  <div class="kare-yagmuru" id="yagmur"></div>
+  <div class="doku"></div>
+</div>
+
+<div class="sahne">
+  <div class="ust">
+    <img src="/marka/seovisi-logo-koyu-zemin.svg" alt="seovisi" width="113" height="30">
+    <span class="rozet"><i></i>Ideasoft mağazaları için</span>
+  </div>
+
+  <section class="tanitim">
+    <div class="tarayici belir" aria-hidden="true">
+      <div class="tg"><b style="--i:0"></b><b style="--i:1"></b><b style="--i:2"></b><b style="--i:3"></b><b style="--i:4"></b><b style="--i:5"></b><b style="--i:6"></b><b style="--i:7"></b><b style="--i:8"></b></div>
+      <div class="sayac"><b id="sayac">0</b>ürün tarandı · örnek</div>
+    </div>
+    <h1 class="belir" style="--d:1">Kataloğunuz <em>tek panelde</em>, düzenli ve hazır.</h1>
+    <p class="belir" style="--d:2">seovisi, Google'ın önerdiği temel SEO kurallarını ürünlerinize uygular; kategorileri, açıklamaları ve blog yazılarını sizin için düzenler.</p>
+    <ul class="ozellik">
+      <li class="belir" style="--d:3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>SEO taraması ve puanı</li>
+      <li class="belir" style="--d:4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6v6H3zM15 4h6v6h-6zM15 14h6v6h-6zM9 10h3v7h3M12 7h3"/></svg>Kategori analizi</li>
+      <li class="belir" style="--d:5"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5V5a2 2 0 0 1 2-2h12v15H6a2 2 0 0 0-2 1.5zM4 19.5A2 2 0 0 0 6 21h12v-3M8 7h6M8 11h4"/></svg>Blog yazıları</li>
+      <li class="belir" style="--d:6"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5"/></svg>Her değişiklik geri alınır</li>
+    </ul>
+  </section>
+
+  <section class="belir" style="--d:2">
+    <div class="kart-dis"><div class="kart" id="kart">
+      <ol class="adimlar" aria-label="Giriş adımları"><li class="on">Mağaza adresi</li><li id="adim2">Ideasoft izni</li><li>Panel</li></ol>
+      <h2>Mağazanızla giriş yapın</h2>
+      <p>Ideasoft mağazanızın adresini yazın. Ideasoft'un izin sayfasında onay verdiğinizde panel açılır.</p>
+      HATA_ALANI
+      <form method="post" action="/giris" id="f">
+        <label for="m">Mağaza adresi</label>
+        <div class="alan" id="alan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 4.5 4h15L21 9.5M3 9.5h18M3 9.5a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M5 12v8h14v-8M10 20v-5h4v5"/></svg>
+          <input id="m" name="store" placeholder="magazaniz.myideasoft.com" autocomplete="url" inputmode="url" spellcheck="false" autocapitalize="off" required autofocus>
+          <span class="tik" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg></span>
+        </div>
+        <p class="ipucu">Örnek: magaza.myideasoft.com ya da magaza.com</p>
+        <input type="hidden" name="kapi" id="k">
+        <button class="dugme" type="submit" id="git"><span>Ideasoft ile giriş yap</span><span class="yukleniyor"></span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+      </form>
+      <p class="frame" id="note" hidden></p>
+      <div class="guven"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Şifreniz bize gelmez; giriş Ideasoft üzerinden yapılır. Tarama mağazanızda hiçbir şey değiştirmez.</span></div>
+    </div></div>
+  </section>
+  <p class="alt">seovisi · Ideasoft App Store uygulaması</p>
+</div>
+
+<script>
+(function () {
+  const az = !matchMedia('(prefers-reduced-motion: no-preference)').matches;
+  const f = document.getElementById('f'), m = document.getElementById('m'), alan = document.getElementById('alan');
+  const git = document.getElementById('git');
+
+  // adres yazıldıkça geçerli biçimde mi (yalnızca görsel işaret; asıl denetim sunucuda)
+  const denetle = () => {
+    const v = m.value.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    alan.classList.toggle('gecerli', /^[a-z0-9-]+(\.[a-z0-9-]+)+$/i.test(v));
+  };
+  m.addEventListener('input', denetle); denetle();
+  f.addEventListener('submit', () => { git.classList.add('gidiyor'); document.getElementById('adim2').classList.add('on'); });
+  addEventListener('pageshow', () => git.classList.remove('gidiyor'));
+
+  if (!az) {
+    // düşen kareler (logodaki ızgara)
+    const y = document.getElementById('yagmur');
+    for (let i = 0; i < 18; i++) {
+      const k = document.createElement('i');
+      k.style.left = (Math.random() * 100).toFixed(1) + '%';
+      k.style.setProperty('--s', (9 + Math.random() * 10).toFixed(1) + 's');
+      k.style.setProperty('--g', (-Math.random() * 18).toFixed(1) + 's');
+      y.appendChild(k);
+    }
+    // imleçle gezen ışık ve kartın hafif eğimi
+    const isik = document.getElementById('isik'), kart = document.getElementById('kart');
+    let rf = 0;
+    addEventListener('pointermove', e => {
+      if (rf) return;
+      rf = requestAnimationFrame(() => {
+        rf = 0;
+        isik.style.setProperty('--mx', (e.clientX - innerWidth / 2) + 'px');
+        isik.style.setProperty('--my', (e.clientY - innerHeight * .4) + 'px');
+        if (innerWidth > 940) {
+          const r = kart.getBoundingClientRect();
+          const x = (e.clientX - r.left - r.width / 2) / r.width, yy = (e.clientY - r.top - r.height / 2) / r.height;
+          kart.style.transform = `perspective(1100px) rotateY(${(x * 4).toFixed(2)}deg) rotateX(${(-yy * 4).toFixed(2)}deg)`;
+        }
+      });
+    });
+    document.documentElement.addEventListener('pointerleave', () => { kart.style.transform = ''; });
+    // örnek sayaç
+    const s = document.getElementById('sayac');
+    let n = 0;
+    const t = setInterval(() => { n += Math.ceil(Math.random() * 37); s.textContent = n.toLocaleString('tr-TR'); if (n > 7000) n = 0; }, 140);
+    addEventListener('pagehide', () => clearInterval(t));
+  }
+
+  // Ideasoft panelinin içinde (çerçevede) açıldıysa: Ideasoft'un izin sayfası çerçevede açılmaz; giriş yeni sekmede yapılır,
+  // bu sayfa tek kullanımlık kapı koduyla oturumunu teslim alır.
+  if (window.top !== window.self) {
+    const note = document.getElementById('note');
+    const say = (t, full) => { note.hidden = false; note.innerHTML = t + (full ? ' <a href="/" target="_blank" rel="noopener">Tam ekranda aç</a>' : ''); };
+    say('Giriş yeni bir sekmede açılır; izin verdikten sonra bu pencereye dönün.');
+    f.target = '_blank';
+    let timer = null;
+    f.addEventListener('submit', () => {
+      const b = new Uint8Array(24); crypto.getRandomValues(b);
+      const code = btoa(String.fromCharCode(...b)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      document.getElementById('k').value = code;
+      say('Yeni sekmede Ideasoft izni bekleniyor…');
+      clearInterval(timer);
+      const started = Date.now();
+      timer = setInterval(async () => {
+        if (Date.now() - started > 300000) { clearInterval(timer); git.classList.remove('gidiyor'); say('Süre doldu; yeniden giriş yapın.'); return; }
+        const r = await fetch('/kapi/al', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Seovisi': '1'},
+                                            body: JSON.stringify({kapi: code})}).catch(() => null);
+        const j = r ? await r.json().catch(() => ({})) : {};
+        if (j.bekle) return;
+        clearInterval(timer);
+        git.classList.remove('gidiyor');
+        if (!j.ok) { say(j.error || 'Giriş tamamlanamadı.'); return; }
+        const s = await fetch('/api/state').catch(() => null);
+        if (s && s.ok) location.reload();
+        else say('Tarayıcınız bu pencerede oturum açılmasına izin vermiyor. Paneli kendi sekmesinde kullanabilirsiniz:', true);
+      }, 2000);
+    });
+  }
+})();
+</script>
+</body>
+</html>
