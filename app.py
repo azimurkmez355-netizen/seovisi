@@ -4538,7 +4538,7 @@ def yonetim_durum():
             "hata_7g": sum(r["hata_7g"] for r in rows), "istek_bugun": sum(r["istek_bugun"] for r in rows),
             "otopilot": sum(r["otopilot"] for r in rows), "kaldirilan": sum(1 for r in rows if r["kaldirildi"])}
     P = AB.paketler()["paketler"]
-    return {"ozet": ozet, "magazalar": rows, "paketler": [{"id": k, "ad": v["ad"], "urun": v.get("urun")} for k, v in P.items()],
+    return {"ozet": ozet, "kalici_disk": ACILIS.get("kalici"), "magazalar": rows, "paketler": [{"id": k, "ad": v["ad"], "urun": v.get("urun")} for k, v in P.items()],
             "durumlar": [{"id": k, "ad": AB.DURUM_ADI[k]} for k in AB.DURUMLAR]}
 
 
@@ -4813,7 +4813,8 @@ class H(BaseHTTPRequestHandler):
             return True
         if p == "/saglik" and method == "GET":        # dışarıdan izleme: program ayakta ve veri klasörü yazılabilir mi
             ok = os.access(DATA, os.W_OK)
-            self._send(200 if ok else 503, {"ok": ok})
+            self._send(200 if ok else 503, {"ok": ok, "kalici_disk": ACILIS.get("kalici"),
+                                            "acilis": ACILIS.get("sayi"), "ilk_acilis": ACILIS.get("ilk")})
             return True
         if p == "/cikis" and SERVER["on"]:
             self._redirect("/", {"Set-Cookie": clear_cookies()})
@@ -5505,6 +5506,43 @@ ORTAM_AYAR = {"SEOVISI_CLIENT_ID": "client_id", "SEOVISI_CLIENT_SECRET": "client
               "SEOVISI_PUBLIC_URL": "public_url"}
 
 
+def veri_kalicilik(env=None, data=None):
+    """Veri klasörü program yeniden kurulunca (her push'tan sonraki Railway dağıtımı) korunuyor mu?
+    True: kalıcı disk (Railway volume ya da Docker birimi) bağlı. False: kapta geçici klasör; her güncellemede mağazalar,
+    bağlantılar ve yazılar silinir. None: bilinmiyor (bilgisayar ya da kapsız sunucu; klasör zaten kalıcıdır)."""
+    env = os.environ if env is None else env
+    data = DATA if data is None else data
+    if any(k.startswith("RAILWAY_") and k != "RAILWAY_RUN_UID" for k in env):
+        yer = env.get("RAILWAY_VOLUME_MOUNT_PATH", "").rstrip("/")
+        return bool(yer) and os.path.normpath(yer) == os.path.normpath(data)
+    if os.path.exists("/.dockerenv") or env.get("SEOVISI_VEKIL"):
+        return os.path.ismount(data)
+    return None
+
+
+def acilis_kaydi(data=None):
+    """Sunucunun her açılışını data/acilis.json'a sayar: ilk açılış zamanı ve açılış sayısı. Disk kalıcı değilse
+    her güncellemede sayı 1'e döner; /saglik bunu gösterir."""
+    data = DATA if data is None else data
+    yol = os.path.join(data, "acilis.json")
+    try:
+        with open(yol, encoding="utf-8") as f:
+            k = json.load(f)
+        k = {"ilk": str(k["ilk"]), "sayi": int(k["sayi"])}
+    except (OSError, ValueError, KeyError, TypeError):
+        k = {"ilk": time.strftime("%Y-%m-%d %H:%M:%S"), "sayi": 0}
+    k["sayi"] += 1
+    try:
+        with open(yol, "w", encoding="utf-8") as f:
+            json.dump(k, f)
+    except OSError:
+        pass
+    return k
+
+
+ACILIS = {}
+
+
 def ortamdan_ayarla(env=None):
     """Sunucu ayarları ve yönetici parolası ortam değişkenlerinden (Railway gibi dosya düzenlenemeyen yerler için).
     Dolu değişken sunucu.json'daki değerin yerine geçer ve oraya yazılır (gizli olan şifreli); boşsa dosyadaki kalır.
@@ -5573,8 +5611,12 @@ def main():
         missing = [k for k in ("client_id", "client_secret", "public_url") if not SRV.get(k)]
         if missing:
             print(f"Uyarı: {SERVER_PATH} içinde eksik: {', '.join(missing)}. Bunlar girilene kadar giriş yapılamaz.")
+        ACILIS.update(acilis_kaydi(), kalici=veri_kalicilik())
+        if ACILIS["kalici"] is False:
+            print(f"\n  !!! UYARI: veri klasörü ({DATA}) kalıcı bir diske bağlı değil. Her güncellemede mağazalar,\n"
+                  "  !!! bağlantılar ve blog yazıları silinir. Railway'de servise volume ekleyin, yeri: /app/data\n")
         n = len([d for d in os.listdir(STORES) if known_tenant(d)])
-        print(f"\n  seovisi sunucu kipinde: {host}:{port}  ({n} mağaza)\n")
+        print(f"\n  seovisi sunucu kipinde: {host}:{port}  ({n} mağaza, {ACILIS['sayi']}. açılış)\n")
     else:
         migrate_legacy()
         LOCAL["id"] = local_store()

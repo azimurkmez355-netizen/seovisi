@@ -60,6 +60,8 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   `ortamdan_ayarla()` açılışta `SEOVISI_CLIENT_ID`, `SEOVISI_CLIENT_SECRET`, `SEOVISI_PUBLIC_URL` değerlerini `sunucu.json`a,
   `SEOVISI_YONETICI_PAROLA`yı (farklıysa) `yonetici.json`a yazar. Sunucu kipinde `--port` yoksa `PORT` ortam değişkeni. Railway
   müşteri adresini `X-Real-IP` ile verir (`SEOVISI_IP_BASLIGI`); disk root ile bağlandığı için `RAILWAY_RUN_UID=0`. Yedek Railway'in kendisinde.
+  Her push yeniden kurar; veri yalnızca `/app/data`ya bağlı volume ile korunur. `veri_kalicilik()` bunu denetler (Railway'de
+  `RAILWAY_VOLUME_MOUNT_PATH`); `/saglik` `kalici_disk` ve açılış sayısını (`data/acilis.json`) verir, yönetici panelinde uyarı çıkar.
 
 ## Mimari
 

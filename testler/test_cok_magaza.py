@@ -93,7 +93,7 @@ def sunucu_kipi():
     proc = start(A, "--sunucu", "--port", "8770")
     try:
         st, _, j = req(8770, "GET", "/saglik")
-        check("sağlık adresi oturumsuz yanıt verir (dış izleme için)", st == 200 and j == {"ok": True}, (st, j))
+        check("sağlık adresi oturumsuz yanıt verir (dış izleme için)", st == 200 and j.get("ok") is True and j.get("acilis") == 1, (st, j))
         st, _, page = req(8770, "GET", "/")
         check("oturumsuz ana sayfa giriş sayfasını gösterir", st == 200 and "Mağazanızla giriş yapın" in page)
         st, _, j = req(8770, "GET", "/api/state")

@@ -573,6 +573,8 @@ function ozetCiz() {
     <div><b>${sayi(o.otopilot)}</b><span>Otopilot açık</span></div><div><b>${sayi(o.kaldirilan)}</b><span>Uygulamayı kaldıran</span></div>`;
 
   const dk = [];
+  if (D.kalici_disk === false) dk.push(['bad', {id: '', ad: 'Sunucu'},'Kalıcı disk bağlı değil',
+    "Her güncellemede bütün veriler silinir. Railway'de servise volume ekleyin (yer: /app/data)."]);
   for (const r of D.magazalar) {
     const a = r.abonelik;
     if (r.kaldirildi) dk.push(['bad', r, 'Uygulamayı kaldırdı', `${tarih(r.silinecek)} günü veriler silinecek`]);

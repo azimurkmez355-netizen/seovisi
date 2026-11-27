@@ -89,5 +89,40 @@ class MusteriAdresi(unittest.TestCase):
             self.assertEqual(self.ip("100.64.0.3", {}), "100.64.0.3")
 
 
+class KaliciDisk(unittest.TestCase):
+    """Her push'tan sonra Railway programı yeniden kurar; volume yoksa veriler silinir. Program bunu söylemeli."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="seovisi-disk-")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def test_railway_volume_yoksa_kalici_degil(self):
+        env = {"RAILWAY_ENVIRONMENT": "production", "RAILWAY_RUN_UID": "0"}
+        self.assertIs(app.veri_kalicilik(env, "/app/data"), False)
+
+    def test_railway_volume_baska_yerdeyse_kalici_degil(self):
+        env = {"RAILWAY_ENVIRONMENT": "production", "RAILWAY_VOLUME_MOUNT_PATH": "/data"}
+        self.assertIs(app.veri_kalicilik(env, "/app/data"), False)
+
+    def test_railway_volume_app_data_ise_kalici(self):
+        env = {"RAILWAY_ENVIRONMENT": "production", "RAILWAY_VOLUME_MOUNT_PATH": "/app/data/"}
+        self.assertIs(app.veri_kalicilik(env, "/app/data"), True)
+
+    def test_bilgisayarda_bilinmiyor(self):
+        with mock.patch("os.path.exists", return_value=False):
+            self.assertIsNone(app.veri_kalicilik({"PATH": "x"}, self.tmp))
+
+    def test_acilis_sayilir_ilk_zaman_korunur(self):
+        a = app.acilis_kaydi(self.tmp)
+        b = app.acilis_kaydi(self.tmp)
+        self.assertEqual((a["sayi"], b["sayi"]), (1, 2))
+        self.assertEqual(a["ilk"], b["ilk"])
+        with open(os.path.join(self.tmp, "acilis.json"), "w") as f:
+            f.write("bozuk")
+        self.assertEqual(app.acilis_kaydi(self.tmp)["sayi"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
