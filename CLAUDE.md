@@ -223,7 +223,15 @@ yeni bir işe başlamadan önce oraya bak ve biten maddeleri [x] yap.
   atılır; kısa kalırsa marka eklenir) ve sonunda ürün kodu (stok kodu) yer alır (`plan.title`); hedef kelime başlıkta mutlaka
   geçer. Görseldeki başlık (`gorsel_baslik`) aynı başlığın kodsuz hâlidir.
 - Yazının en altında sosyal medya kartı (`blog.sosyal`: instagram, youtube, tiktok, facebook; `BL.sosyal_ayar` yalnızca o ağın https adresini kabul eder):
-  ağ renkleriyle yatay geçişli zemin, simgeler satır içi CSS ile (emoji yok: Ideasoft blog içeriği 4 baytlık karakterleri "????" kaydediyor).
+  sitenin kartları gibi beyaz kutu, ağların logoları `cdn.simpleicons.org` beyaz SVG, renkli zemin ayrı `span`da (resme iç boşluk verilmez:
+  sitelerdeki `box-sizing` kuralı simgeyi küçültür). Emoji yok: Ideasoft blog içeriği 4 baytlık karakterleri "????" kaydediyor.
+- Sosyal kartın üstünde hizmetler kutusu (`blog.hizmet`, `BL.hizmet_ayar`): adres (https ya da /yol), koşul kelimesi (varsayılan "bosch";
+  ürün adında ya da kategori yolunda geçmeli, `blog_hizmet`), rozet ({magaza}), başlık, metin, düğme. Adres yoksa kutu yok. İzi `sosyal_iz`e eklenir.
+- Görsel rengi kategoriye göre (`gorsel.kat_renk`, `gorsel.gruplar`, `BL.RENK_GRUPLARI`: beyaz aksesuar, kırmızı ölçme, yeşil bahçe / hafif hizmet,
+  mavi profesyonel / dremel; üstteki önce). Sunucu ürünün grubunu `renk_grup` olarak verir (`blog_renk_grubu`), panel `blGrup` ile
+  zemini değiştirir; beyaz grupta açık tema. Mağaza logosu `/api/blog/logo` (mağaza klasöründe `blog_logo.*`, ayarda özeti `gorsel.logo`);
+  `blLogoCiz` saydam kenarları kırpar, zeminle karışırsa (kontrast) en uygun renkte plakaya koyar.
+- Kartlarda "Yayından kaldır" ve "Sil" düğmeleri (yazıyı açmadan).
   Mağaza adı girilmemişse adresten alınır (`blog_profil`).
   Ayar ya da yazar sürümü (`BL.SURUM`) değişince yazılar "eski" sayılır; "Eski yazıları yenile" yeniden hazırlar, gönderilenler "Değişenleri gönder" ile güncellenir.
 - Paragraf ve listelere ayrı stil yazılmaz (Ideasoft stilleri de kelime sayar; fazla stil hedef kelimeyi tekrarlatır). Hedef kelimeli ek cümleler paragraflara dağıtılır.

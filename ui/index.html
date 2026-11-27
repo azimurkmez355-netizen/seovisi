@@ -535,7 +535,7 @@ body.bl-on main{max-width:1560px}
 .bl-kats{max-height:260px;overflow:auto;border:1px solid #cdbf9f;border-radius:6px;padding:2px 12px;background:#fffdf7}
 .bl-kats label{display:flex;gap:10px;align-items:center;padding:6px 0;border-bottom:1px dashed rgba(43,38,32,.15);cursor:pointer;font-size:14px}
 .bl-kats label:last-child{border-bottom:0}
-.bl-kats input{accent-color:var(--bl-red)}
+.bl-kats input{accent-color:var(--bl-red);width:auto;flex:none}
 /* seovisi kalite raporu (açık mektupta) ve kartlardaki kalite puanı */
 .bl-q{display:inline-block;margin-left:6px;font:700 11px/1 var(--bl-type);color:#fff;background:#b5651d;border-radius:999px;padding:5px 8px 4px;float:right}
 .bl-q.ok{background:#2d4a7a}
@@ -574,6 +574,30 @@ body.bl-on main{max-width:1560px}
 .bl-sil svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .bl-sil:hover{background:#a8322a;border-color:#a8322a;color:#fff}
 .bl-sil:disabled{opacity:.45;cursor:not-allowed}
+.bl-kacts{display:flex;flex-wrap:wrap;gap:6px;margin:8px 34px 0 0}
+.bl-kacts button{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font:600 12px/1.2 inherit;cursor:pointer;
+  border:1.5px solid #cdbf9f;background:#fffdf7;color:var(--bl-ink2)}
+.bl-kacts button:hover{background:var(--bl-ink);border-color:var(--bl-ink);color:#fff}
+.bl-kacts button.sil{border-color:#e2b4ae;background:#fff6f4;color:#a8322a}
+.bl-kacts button.sil:hover{background:#a8322a;border-color:#a8322a;color:#fff}
+.bl-kacts svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bl-logo{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.bl-logo .kutu{min-width:120px;height:52px;border:1px dashed #cdbf9f;border-radius:8px;display:flex;align-items:stretch;overflow:hidden;font-size:12px;color:#8a7f6a}
+.bl-logo .kutu:not(:has(img)){align-items:center;padding:0 14px}
+.bl-logo .kutu span{display:flex;align-items:center;justify-content:center;padding:6px 12px;background:#fff}
+.bl-logo .kutu span.koyu{background:#0c2c57}
+.bl-logo .kutu img{max-height:38px;max-width:170px}
+.bl-gruplar{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bl-grup{display:grid;grid-template-columns:96px 1fr;gap:6px 10px;align-items:center;padding:8px;border:1px solid #e4d8bd;border-radius:8px;background:#fffdf7}
+.bl-grup canvas{grid-row:span 2;width:96px;height:64px;border-radius:4px;background:#ddd}
+.bl-grup .ust{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600}
+.bl-grup .ust input{width:30px;height:24px;padding:1px;border:1px solid #cdbf9f;border-radius:4px;background:#fff;cursor:pointer}
+.bl-grup input[type=text]{width:100%;padding:5px 8px;border:1px solid #cdbf9f;border-radius:6px;background:#fff;font-size:12.5px}
+.bl-hiz{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin-top:6px}
+.bl-hiz .full{grid-column:1/-1}
+.bl-hiz label{display:block;font-size:12.5px;color:var(--bl-ink2);margin:0 0 3px}
+.bl-hiz textarea{width:100%;min-height:74px;padding:8px 10px;border:1px solid #cdbf9f;border-radius:6px;background:#fffdf7;font:inherit;font-size:14px}
+@media (max-width:760px){.bl-gruplar,.bl-hiz{grid-template-columns:1fr}}
 
 /* PERİYODİK OTOMASYON düğmesi (mektup kartının içinde, göze batan) */
 .bl-oto-btn{position:relative;display:inline-flex;align-items:center;gap:14px;margin-top:18px;padding:12px 26px 12px 12px;border:0;border-radius:16px;cursor:pointer;
@@ -961,12 +985,20 @@ body.bl-on main{max-width:1560px}
             <div class="bl-color"><input type="color" id="bl-g-renk2" aria-label="İkinci renk"> İkinci renk</div>
             <div class="full"><span class="muted" style="font-size:13px;margin-right:10px">Başlık yazısı</span><span class="bl-seg" id="bl-g-yazi"><button data-y="serif">Klasik (serif)</button><button data-y="sans">Modern</button></span></div>
             <label class="sw"><input type="checkbox" id="bl-g-foto"> Ürün fotoğrafı</label>
-            <label class="sw"><input type="checkbox" id="bl-g-magaza"> Mağaza adı</label>
+            <label class="sw"><input type="checkbox" id="bl-g-magaza"> Mağaza logosu / adı</label>
             <label class="sw"><input type="checkbox" id="bl-g-rozet"> Yazı türü rozeti</label>
             <label class="sw"><input type="checkbox" id="bl-g-kod"> Ürün kodu</label>
             <label class="sw"><input type="checkbox" id="bl-g-desen"> Arka plan deseni</label>
             <div class="field full" style="margin:4px 0 0"><label for="bl-g-ust" class="muted" style="font-size:13px">Üst yazı (isteğe bağlı, en çok 40 karakter)</label>
               <input id="bl-g-ust" maxlength="40" placeholder="Örn. USTAPAZAR BLOG" style="padding:8px 10px;border:1px solid #cdbf9f;border-radius:6px;background:#fffdf7"></div>
+            <div class="full"><span class="muted" style="font-size:13px">Mağaza logosu (her görselin altında, mağaza adının yerine)</span>
+              <div class="bl-logo" style="margin-top:6px"><span class="kutu" id="bl-g-logo-kutu">Logo yok</span>
+                <label class="btn ghost sm" style="cursor:pointer">Logo yükle<input type="file" id="bl-g-logo" accept="image/png,image/jpeg,image/webp" hidden></label>
+                <button class="btn ghost sm" type="button" id="bl-g-logo-sil">Kaldır</button></div>
+              <p class="muted" style="margin:6px 0 0;font-size:12.5px">Şeffaf zeminli PNG en iyisidir. Logo zeminle karışırsa (örneğin beyaz yazılı logo beyaz zeminde) kendiliğinden uygun renkte bir plakanın üstüne konur.</p></div>
+            <label class="sw full"><input type="checkbox" id="bl-g-katrenk"> Görselin rengi ürünün kategorisine göre</label>
+            <div class="full" id="bl-g-grup-alan"><p class="muted" style="margin:0 0 8px;font-size:12.5px">Kategori adında bu kelimeler geçen ürünlerin görseli bu renkte olur; üstteki önce gelir (aksesuar, profesyonel kategorinin altında olsa da beyaz). Hiçbirine uymayan ürün yukarıdaki ana renklerle çizilir. Küçük resimler açık olan yazıyı o renkte gösterir.</p>
+              <div class="bl-gruplar" id="bl-g-gruplar"></div></div>
           </div>
           <div class="acts"><button class="btn ink" id="bl-g-kaydet">Görsel ayarlarını kaydet</button><button class="btn ghost" id="bl-g-sifirla">Varsayılana dön</button></div>
         </div>
@@ -1004,6 +1036,18 @@ body.bl-on main{max-width:1560px}
             <span><b style="background:#ff0033">▶</b><input id="bl-s-youtube" placeholder="https://www.youtube.com/@kanal"></span>
             <span><b style="background:#111">♪</b><input id="bl-s-tiktok" placeholder="https://www.tiktok.com/@kullanici"></span>
             <span><b style="background:#1877f2">f</b><input id="bl-s-facebook" placeholder="https://www.facebook.com/sayfa"></span>
+          </div>
+        </div>
+        <div class="field" style="grid-column:1/-1">
+          <label>Hizmetler kutusu (yazının sonunda, sosyal medyanın üstünde; hizmetler sayfanıza yönlendirir)</label>
+          <div class="bl-hiz">
+            <label class="sw full" style="display:flex;align-items:center;gap:8px;font-size:14px;color:inherit"><input type="checkbox" id="bl-h-acik" style="width:16px;height:16px"> Kutuyu yazılara ekle</label>
+            <div class="full"><label for="bl-h-adres">Sayfa adresi</label><input id="bl-h-adres" placeholder="https://www.magazaniz.com/sayfa/hizmetler"></div>
+            <div><label for="bl-h-kosul">Yalnızca adında ya da kategorisinde şu geçen ürünlerde (boşsa hepsinde)</label><input id="bl-h-kosul" placeholder="bosch"></div>
+            <div><label for="bl-h-rozet">Rozet ({magaza}: mağaza adı)</label><input id="bl-h-rozet" maxlength="40"></div>
+            <div class="full"><label for="bl-h-baslik">Başlık</label><input id="bl-h-baslik" maxlength="90"></div>
+            <div class="full"><label for="bl-h-metin">Metin</label><textarea id="bl-h-metin" maxlength="600"></textarea></div>
+            <div><label for="bl-h-dugme">Düğme yazısı</label><input id="bl-h-dugme" maxlength="50"></div>
           </div>
         </div>
         <div class="field" style="grid-column:1/-1">
@@ -2682,13 +2726,85 @@ function blBaslikFont(a, agir){ return px => `${agir || 700} ${px}px ${a.yazi ==
 const blDaktilo = px => `${px}px "Special Elite", "Courier New", monospace`;
 
 function blCiz(cv, d, a, img){
-  const c = cv.getContext('2d'), s = cv.width / BL_W;
+  const c = cv.getContext('2d', {willReadFrequently: true}), s = cv.width / BL_W;
   c.setTransform(s, 0, 0, s, 0, 0); c.clearRect(0, 0, BL_W, BL_H); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+  a = blGrup(a, d);
   const r = blRng((d.title || '') + a.tema), foto = a.foto && img, magaza = a.magaza && d.magaza ? d.magaza : '';
   const ust = a.ust_metin || '', rozet = a.rozet ? (d.rozet || '') : '', kod = a.kod && d.sku ? d.sku : '';
+  const logo = a.magaza && a.logo && blLogo && blLogo.h === a.logo ? blLogo.v : null;
   ({lacivert_bant: blTemaLacivertBant, beyaz_bant: blTemaBeyazBant, editoryal: blTemaEditoryal, gece_isik: blTemaGeceIsik,
-    lacivert_kutu: blTemaLacivertKutu, beyaz_kutu: blTemaBeyazKutu, bolunmus_kutu: blTemaBolunmusKutu, vitrin_kutu: blTemaVitrinKutu}[a.tema] || blTemaLacivertBant)(c, d, a, foto ? img : null, r, {magaza, ust, rozet, kod});
+    lacivert_kutu: blTemaLacivertKutu, beyaz_kutu: blTemaBeyazKutu, bolunmus_kutu: blTemaBolunmusKutu, vitrin_kutu: blTemaVitrinKutu}[a.tema] || blTemaLacivertBant)(c, d, a, foto ? img : null, r,
+    {magaza, ust, rozet, kod, logo, plakalar: ['#ffffff', a.renk2, '#0c2c57', '#111111']});
+}
+/* ---- kategoriye göre renk: grubun zemini koyuysa ana zemin olur; beyazsa açık tema ve koyu yazı */
+function blParlak(h){
+  const n = parseInt((h || '#000000').slice(1), 16), f = v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  return .2126 * f(n >> 16 & 255) + .7152 * f(n >> 8 & 255) + .0722 * f(n & 255);
+}
+const BL_ACIK_TEMA = {lacivert_bant: 'beyaz_bant', lacivert_kutu: 'beyaz_kutu', bolunmus_kutu: 'beyaz_kutu', gece_isik: 'beyaz_kutu'};
+function blGrup(a, d){
+  if(!a.kat_renk || !d.renk_grup) return a;
+  const g = (a.gruplar || []).find(x => x.id === d.renk_grup); if(!g) return a;
+  if(blParlak(g.zemin) < .5) return Object.assign({}, a, {renk2: g.zemin, renk: g.vurgu});
+  return Object.assign({}, a, {renk2: blParlak(a.renk2) < .2 ? a.renk2 : '#0c2c57', renk: g.vurgu, tema: BL_ACIK_TEMA[a.tema] || a.tema});
+}
+/* ---- mağaza logosu: bir kez yüklenir ve renkleri örneklenir; zeminle karışıyorsa uygun renkte plakaya konur */
+let blLogo = null;     // {h: özet, p: Promise, v: {img, px, opak}}
+function blLogoAl(a){
+  if(!a || !a.logo || !a.magaza) return Promise.resolve(null);
+  if(blLogo && blLogo.h === a.logo) return blLogo.p;
+  const o = {h: a.logo, v: null};
+  o.p = new Promise(res => {
+    const img = new Image();
+    img.onload = () => { o.v = blLogoAnaliz(img); res(o.v); };
+    img.onerror = () => res(null);
+    img.src = '/api/blog/logo?v=' + a.logo;
+  });
+  blLogo = o;
+  return o.p;
+}
+function blLogoAnaliz(img){
+  const w = 160, h = Math.max(1, Math.round(160 * img.naturalHeight / img.naturalWidth)), cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const c = cv.getContext('2d', {willReadFrequently: true}); c.drawImage(img, 0, 0, w, h);
+  const v = c.getImageData(0, 0, w, h).data, px = [];
+  let seffaf = 0, x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for(let i = 0; i < v.length; i += 4){
+    if(v[i + 3] < 20){ seffaf++; continue; }
+    const x = (i / 4) % w, y = Math.floor(i / 4 / w); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+    if(v[i + 3] > 160) px.push([v[i], v[i + 1], v[i + 2]]);
+  }
+  const ad = Math.ceil(px.length / 1500) || 1, kx = img.naturalWidth / w, ky = img.naturalHeight / h;
+  // logonun çevresindeki boş (saydam) kenarlar kırpılır; aralıklar her logoda aynı olsun
+  const kes = x1 < 0 ? [0, 0, img.naturalWidth, img.naturalHeight]
+    : [Math.max(0, (x0 - 1) * kx), Math.max(0, (y0 - 1) * ky), Math.min(img.naturalWidth, (x1 - x0 + 3) * kx), Math.min(img.naturalHeight, (y1 - y0 + 3) * ky)];
+  return {img, px: px.filter((_, i) => i % ad === 0), opak: seffaf < w * h * .02, kes};
+}
+function blIsik(r, g, b){ return blParlak('#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)); }
+function blKarisan(px, zemin){        // logonun zeminle karışan (kontrastı düşük) piksel oranı
+  const z = blIsik(...zemin); let n = 0;
+  for(const p of px){ const l = blIsik(...p), k = (Math.max(l, z) + .05) / (Math.min(l, z) + .05); if(k < 1.7) n++; }
+  return px.length ? n / px.length : 0;
+}
+function blLogoCiz(c, L, x, y, maxW, maxH, plakalar){
+  const [sx, sy, sw, sh] = L.kes, k = Math.min(maxW / sw, maxH / sh), w = sw * k, h = sh * k;
+  const top = y - 9 - h / 2, ciz = (dx, dy) => c.drawImage(L.img, sx, sy, sw, sh, dx, dy, w, h);
+  if(L.opak){        // kendi zemini olan logo (JPEG): yuvarlak köşeli
+    c.save(); blYuvarlak(c, x, top, w, h, 8); c.clip(); ciz(x, top); c.restore(); return w;
+  }
+  const s = c.getTransform().a, alan = c.getImageData(Math.round(x * s), Math.round(top * s), Math.max(1, Math.round(w * s)), Math.max(1, Math.round(h * s))).data;
+  let r = 0, g = 0, b = 0, n = 0;
+  for(let i = 0; i < alan.length; i += 16){ r += alan[i]; g += alan[i + 1]; b += alan[i + 2]; n++; }
+  const zemin = [r / n, g / n, b / n].map(Math.round);
+  if(blKarisan(L.px, zemin) <= .12){ ciz(x, top); return w; }
+  const hex = p => { const n = parseInt(p.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
+  const plaka = plakalar.filter(Boolean).map(p => [blKarisan(L.px, hex(p)), p]).sort((a, b) => a[0] - b[0])[0][1];
+  const px = 16, py = 10;
+  c.save(); c.shadowColor = 'rgba(0,0,0,.18)'; c.shadowBlur = 14; c.shadowOffsetY = 4;
+  c.fillStyle = plaka; blYuvarlak(c, x, top - py, w + 2 * px, h + 2 * py, 14); c.fill(); c.restore();
+  ciz(x + px, top);
+  return w + 2 * px;
 }
 /* ---- kapak temaları (1200×800 tasarım alanı; 3:2 oranı blog kartlarında kırpılmadan oturur, kenarlarda güvenli boşluk) */
 const blRubik = (agir) => px => `${agir} ${px}px Rubik, "Segoe UI", Arial, sans-serif`;
@@ -2715,9 +2831,10 @@ function blUst(c, o, x, y, renk){
 function blAlt(c, o, x, y, renk1, renk2){
   c.textBaseline = 'alphabetic';
   let cx = x;
-  if(o.magaza){ c.font = blRubik(800)(26); c.fillStyle = renk1; c.fillText(o.magaza, cx, y); cx += c.measureText(o.magaza).width + 18; }
+  if(o.logo) cx += blLogoCiz(c, o.logo, cx, y, 300, 58, o.plakalar) + 20;
+  else if(o.magaza){ c.font = blRubik(800)(26); c.fillStyle = renk1; c.fillText(o.magaza, cx, y); cx += c.measureText(o.magaza).width + 18; }
   const k = blKodYazi(o);
-  if(k){ if(o.magaza){ c.fillStyle = renk2; c.fillRect(cx, y - 18, 3, 20); cx += 20; } c.font = blRubik(500)(23); c.fillStyle = renk2; c.fillText(k, cx, y); }
+  if(k){ if(o.magaza || o.logo){ c.fillStyle = renk2; c.fillRect(cx, y - 18, 3, 20); cx += 20; } c.font = blRubik(500)(23); c.fillStyle = renk2; c.fillText(k, cx, y); }
 }
 /* bantlı fotoğraf: beyaz çerçeve, iki köşede yarı saydam bant */
 function blBantli(c, img, cx, cy, w, h, aci, bant){
@@ -2852,16 +2969,16 @@ function blTemaVitrinKutu(c, d, a, img, r, o){
 function blGorselVeri(plan, it){
   return {title: plan ? (plan.gorsel_baslik || plan.title) : (it ? it.name : 'Örnek ürün için hazırlanan blog yazısının başlığı burada görünür'),
           rozet: plan ? plan.rozet : 'REHBER', sku: plan ? (plan.urun || {}).sku || (it || {}).sku : (it ? it.sku : '0601217100'),
-          magaza: (blVeri && blVeri.magaza) || ''};
+          magaza: (blVeri && blVeri.magaza) || '', renk_grup: (plan && plan.renk_grup) || (it && it.renk_grup) || ''};
 }
 async function blCizFoto(cv, d, a, pid){
   blCiz(cv, d, a, null);
-  await blFontYukle(); blCiz(cv, d, a, null);
+  await Promise.all([blFontYukle(), blLogoAl(a)]); blCiz(cv, d, a, null);
   if(a.foto && pid){ const img = await blFoto(pid); if(img && cv.isConnected) blCiz(cv, d, a, img); }
 }
 async function blJpeg(pid, plan){
   const a = blVeri.ayar.gorsel, cv = document.createElement('canvas'); cv.width = BL_GW; cv.height = BL_GH;   // gönderilen görsel 1500×1000 (3:2)
-  await blFontYukle();
+  await Promise.all([blFontYukle(), blLogoAl(a)]);
   const img = a.foto ? await blFoto(pid) : null;
   blCiz(cv, blGorselVeri(plan), a, img);
   return cv.toDataURL('image/jpeg', .95);
@@ -2932,7 +3049,8 @@ function blListe(){
       return `<article class="bl-card${sec ? ' sel' : ''}${blAcik === it.pid ? ' on' : ''}" data-pid="${it.pid}">${ust}
         <div class="bl-cb">${p ? `<span class="bl-tag">${esc(p.rozet)}</span><span class="bl-seal${p.yuzde === 100 ? '' : ' no'}">%${p.yuzde}</span>` : ''}
         ${p && p.kalite != null ? `<span class="bl-q${p.gecti ? ' ok' : ''}" title="seovisi kalite puanı${p.gecti ? ' (kapıyı geçti)' : ' (kalite kapısının altında)'}">seovisi ${p.kalite}</span>` : ''}
-        <h4>${esc(p ? p.title : it.name)}</h4><p class="bl-sku">${esc(it.sku)}${it.barkod ? ' · ' + esc(it.barkod) : ''}</p>${not}</div>
+        <h4>${esc(p ? p.title : it.name)}</h4><p class="bl-sku">${esc(it.sku)}${it.barkod ? ' · ' + esc(it.barkod) : ''}</p>${not}
+        ${p ? `<div class="bl-kacts">${it.blog_id && it.durum === 'gonderildi' ? '<button type="button" data-k="kaldir" title="Ideasoft’ta pasif yapılır; silinmez">Yayından kaldır</button>' : ''}<button type="button" class="sil" data-k="sil">${BL_COP}Sil</button></div>` : ''}</div>
         <label class="bl-pick" title="Seç"><input type="checkbox" ${sec ? 'checked' : ''} aria-label="Seç"></label></article>`;
     }).join('');
   }
@@ -2944,6 +3062,7 @@ function blListe(){
     const pid = +el.dataset.pid, it = r.items.find(i => i.pid === pid);
     el.querySelector('.bl-pick input').onclick = e => { e.stopPropagation(); e.target.checked ? blSecili.add(pid) : blSecili.delete(pid); el.classList.toggle('sel', e.target.checked); blButonlar(); };
     el.querySelector('.bl-pick').onclick = e => e.stopPropagation();
+    el.querySelectorAll('.bl-kacts [data-k]').forEach(b => b.onclick = e => { e.stopPropagation(); b.dataset.k === 'sil' ? blSil([pid]) : blKaldir(pid); });
     el.onclick = () => it.plan ? blAc(pid) : blTekYaz(pid, it);
   });
   pile.querySelectorAll('canvas[data-c]').forEach(cv => {
@@ -3004,6 +3123,10 @@ async function blToplu(a){
   blImza = ''; blTick();
 }
 
+async function blKaldir(pid){
+  if(!await ask("Yazı Ideasoft'ta pasif yapılır (silinmez); dilediğiniz zaman yeniden gönderebilirsiniz.", {title: 'Yayından kaldırılsın mı?', ok: 'Yayından kaldır', danger: true})) return;
+  const x = await post(`/api/blog/kaldir?pid=${pid}`); if(x.msg) toast(x.msg); blImza = ''; await blTick(); if(blAcik === pid) blAc(pid);
+}
 /* ---- silme: hazır yazı panelden kalkar (ürün "Yazılacak"a döner); gönderilmişse onayla Ideasoft'taki de silinir */
 const BL_COP = '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>';
 async function blSil(pids){
@@ -3170,7 +3293,39 @@ function blAtolyeKur(){
   $('#bl-g-renk2').oninput = e => { blGor.renk2 = e.target.value; blAtolyeCiz(); };
   $('#bl-g-ust').oninput = e => { blGor.ust_metin = e.target.value; blAtolyeCiz(); };
   $('#bl-g-yazi').querySelectorAll('button').forEach(b => b.onclick = () => { blGor.yazi = b.dataset.y; blAtolyeCiz(); });
+  $('#bl-g-katrenk').onchange = e => { blGor.kat_renk = e.target.checked; blAtolyeCiz(); };
+  blGruplarKur();
 }
+/* kategori renkleri: her grup için renkler, kelimeler ve açık yazının o renkteki küçük önizlemesi */
+function blGruplarKur(){
+  $('#bl-g-gruplar').innerHTML = (blGor.gruplar || []).map((g, i) => `<div class="bl-grup" data-i="${i}"><canvas width="360" height="240"></canvas>
+    <div class="ust"><input type="color" data-k="zemin" value="${esc(g.zemin)}" aria-label="${esc(g.ad)} zemin" title="Zemin">
+      <input type="color" data-k="vurgu" value="${esc(g.vurgu)}" aria-label="${esc(g.ad)} vurgu" title="Vurgu">${esc(g.ad)}</div>
+    <input type="text" data-k="kelimeler" value="${esc(g.kelimeler)}" placeholder="kategori kelimeleri, virgülle" aria-label="${esc(g.ad)} kelimeleri"></div>`).join('');
+  $('#bl-g-gruplar').querySelectorAll('.bl-grup').forEach(el => el.querySelectorAll('input').forEach(inp => inp.oninput = () => {
+    blGor.gruplar = blGor.gruplar.map((g, i) => i === +el.dataset.i ? Object.assign({}, g, {[inp.dataset.k]: inp.value}) : g);
+    blAtolyeCiz(inp.dataset.k === 'kelimeler');
+  }));
+}
+function blLogoKutu(){
+  const g = blGor || {}, k = $('#bl-g-logo-kutu');
+  const im = `<img src="/api/blog/logo?v=${esc(g.logo)}" alt="Mağaza logosu">`;
+  k.innerHTML = g.logo ? `<span title="Açık zeminde">${im}</span><span class="koyu" title="Koyu zeminde">${im}</span>` : 'Logo yok';
+  $('#bl-g-logo-sil').disabled = !g.logo;
+}
+$('#bl-g-logo').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if(!f) return;
+  if(f.size > 2 * 1024 * 1024){ toast('Logo en çok 2 MB olabilir.'); return; }
+  const veri = await new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(f); });
+  const r = await post('/api/blog/logo', {veri}); if(r.error){ toast(r.error); return; } if(!r.ok) return;
+  blVeri.ayar = r.ayar; blGor.logo = r.ayar.gorsel.logo; if(!blGor.magaza) blGor.magaza = true;
+  toast('Logo kaydedildi; bütün görsellerde mağaza adının yerine logo çizilir.'); blImza = ''; blTick(); blAtolyeCiz();
+};
+$('#bl-g-logo-sil').onclick = async () => {
+  if(!await ask('Logo kaldırılır; görsellerde yeniden mağaza adı yazılır.', {title: 'Logo kaldırılsın mı?', ok: 'Kaldır', danger: true})) return;
+  const r = await post('/api/blog/logo', {veri: ''}); if(!r.ok) return;
+  blVeri.ayar = r.ayar; blGor.logo = ''; toast('Logo kaldırıldı.'); blImza = ''; blTick(); blAtolyeCiz();
+};
 function blAtolyeCiz(){
   if(!blVeri || !blGor || !$('#bl-atolye').open) return;
   const g = blGor;
@@ -3184,6 +3339,14 @@ function blAtolyeCiz(){
     blCizFoto(b.querySelector('canvas'), d, Object.assign({}, g, {tema: b.dataset.t}), pid);
   });
   blCizFoto($('#bl-g-cv'), d, g, pid);
+  $('#bl-g-katrenk').checked = !!g.kat_renk;
+  $('#bl-g-grup-alan').style.opacity = g.kat_renk ? '' : '.45';
+  if($('#bl-g-gruplar').children.length !== (g.gruplar || []).length) blGruplarKur();
+  $('#bl-g-gruplar').querySelectorAll('.bl-grup').forEach(el => {
+    const gr = g.gruplar[+el.dataset.i];
+    blCizFoto(el.querySelector('canvas'), Object.assign({}, d, {renk_grup: gr.id}), Object.assign({}, g, {kat_renk: true}), pid);
+  });
+  blLogoKutu();
 }
 $('#bl-atolye').addEventListener('toggle', () => { if($('#bl-atolye').open){ if(!blGor && blVeri) blAtolyeKur(); blAtolyeCiz(); } });
 $('#bl-g-kaydet').onclick = async () => {
@@ -3191,7 +3354,8 @@ $('#bl-g-kaydet').onclick = async () => {
   blGor = Object.assign({}, r.ayar.gorsel); toast('Görsel ayarları kaydedildi; bütün yazıların görseli bu ayarla çizilir.');
   blImza = ''; await blTick(); if(blAcik != null && blKayit) blMektup('onizle'); blAtolyeCiz();
 };
-$('#bl-g-sifirla').onclick = () => { blGor = {tema: 'lacivert_bant', renk: '#e30613', renk2: '#0c2c57', foto: true, yazi: 'sans', magaza: true, rozet: true, kod: true, desen: true, ust_metin: ''}; blAtolyeCiz(); };
+$('#bl-g-sifirla').onclick = () => { blGor = {tema: 'lacivert_bant', renk: '#e30613', renk2: '#0c2c57', foto: true, yazi: 'sans', magaza: true, rozet: true, kod: true, desen: true, ust_metin: '',
+  logo: blGor ? blGor.logo : '', kat_renk: true, gruplar: (blVeri.renk_gruplari || []).map(g => Object.assign({}, g))}; blGruplarKur(); blAtolyeCiz(); };
 
 /* ---- masa ayarları */
 let blHaric = null;
@@ -3204,6 +3368,9 @@ function blAyarDoldur(){
   if(blVeri.blog_kategorileri) blKatDoldur(blVeri.blog_kategorileri);
   else if(a.kategori) $('#bl-kat').innerHTML = `<option value="${a.kategori}">${esc(a.kategori_ad || 'Kategori ' + a.kategori)}</option>`;
   for(const k of ['instagram', 'youtube', 'tiktok', 'facebook']) $('#bl-s-' + k).value = (a.sosyal || {})[k] || '';
+  const h = a.hizmet || {};
+  $('#bl-h-acik').checked = !!h.acik;
+  for(const k of ['adres', 'kosul', 'rozet', 'baslik', 'metin', 'dugme']) $('#bl-h-' + k).value = h[k] || '';
   blHaric = new Set(a.haric);
   $('#bl-hk-not').textContent = a.haric_oto ? '(otomatik: adında "Bosch Aksesuar" geçenler ve alt kategorileri)' : '(sizin seçiminiz)';
   blKatListe();
@@ -3231,11 +3398,14 @@ $('#bl-ayar-kaydet').onclick = async () => {
   const sosyal = {}; for(const k of ['instagram', 'youtube', 'tiktok', 'facebook']) sosyal[k] = $('#bl-s-' + k).value.trim();
   const sel = $('#bl-kat'), d = {sosyal, bicim: $('#bl-bicim').value, renk: $('#bl-renk').value, haric: [...blHaric],
     durum: +($('#bl-durum .on') || {dataset: {d: 1}}).dataset.d};
+  d.hizmet = {acik: $('#bl-h-acik').checked};
+  for(const k of ['adres', 'kosul', 'rozet', 'baslik', 'metin', 'dugme']) d.hizmet[k] = $('#bl-h-' + k).value.trim();
   if(sel.value) Object.assign(d, {kategori: +sel.value, kategori_ad: sel.options[sel.selectedIndex].text});
   const r = await post('/api/blog/ayar', d); if(!r.ok) return;
   const red = Object.entries(sosyal).filter(([k, v]) => v && !(r.ayar.sosyal || {})[k]).map(([k]) => k);
-  if(red.length) toast('Şu adresler geçersiz, kaydedilmedi: ' + red.join(', ') + '. Adresi tarayıcıdan kopyalayın (https:// ile).');
-  else toast('Ayarlar kaydedildi. Sosyal medya alanı değiştiyse "Eski yazıları yenile" ile yazılara ekleyin.'); blImza = ''; blSayfa = 0; await blTick(true);
+  if(d.hizmet.adres && !r.ayar.hizmet.adres) toast('Hizmetler sayfasının adresi geçersiz, kaydedilmedi. Adresi tarayıcıdan kopyalayın (https:// ile).');
+  else if(red.length) toast('Şu adresler geçersiz, kaydedilmedi: ' + red.join(', ') + '. Adresi tarayıcıdan kopyalayın (https:// ile).');
+  else toast('Ayarlar kaydedildi. Sosyal medya ya da hizmetler kutusu değiştiyse "Eski yazıları yenile" ile yazılara ekleyin.'); blImza = ''; blSayfa = 0; await blTick(true);
 };
 $('#bl-hk-oto').onclick = async () => { const r = await post('/api/blog/ayar', {haric: null}); if(r.ok){ toast('Hariç tutma otomatiğe döndü.'); blImza = ''; await blTick(true); } };
 

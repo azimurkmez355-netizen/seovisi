@@ -2768,7 +2768,8 @@ def blog_ayar():
             "bicim": a.get("bicim") if a.get("bicim") in BL.BICIMLER else "karisik",
             "kategori": int(a.get("kategori") or 0), "kategori_ad": a.get("kategori_ad") or "",
             "durum": 0 if a.get("durum") == 0 else 1, "renk": renk, "gorsel": BL.gorsel_ayar(a.get("gorsel")),
-            "sosyal": BL.sosyal_ayar(a.get("sosyal")), "google": a.get("google") is not False}
+            "sosyal": BL.sosyal_ayar(a.get("sosyal")), "google": a.get("google") is not False,
+            "hizmet": BL.hizmet_ayar(a.get("hizmet"))}
 
 
 def blog_ayar_yaz(d):
@@ -2788,6 +2789,8 @@ def blog_ayar_yaz(d):
         a["gorsel"] = BL.gorsel_ayar(dict(BL.gorsel_ayar(a.get("gorsel")), **(d["gorsel"] or {})))
     if "sosyal" in d:
         a["sosyal"] = BL.sosyal_ayar(d["sosyal"])
+    if isinstance(d.get("hizmet"), dict):
+        a["hizmet"] = BL.hizmet_ayar(dict(BL.hizmet_ayar(a.get("hizmet")), **d["hizmet"]))
     if "google" in d:
         a["google"] = bool(d["google"]) and d["google"] not in ("0", "false")
     CFG.update(blog=a)
@@ -2809,6 +2812,34 @@ def blog_urunler():
             u["aktif"] = r["status"]
     haric = eknot_grup(blog_ayar()["haric"])
     return {pid: u for pid, u in out.items() if u["aktif"] != 0 and not (haric & set(u["kats"]))}
+
+
+def _urun_kats(pid):
+    """Ürünün yerel taramalardaki kategori numaraları."""
+    kats = set()
+    r = DBI.q("SELECT kats FROM urunbilgi WHERE pid=?", (pid,), one=True)
+    if r:
+        kats |= set(json.loads(r["kats"] or "[]"))
+    r = DBI.q("SELECT cats FROM catprod WHERE pid=?", (pid,), one=True)
+    if r:
+        kats |= set(json.loads(r["cats"] or "[]"))
+    return sorted(kats)
+
+
+def blog_renk_grubu(kats, a=None, yollar=None):
+    """Blog görselinin rengi ürünün kategorisine göre (Ayarlar: görsel atölyesi > kategori renkleri); kapalıysa ""."""
+    g = (a or blog_ayar())["gorsel"]
+    if not g.get("kat_renk"):
+        return ""
+    yollar = category_paths() if yollar is None else yollar
+    return BL.renk_grubu([yollar.get(k) or "" for k in kats or []], g["gruplar"])
+
+
+def blog_hizmet(ad, kats, a=None, yollar=None):
+    """Bu ürünün yazısına girecek hizmetler kutusu (koşul kelimesi ürünün adında ya da kategorilerinde) ya da None."""
+    h = (a or blog_ayar())["hizmet"]
+    yollar = category_paths() if yollar is None else yollar
+    return h if BL.hizmet_uygun(h, [ad] + [yollar.get(k) or "" for k in kats or []]) else None
 
 
 def _blog_iz(plan):
@@ -2959,7 +2990,7 @@ def _blog_hazirla_yaz(pid, prod, detail, row, eski, a, urun_kw, varyant, sabit, 
                       kw=kw, kw_adaylar=adaylar, sosyal=a["sosyal"], foto=foto,
                       ilgili=blog_ilgili(pid, kw or (adaylar[0] if adaylar else prod.get("name") or ""), kats),
                       digerleri=dizin, yollar=yollar, arastirma=arastirma, bicim_sabit=sabit,
-                      vurgu=a["gorsel"]["renk"])
+                      vurgu=a["gorsel"]["renk"], hizmet=blog_hizmet(prod.get("name") or "", sorted(set(kats) | set(_urun_kats(pid))), a))
     if row and row["blog_id"] and eski.get("slug"):
         plan["slug"] = eski["slug"]                  # yayımlanmış yazının adresi değişmez (bağlantılar ve Google)
     else:
@@ -3013,6 +3044,56 @@ def blog_gorsel_coz(veri):
     if not ham.startswith(b"\xff\xd8\xff"):
         return None, "Görsel JPEG değil."
     return veri, None
+
+
+LOGO_TURLER = {"png": b"\x89PNG\r\n\x1a\n", "jpg": b"\xff\xd8\xff", "webp": b"RIFF"}
+LOGO_MAX = 2 * 1024 * 1024
+
+
+def _logo_yolu(ext):
+    return os.path.join(current().dir, f"blog_logo.{ext}")
+
+
+def blog_logo():
+    """Blog görsellerine konan mağaza logosu. Dönüş: (bayt, uzantı) ya da (None, None)."""
+    for ext in LOGO_TURLER:
+        try:
+            with open(_logo_yolu(ext), "rb") as f:
+                return f.read(), ext
+        except OSError:
+            pass
+    return None, None
+
+
+def blog_logo_yaz(veri):
+    """Panelden yüklenen logo (data:image/png|jpeg|webp;base64,…); boş veri logoyu kaldırır. Görsel ayarındaki `logo`
+    logonun özetidir: logo değişince bütün görseller yeniden çizilir. Dönüş: hata iletisi ya da None."""
+    ham, ext = b"", ""
+    if veri:
+        m = re.fullmatch(r"data:image/(png|jpeg|webp);base64,([A-Za-z0-9+/=\s]+)", str(veri))
+        if not m:
+            return "Logo PNG, JPEG ya da WEBP olmalı."
+        try:
+            ham = base64.b64decode(m.group(2), validate=False)
+        except (ValueError, TypeError):
+            return "Logo dosyası bozuk."
+        ext = {"jpeg": "jpg"}.get(m.group(1), m.group(1))
+        if len(ham) > LOGO_MAX:
+            return "Logo çok büyük (en çok 2 MB)."
+        if not ham.startswith(LOGO_TURLER[ext]) or (ext == "webp" and ham[8:12] != b"WEBP"):
+            return "Logo dosyası resim değil."
+    for e in LOGO_TURLER:
+        try:
+            os.remove(_logo_yolu(e))
+        except OSError:
+            pass
+    if ham:
+        with open(_logo_yolu(ext), "wb") as f:
+            f.write(ham)
+    b = dict(CFG.get("blog") or {})
+    b["gorsel"] = BL.gorsel_ayar(dict(BL.gorsel_ayar(b.get("gorsel")), logo=hashlib.md5(ham).hexdigest()[:12] if ham else ""))
+    CFG.update(blog=b)
+    return None
 
 
 def blog_gonder(pid, gorsel=None, durum=None):
@@ -3251,7 +3332,8 @@ class BlogYazari:
     def satirlar(self):
         urunler = blog_urunler()
         kayit = {r["pid"]: r for r in DBI.q("SELECT * FROM blog")}
-        out, iz = [], BL.sosyal_izi(BL.sosyal_listesi(blog_ayar()["sosyal"]))
+        a = blog_ayar()
+        out, iz, yollar = [], BL.sosyal_izi(BL.sosyal_listesi(a["sosyal"])), category_paths()
         for pid in set(urunler) | {p for p, r in kayit.items() if r["blog_id"]}:
             u, r = urunler.get(pid), kayit.get(pid)
             if u is None:
@@ -3259,19 +3341,22 @@ class BlogYazari:
                 u = dict(b) if b else {"sku": "", "name": "", "barkod": ""}
             plan = json.loads(r["plan"]) if r and r["plan"] else None
             durum = (r["durum"] if r else "") or ""
+            kats = u.get("kats") or []
+            h_iz = BL.hizmet_izi(blog_hizmet(u.get("name") or "", kats, a, yollar))
             sekme = "gonderildi" if durum in ("gonderildi", "kaldirildi") else ("hazir" if plan else "yazilacak")
             out.append({"pid": pid, "sku": u.get("sku") or "", "name": u.get("name") or "", "barkod": u.get("barkod") or "",
                         "sekme": sekme, "durum": durum, "mesaj": (r["mesaj"] if r else "") or "",
                         "zaman": (r["zaman"] if r else "") or "", "blog_id": r["blog_id"] if r else None,
                         "degisti": bool(plan and r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan)),
-                        "kapsamda": pid in urunler,
+                        "kapsamda": pid in urunler, "renk_grup": blog_renk_grubu(kats, a, yollar),
                         "plan": {"title": plan["title"], "gorsel_baslik": plan.get("gorsel_baslik") or plan["title"],
                                  "keyword": plan["keyword"], "rozet": plan["rozet"], "bicim": plan["bicim"],
                                  "yuzde": plan["score"]["yuzde"],
                                  "kalite": (plan.get("kalite") or {}).get("puan"),
                                  "gecti": bool((plan.get("kalite") or {}).get("gecti")),
                                  "okunabilirlik": ((plan.get("kalite") or {}).get("okunabilirlik") or {}).get("puan"),
-                                 "eski": plan.get("v") != BL.SURUM or (plan.get("sosyal_iz") or "") != iz} if plan else None})
+                                 "eski": plan.get("v") != BL.SURUM or (plan.get("sosyal_iz") or "") != iz + h_iz}
+                        if plan else None})
         out.sort(key=lambda x: x["pid"])
         return out
 
@@ -3293,7 +3378,7 @@ class BlogYazari:
         taranmadi = not DBI.q("SELECT 1 FROM urunbilgi LIMIT 1", one=True) and not DBI.q("SELECT 1 FROM catprod LIMIT 1", one=True)
         return {"ayar": a, "bicimler": {k: v["ad"] for k, v in BL.BICIMLER.items()},
                 "kategoriler": sorted(({"id": i, "path": p} for i, p in paths.items()), key=lambda x: ST.tr_lower(x["path"])),
-                "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": blog_profil()["magaza"],
+                "blog_kategorileri": self.kategoriler, "taranmadi": taranmadi, "magaza": blog_profil()["magaza"], "renk_gruplari": BL.RENK_GRUPLARI,
                 "sayilar": dict({k: say.get(k, 0) for k in ("yazilacak", "hazir", "gonderildi")},
                                 eksik=sum(1 for r in rows if self._eksik(r) and r["sekme"] == sekme)), "haric_urun": haric_n,
                 "toplam": len(sec), "items": sec[sayfa * BLOG_SAYFA:(sayfa + 1) * BLOG_SAYFA], "sayfa_boy": BLOG_SAYFA,
@@ -3319,6 +3404,7 @@ class BlogYazari:
         plan["kalite"] = dict(KA.degerlendir(plan, self.dizin_al(), plan["score"], pid),
                               deneme=(plan.get("kalite") or {}).get("deneme"))
         plan.pop("imza", None)
+        plan["renk_grup"] = blog_renk_grubu(_urun_kats(pid))
         return {"plan": plan, "durum": r["durum"] or "", "mesaj": r["mesaj"] or "", "blog_id": r["blog_id"],
                 "zaman": r["zaman"] or "", "duzenlendi": bool(r["duzenlendi"]),
                 "degisti": bool(r["gonderilen"] and r["gonderilen"] != _blog_ozet(plan))}
@@ -3404,7 +3490,9 @@ BLOG_OTO_BAGLANTI = 2          # yayımlanan her yazı için yenilenen en çok e
 
 def _gorsel_veri(plan):
     """Yazının görseline giren bilgiler (başlık, rozet, ürün kodu)."""
-    return [plan.get("gorsel_baslik") or plan.get("title") or "", plan.get("rozet") or "", (plan.get("urun") or {}).get("sku") or ""]
+    pid = (plan.get("urun") or {}).get("id")
+    return [plan.get("gorsel_baslik") or plan.get("title") or "", plan.get("rozet") or "", (plan.get("urun") or {}).get("sku") or "",
+            blog_renk_grubu(_urun_kats(pid)) if pid else ""]
 
 
 def blog_gorsel_izi(plan=None, veri=None):
@@ -4933,6 +5021,11 @@ class H(BaseHTTPRequestHandler):
         if p == "/api/blog/kategoriler":
             kats, hata = BLOG.blog_kategorileri_oku()
             return self._send(200, {"error": hata} if hata else {"kategoriler": kats})
+        if p == "/api/blog/logo":
+            data, ext = blog_logo()
+            if not data:
+                return self._send(404, {"error": "Logo yok."})
+            return self._send(200, data, {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}[ext])
         if p == "/api/blog/urun_gorsel":
             data, ext = blog_urun_gorseli(int(q.get("pid") or 0))
             if not data:
@@ -5291,6 +5384,9 @@ class H(BaseHTTPRequestHandler):
                 return self._send(200, {"error": "En az bir gün ve bir saat seçin.", "durum": blog_oto_durum()})
             return self._send(200, {"ok": True, "msg": "Otomasyon açık; seçtiğiniz vakitlerde yayımlar." if a["acik"]
                                     else "Otomasyon ayarları kaydedildi.", "durum": blog_oto_durum()})
+        if p == "/api/blog/logo":          # görsellere konan mağaza logosu (mağazaya bir şey gönderilmez)
+            hata = blog_logo_yaz(self._json().get("veri"))
+            return self._send(200, {"error": hata} if hata else {"ok": True, "ayar": blog_ayar()})
         if p == "/api/blog/oto/gorsel":    # panelin çizdiği görsel, otomatik gönderim için saklanır
             d = self._json()
             hata = blog_oto_gorsel_kaydet(int(d.get("pid") or 0), d.get("gorsel"))

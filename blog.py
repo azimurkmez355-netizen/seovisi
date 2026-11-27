@@ -27,7 +27,7 @@ import profil as PR
 import seo_machine as SM
 import seo_text as ST
 
-SURUM = 8   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
+SURUM = 9   # yazar değiştikçe artar; eski hazırlıklar "eski" görünür
 
 # mağaza vitrinindeki adreslerin önekleri (Ideasoft); iç bağlantılar bunlarla kurulur
 YOLLAR = {"urun": "/urun/", "kategori": "/kategori/", "blog": "/blog/", "blog_ana": "/blog"}
@@ -382,7 +382,9 @@ def _render(bloklar, kw, renk, link):
             out.append(f'<div style="background:{renk};color:#fff;padding:22px 26px;margin:34px 0 24px;border-radius:10px">'
                        f'<p style="color:#fff;margin:0 0 12px">{_e(metin)}</p>{a}</div>')
         elif tur == "sosyal":
-            out.append(_sosyal_html(v[0], v[1], renk))
+            out.append(_sosyal_html(v[0], v[1], renk, v[2] if len(v) > 2 else "#e30613"))
+        elif tur == "hizmet":
+            out.append(_hizmet_html(v, renk))
         elif tur == "ilgili":
             out.append(_ilgili_html(v))
         elif tur == "kart":
@@ -470,14 +472,15 @@ def _kart_html(v, renk):
 
 # ---------------------------------------------------------------- sosyal medya alanı (yazının en altı)
 
-# ağ: (ad, düğme yazısı, yazı rengi, kartın geçiş renkleri). Simgeler emoji değil, CSS ile çizilir: Ideasoft blog içeriği
-# 4 baytlık karakterleri (📸 gibi) "????" olarak kaydediyor.
+# ağ: (ad, simge adı (Simple Icons), simge zemini). Simgeler emoji değil, ağların kendi logoları (beyaz SVG,
+# cdn.simpleicons.org): Ideasoft blog içeriği 4 baytlık karakterleri (📸 gibi) "????" olarak kaydediyor.
 SOSYAL = {
-    "instagram": ("Instagram", "Takip et", "#c13584", "#4f5bd5,#962fbf,#d62976"),
-    "youtube": ("YouTube", "Abone ol", "#ff0000", "#ee2a3c,#e60000"),
-    "tiktok": ("TikTok", "Takip et", "#111111", "#25f4ee,#111111,#fe2c55"),
-    "facebook": ("Facebook", "Beğen", "#1877f2", "#1877f2,#0b5fcc"),
+    "instagram": ("Instagram", "instagram", "linear-gradient(45deg,#f9ce34,#ee2a7b,#6228d7)"),
+    "youtube": ("YouTube", "youtube", "#ff0000"),
+    "tiktok": ("TikTok", "tiktok", "#000000"),
+    "facebook": ("Facebook", "facebook", "#1877f2"),
 }
+SIMGE_ADRES = "https://cdn.simpleicons.org/{}/ffffff"
 _SOSYAL_ADRES = {"instagram": r"https://(www\.)?instagram\.com/[A-Za-z0-9_.]+/?", "youtube": r"https://(www\.)?youtube\.com/[@A-Za-z0-9_./-]+",
                  "tiktok": r"https://(www\.)?tiktok\.com/@[A-Za-z0-9_.]+/?", "facebook": r"https://(www\.)?facebook\.com/[A-Za-z0-9_.-]+/?"}
 
@@ -509,21 +512,83 @@ def sosyal_izi(liste):
 _Z = "&#8203;"     # boş span'ı editör silmesin diye görünmez karakter
 
 
-def _sosyal_html(magaza, liste, renk):
-    """Ağ renklerinde yatay geçişli kart; her ağ için beyaz düğme (ağ renginde nokta, ad, çağrı). Stiller kısa tutulur:
-    Ideasoft HTML'deki stilleri de kelime sayar (eski hâli bütün yazının beşte birini kaplıyordu)."""
-    renkler = ",".join(SOSYAL[k][3] for k, _, _ in liste)
-    dugmeler = " ".join(
-        f'<a href="{_e(u)}" target="_blank" rel="noopener" title="{_e(SOSYAL[k][0])} {_e(t)}" style="display:inline-block;margin:6px;padding:12px 24px;'
-        f'border-radius:14px;background:#fff;color:#111;font-weight:700;text-decoration:none">'
-        f'<b style="color:{SOSYAL[k][2]}">&#9679;</b> {_e(SOSYAL[k][0])} <span style="color:{SOSYAL[k][2]}">'
-        f'{_e(SOSYAL[k][1])}</span></a>' for k, u, t in liste)
+def _sosyal_html(magaza, liste, renk, vurgu="#e30613"):
+    """Sitenin kartlarıyla uyumlu beyaz kutu (üstte vurgu renginde çizgi); her ağ için ağın logosu, kendi renginde yuvarlak
+    zeminde, yanında adı. Stiller kısa tutulur: Ideasoft HTML'deki stilleri de kelime sayar."""
+    dugmeler = "".join(
+        f'<a href="{_e(u)}" target="_blank" rel="noopener" title="{_e(SOSYAL[k][0])} {_e(t)}" style="display:inline-block;'
+        'margin:5px;padding:7px 18px 7px 7px;border:1px solid #e3e8ef;border-radius:99px;background:#fff;color:#16161a;'
+        f'font-weight:600;text-decoration:none"><span style="display:inline-block;width:38px;height:38px;line-height:38px;'
+        f'border-radius:99px;background:{SOSYAL[k][2]};text-align:center;vertical-align:middle">'
+        f'<img src="{SIMGE_ADRES.format(SOSYAL[k][1])}" alt="{_e(SOSYAL[k][0])}" width="20" height="20" '
+        f'style="width:20px;height:20px;vertical-align:middle"></span> {_e(SOSYAL[k][0])}</a>' for k, u, t in liste)
+    # simge zemini ayrı kutuda: sitelerin çoğundaki box-sizing kuralı, resme verilen iç boşlukla simgeyi noktaya küçültüyordu
     kim = f"{magaza} hesaplarını" if magaza else "hesaplarımızı"
-    return (f'<div style="margin:44px 0 10px;padding:30px 22px;border-radius:22px;text-align:center;color:#fff;'
-            f'background:linear-gradient(90deg,{renkler})"><p style="margin:0 0 6px;font-size:12px;font-weight:700;'
-            'letter-spacing:2px">SOSYAL MEDYA</p><h3 style="margin:0 0 8px;color:#fff;font-size:26px">Bizi takip edin</h3>'
-            f'<p style="margin:0 0 16px">Yeni ürünler, kullanım videoları ve pratik ipuçları için {_e(kim)} takip edin.</p>'
-            f'<p style="margin:0">{dugmeler}</p></div>')
+    return (f'<div id="seovisi-sosyal" style="margin:30px 0 10px;padding:26px 20px;border-radius:18px;background:#fff;'
+            f'border:1px solid #e3e8ef;border-top:4px solid {vurgu};text-align:center;{YAZI}">'
+            f'<p style="margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:2px;color:{vurgu}">SOSYAL MEDYA</p>'
+            f'<p style="margin:0 0 6px;font-size:24px;font-weight:700;color:{renk}">Bizi takip edin</p>'
+            f'<p style="margin:0 0 14px;color:#5b6475">Yeni ürünler, kullanım videoları ve pratik ipuçları için {_e(kim)} '
+            f'takip edin.</p><p style="margin:0">{dugmeler}</p></div>')
+
+
+# ---------------------------------------------------------------- hizmetler kutusu (sosyal medyanın üstü)
+
+# Bosch Hizmetleri sayfasına yönlendiren hazır metin; mağaza kendi sayfasının adresini girer. {magaza}: mağaza adı.
+HIZMET_VARSAYILAN = {
+    "acik": True, "adres": "", "kosul": "bosch", "rozet": "{magaza} Destek",
+    "baslik": "Bosch Hizmetleri ile ürününüz güvende",
+    "metin": "Bosch ürününüzü satın aldıktan sonra da yanınızdayız. Mavi seri Professional ürünlerinizi PRO360, yeşil seri "
+             "ürünlerinizi MyBosch üzerinden kaydedin; makine, akü ve şarj cihazlarında 1 yıl ek garantiden yararlanın. "
+             "Kayıt için satın alma tarihinden itibaren 30 gününüz var. Size en yakın yetkili servisi de tek tıkla bulabilirsiniz.",
+    "dugme": "Bosch Hizmetlerini inceleyin",
+}
+
+
+def hizmet_ayar(d):
+    """Hizmetler kutusu ayarı; adres https:// ile başlayan tam adres ya da sitedeki yol (/sayfa/hizmetler) olmalı."""
+    d = d if isinstance(d, dict) else {}
+    out = dict(HIZMET_VARSAYILAN)
+    if "acik" in d:
+        out["acik"] = bool(d["acik"]) and d["acik"] not in ("0", "false")
+    for k, n in (("rozet", 40), ("baslik", 90), ("metin", 600), ("dugme", 50), ("kosul", 60)):
+        if k in d:
+            out[k] = re.sub(r"\s+", " ", str(d.get(k) or "")).strip()[:n]
+    for k in ("baslik", "metin", "dugme"):
+        out[k] = out[k] or HIZMET_VARSAYILAN[k]
+    u = str(d.get("adres") or "").strip()
+    out["adres"] = u if re.fullmatch(r"(https://[A-Za-z0-9.-]+\.[A-Za-z]{2,}|)(/[^\s\"'<>]*)?", u) and u else ""
+    return out
+
+
+def hizmet_uygun(h, metinler):
+    """Kutu bu ürünün yazısına girer mi: açık, adresi var ve koşul kelimesi (boşsa her ürün) ürünün adında, markasında
+    ya da kategorilerinde geçiyor."""
+    if not h or not h.get("acik") or not h.get("adres"):
+        return False
+    kosul = ST.tr_lower(h.get("kosul") or "")
+    return not kosul or any(kosul in ST.tr_lower(m or "") for m in metinler)
+
+
+def hizmet_izi(h):
+    """Ayarın özeti: değişince yazılar "eski" sayılır."""
+    if not h or not h.get("acik") or not h.get("adres"):
+        return ""
+    return "h:" + "|".join(str(h.get(k) or "") for k in ("adres", "kosul", "rozet", "baslik", "metin", "dugme"))
+
+
+def _hizmet_html(v, renk):
+    """Sitenin "Bosch Hizmetleri" bölümüne benzeyen koyu kutu: kırmızı rozet, başlık, metin ve beyaz düğme."""
+    h, magaza, vurgu = v
+    rozet = (h.get("rozet") or "").replace("{magaza}", magaza or "").strip()
+    rozet_html = (f'<p style="margin:0 0 10px"><span style="padding:6px 13px;border-radius:99px;background:{vurgu};color:#fff;'
+                  f'font-size:12px;font-weight:600;letter-spacing:1px">{_e(rozet)}</span></p>') if rozet else ""
+    return (f'<div id="seovisi-hizmet" style="margin:40px 0 14px;padding:26px 24px;border-radius:18px;background:{renk};'
+            f'color:#fff;{YAZI}">{rozet_html}'
+            f'<p style="margin:0 0 8px;font-size:24px;line-height:1.3;font-weight:700;color:#fff">{_e(h["baslik"])}</p>'
+            f'<p style="margin:0 0 18px;color:#fff">{_e(h["metin"].replace("{magaza}", magaza or "mağazamız"))}</p>'
+            f'<a href="{_e(h["adres"])}" style="display:inline-block;padding:13px 26px;border-radius:99px;background:#fff;'
+            f'color:{renk};font-weight:600;text-decoration:none">{_e(h["dugme"])} <b style="color:{vurgu}">&#8594;</b></a></div>')
 
 
 # ---------------------------------------------------------------- içerik
@@ -1097,8 +1162,9 @@ def anahtar_kelimeler(kw, label, bicim, prof):
 
 def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, method="", hedef=2.5, renk="#1b4f72",
         kategori=None, kw="", sosyal=None, foto="", ilgili=None, digerleri=None, yollar=None, arastirma=None,
-        vurgu="#e30613"):
-    """urun: Ideasoft ürün kaydı (id, name, sku, barcode, slug, brand, categories). kategori: {"ad", "slug"} (isteğe bağlı).
+        vurgu="#e30613", hizmet=None):
+    """hizmet: bu ürünün yazısına girecek hizmetler kutusu ayarı (hizmet_ayar; uygunluğu çağıran denetler) ya da None.
+    urun: Ideasoft ürün kaydı (id, name, sku, barcode, slug, brand, categories). kategori: {"ad", "slug"} (isteğe bağlı).
     kw verilirse o hedef kelime kullanılır (kullanıcının düzenlediği). foto: ürün fotoğrafının adresi (ürün kartında).
     ilgili: [(başlık, adres)] mağazanın ilgili yazıları (iç bağlantı). digerleri: diğer yazıların izleri (kalite.iz);
     meta özgünlüğü ve kalite raporu bunlarla karşılaştırılır. Dönüş: blog planı (mağazaya yazılmaz)."""
@@ -1139,15 +1205,18 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
     tum_spec = b["spec"]
     # HTML'i ağır yazıda (sosyal medya, kart) yoğunluk %2'ye çıkamazsa önce ek bölüm, sonra teknik liste kısalır
     # son çare: sosyal medya kartı (yalnızca HTML ağırlığı getirir) olmadan; Ideasoft'un yoğunluk kuralı her zaman önce gelir
-    secenekler = [(so, e, s_) for so in ((True, False) if sosyal else (False,)) for e in (2, 1, 0)
+    hizmet = hizmet if hizmet and hizmet.get("adres") else None
+    secenekler = [(so, e, s_) for so in ((True, False) if sosyal or hizmet else (False,)) for e in (2, 1, 0)
                   for s_ in sorted({len(tum_spec), 7, 5, 3}, reverse=True) if s_ <= len(tum_spec)]
     for sosyal_var, ek_sayi, sinir in secenekler:
         b2 = dict(b, spec=tum_spec[:sinir])
         iskelet = _bloklar(bicim, urun, b2, prof, kategori, _rng(pid, bicim, varyant))
         ham = _doldur(_zenginlestir(iskelet, bicim, urun, b2, prof, _rng(pid, bicim, varyant, "zengin"),
                                     (baglantilar, vurgu), dict(kart, maddeler=_kart_maddeleri(b2)), ek_sayi), kw, b["label"])
-        if sosyal_var:
-            ham.append(("sosyal", (prof["magaza"], sosyal)))
+        if sosyal_var and hizmet:
+            ham.append(("hizmet", (hizmet, prof["magaza"], vurgu)))
+        if sosyal_var and sosyal:
+            ham.append(("sosyal", (prof["magaza"], sosyal, vurgu)))
         n_yer = _yer_sayisi(ham)
         for m_ in range(0, len(ek) + 1):
             for n in range(0, len(dolgu) + 1):
@@ -1190,7 +1259,7 @@ def yaz(urun, details_html="", mevcut_kw="", bicim="", varyant=0, prof=None, met
         kws = set(ST.tr_lower(kw).split())
         ek_kw = [x for x in arastirma.get("ilgili") or [] if kws & set(ST.tr_lower(x).split())][:3]
         mk = ", ".join([mk] + ek_kw) if ek_kw else mk
-    plan = {"v": SURUM, "keyword": kw, "title": baslik, "gorsel_baslik": gorsel_baslik, "sosyal_iz": sosyal_izi(sosyal),
+    plan = {"v": SURUM, "keyword": kw, "title": baslik, "gorsel_baslik": gorsel_baslik, "sosyal_iz": sosyal_izi(sosyal) + hizmet_izi(hizmet),
             "slug": slug(f"{kw} {BICIMLER[bicim]['ek']} {sku}", 75),
             "excerpt": ozet(kw, bicim, magaza, _rng(pid, "ozet", varyant), b),
             "content": icerik, "pageTitle": pt, "metaDescription": md,
@@ -1312,7 +1381,16 @@ GORSEL_TEMALAR = {"lacivert_bant": "Lacivert · bantlı", "beyaz_bant": "Beyaz �
                   "gece_isik": "Gece · ışıltılı", "lacivert_kutu": "Lacivert · kutu", "beyaz_kutu": "Beyaz · kutu",
                   "bolunmus_kutu": "İki renk · kutu", "vitrin_kutu": "Vitrin · kutu"}
 GORSEL_VARSAYILAN = {"tema": "lacivert_bant", "renk": "#e30613", "renk2": "#0c2c57", "foto": True, "yazi": "sans",
-                     "magaza": True, "rozet": True, "kod": True, "desen": True, "ust_metin": ""}
+                     "magaza": True, "rozet": True, "kod": True, "desen": True, "ust_metin": "", "logo": "",
+                     "kat_renk": True}
+# ürünün kategorisine göre görsel rengi: üstteki grup önce gelir (aksesuar, profesyonel kategorinin altında olsa da beyaz).
+# zemin açıksa (beyaz) açık tema kullanılır, yazılar koyu olur. kelimeler kategori yolunda (Üst › Alt) aranır.
+RENK_GRUPLARI = [
+    {"id": "beyaz", "ad": "Beyaz", "zemin": "#ffffff", "vurgu": "#e30613", "kelimeler": "aksesuar"},
+    {"id": "kirmizi", "ad": "Kırmızı", "zemin": "#c8102e", "vurgu": "#0c2c57", "kelimeler": "ölçme, ölçüm"},
+    {"id": "yesil", "ad": "Yeşil", "zemin": "#00783f", "vurgu": "#0c2c57", "kelimeler": "bahçe, hafif hizmet"},
+    {"id": "mavi", "ad": "Mavi", "zemin": "#0b4a8b", "vurgu": "#e30613", "kelimeler": "profesyonel, professional, dremel"},
+]
 
 
 def gorsel_ayar(d):
@@ -1330,4 +1408,34 @@ def gorsel_ayar(d):
     if d.get("yazi") in ("serif", "sans"):
         out["yazi"] = d["yazi"]
     out["ust_metin"] = re.sub(r"\s+", " ", str(d.get("ust_metin") or "")).strip()[:40]
+    out["logo"] = d["logo"] if re.fullmatch(r"[0-9a-f]{12}", str(d.get("logo") or "")) else ""
+    if "kat_renk" in d:
+        out["kat_renk"] = bool(d["kat_renk"]) and d["kat_renk"] not in ("0", "false")
+    gelen = {g.get("id"): g for g in d.get("gruplar") or [] if isinstance(g, dict)}
+    out["gruplar"] = []
+    for v in RENK_GRUPLARI:
+        g, y = dict(v), gelen.get(v["id"]) or {}
+        for k in ("zemin", "vurgu"):
+            if re.fullmatch(r"#[0-9a-fA-F]{6}", str(y.get(k) or "")):
+                g[k] = y[k].lower()
+        if "kelimeler" in y:
+            g["kelimeler"] = ", ".join(x for x in (re.sub(r"\s+", " ", k).strip() for k in str(y["kelimeler"] or "")
+                                                   .split(",")) if x)[:200]
+        out["gruplar"].append(g)
     return out
+
+
+_KATLA = str.maketrans("çğıöşüâîû", "cgiosuaiu")
+
+
+def _katla(s):
+    return ST.tr_lower(s or "").translate(_KATLA)
+
+
+def renk_grubu(yollar, gruplar):
+    """Ürünün kategori yollarına (["Bosch Profesyonel › Akülü Aletler", ...]) göre görsel renk grubu; yoksa ""."""
+    metin = " | ".join(_katla(y) for y in yollar or [])
+    for g in gruplar or []:
+        if any(k and k in metin for k in (_katla(x).strip() for x in (g.get("kelimeler") or "").split(","))):
+            return g["id"]
+    return ""

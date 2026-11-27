@@ -109,9 +109,48 @@ class Yazar(unittest.TestCase):
         self.assertIn("@UstaPazar", p["content"])
         self.assertNotIn("javascript", p["content"])
         self.assertGreater(p["content"].index("Bizi takip edin"), p["content"].index("ekibi tarafından"))
-        self.assertIn("linear-gradient(90deg,#4f5bd5", p["content"])      # Instagram'dan YouTube'a yatay geçiş
         self.assertIn('target="_blank"', p["content"])   # en altta
+        # ağların kendi logoları (emoji değil: Ideasoft 4 baytlık karakteri bozar), sitenin kartlarıyla uyumlu beyaz kutu
+        self.assertIn("https://cdn.simpleicons.org/instagram/ffffff", p["content"])
+        self.assertIn("https://cdn.simpleicons.org/youtube/ffffff", p["content"])
+        self.assertIn('id="seovisi-sosyal"', p["content"])
+        self.assertFalse(any(ord(ch) > 0xFFFF for ch in p["content"]))
         self.assertEqual(p["score"]["yuzde"], 100)
+
+    def test_hizmetler_kutusu(self):
+        h = BL.hizmet_ayar({"adres": "https://www.ustapazar.com/sayfa/hizmetler"})
+        self.assertEqual(h["adres"], "https://www.ustapazar.com/sayfa/hizmetler")
+        self.assertEqual(BL.hizmet_ayar({"adres": "javascript:alert(1)"})["adres"], "")
+        self.assertEqual(BL.hizmet_ayar({"adres": "/sayfa/hizmetler"})["adres"], "/sayfa/hizmetler")
+        self.assertTrue(BL.hizmet_uygun(h, ["Bosch Professional GSB 13 RE"]))
+        self.assertFalse(BL.hizmet_uygun(h, ["Dremel 3000", "Dremel › Oyma"]))           # koşul: bosch
+        self.assertFalse(BL.hizmet_uygun(BL.hizmet_ayar({}), ["Bosch"]))                    # adres yoksa kutu yok
+        s = {"instagram": "https://www.instagram.com/usta.pazar/"}
+        for bicim in BL.SIRA:
+            p = BL.yaz_tam(URUN, DETAY, bicim=bicim, bicim_sabit=True, prof={"magaza": "Ustapazar"}, method="panel",
+                           sosyal=s, hizmet=h)
+            c = p["content"]
+            self.assertIn('href="https://www.ustapazar.com/sayfa/hizmetler"', c, bicim)
+            self.assertIn("Ustapazar Destek", c)
+            self.assertLess(c.index('id="seovisi-hizmet"'), c.index('id="seovisi-sosyal"'))   # sosyal medyanın üstünde
+            self.assertEqual(p["score"]["yuzde"], 100, (bicim, p["score"]))
+        # ayar değişince yazı eski sayılır (iz değişir)
+        self.assertNotEqual(p["sosyal_iz"], BL.yaz(URUN, DETAY, prof={"magaza": "Ustapazar"}, sosyal=s)["sosyal_iz"])
+
+    def test_kategoriye_gore_renk_grubu(self):
+        g = BL.gorsel_ayar({})["gruplar"]
+        self.assertEqual(BL.renk_grubu(["Bosch Profesyonel › Akülü Aletler"], g), "mavi")
+        self.assertEqual(BL.renk_grubu(["Dremel › Oyma/Gravür/Kanal Açma"], g), "mavi")
+        self.assertEqual(BL.renk_grubu(["Bosch Bahçe Ekipmanları"], g), "yesil")
+        self.assertEqual(BL.renk_grubu(["Bosch Ölçme Aletleri › Profesyonel Ölçüm Aletleri"], g), "kirmizi")
+        self.assertEqual(BL.renk_grubu(["Bosch Profesyonel › Manuel El Aletleri › Ölçüm Aletleri"], g), "kirmizi")
+        self.assertEqual(BL.renk_grubu(["Bosch Aksesuarlar › Aküler", "Bosch Profesyonel"], g), "beyaz")  # aksesuar önce
+        self.assertEqual(BL.renk_grubu(["Diğer Markalar"], g), "")
+        a = BL.gorsel_ayar({"gruplar": [{"id": "mavi", "zemin": "#123456", "kelimeler": " makita ,  "}, {"id": "yok"}],
+                            "kat_renk": False, "logo": "<script>"})
+        mavi = next(x for x in a["gruplar"] if x["id"] == "mavi")
+        self.assertEqual((mavi["zemin"], mavi["kelimeler"], a["kat_renk"], a["logo"]), ("#123456", "makita", False, ""))
+        self.assertEqual([x["id"] for x in a["gruplar"]], ["beyaz", "kirmizi", "yesil", "mavi"])
 
     def test_gonderilecek_kayit(self):
         p = BL.yaz(URUN, DETAY, bicim="inceleme", prof={"magaza": "Ustapazar"}, method="panel")
@@ -189,6 +228,42 @@ class BlogEkrani(Ortam):
         self.assertEqual(len(pids), len(self.m.urunler) - 3)
         app.blog_ayar_yaz({"haric": []})            # kullanıcı hariç tutmayı kaldırırsa aksesuarlar da gelir
         self.assertIn(1, app.blog_urunler())
+
+    def test_renk_grubu_hizmet_ve_logo(self):
+        app.DBI.xm("INSERT INTO cat(id, name, parent) VALUES(?,?,?)", [(41, "Bosch Profesyonel", None), (42, "Bahçe", None)])
+        app.DBI.x("UPDATE catprod SET cats=? WHERE pid=4", (json.dumps([41]),))
+        app.DBI.x("UPDATE catprod SET cats=? WHERE pid=5", (json.dumps([42]),))
+        self.m.urunler[4]["categories"], self.m.urunler[5]["categories"] = [{"id": 41}], [{"id": 42}]
+        app.blog_hazirla(4)
+        app.blog_hazirla(5)
+        d = {it["pid"]: it for it in app.BLOG.durum("hazir")["items"]}
+        self.assertEqual((d[4]["renk_grup"], d[5]["renk_grup"]), ("mavi", "yesil"))
+        self.assertEqual(app.BLOG.plan(4)["plan"]["renk_grup"], "mavi")
+        app.blog_ayar_yaz({"gorsel": {"kat_renk": False}})
+        self.assertEqual(app.BLOG.plan(4)["plan"]["renk_grup"], "")
+        # hizmetler kutusu yalnızca koşula uyan (adında ya da kategorisinde "bosch" geçen) ürüne; ayar değişince yazı eski
+        self.assertFalse(d[4]["plan"]["eski"])
+        app.blog_ayar_yaz({"hizmet": {"adres": "https://www.ustapazar.com/sayfa/hizmetler"}})
+        d = {it["pid"]: it for it in app.BLOG.durum("hazir")["items"]}
+        self.assertTrue(d[4]["plan"]["eski"])
+        self.assertFalse(d[5]["plan"]["eski"] and "bosch" not in self.m.urunler[5]["name"].lower())
+        app.blog_hazirla(4)
+        self.assertIn("seovisi-hizmet", app.BLOG.plan(4)["plan"]["content"])
+        self.assertFalse({it["pid"]: it for it in app.BLOG.durum("hazir")["items"]}[4]["plan"]["eski"])
+        self.assertEqual(self.yazmalar(), [])
+        # logo: yalnızca resim kabul edilir; görsel ayarına özeti yazılır (görseller yeniden çizilir), kaldırılabilir
+        png = "data:image/png;base64," + base64.b64encode(b"\x89PNG\r\n\x1a\n" + b"0" * 100).decode()
+        self.assertIsNotNone(app.blog_logo_yaz("data:image/png;base64," + base64.b64encode(b"<svg>").decode()))
+        self.assertIsNotNone(app.blog_logo_yaz("data:image/svg+xml;base64,PHN2Zz4="))
+        iz = app.blog_gorsel_izi(app.BLOG.plan(4)["plan"])
+        self.assertIsNone(app.blog_logo_yaz(png))
+        self.assertEqual(len(app.blog_ayar()["gorsel"]["logo"]), 12)
+        self.assertEqual(app.blog_logo()[1], "png")
+        self.assertNotEqual(app.blog_gorsel_izi(app.BLOG.plan(4)["plan"]), iz)
+        app.blog_ayar_yaz({"gorsel": {"tema": "beyaz_kutu"}})                      # görsel ayarı kaydı logoyu silmez
+        self.assertTrue(app.blog_ayar()["gorsel"]["logo"])
+        self.assertIsNone(app.blog_logo_yaz(""))
+        self.assertEqual((app.blog_ayar()["gorsel"]["logo"], app.blog_logo()), ("", (None, None)))
 
     def test_magaza_adi_yoksa_adresten(self):
         app.CFG.update(profil={"magaza": "", "marka": ""}, store="ustapazar.myideasoft.com")
